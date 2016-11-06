@@ -8,10 +8,14 @@ import re
 
 sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
 
-fileName = 'mappingbased_objects_en_extracted_full.csv'
+#example usage: python wikiCrawler.py almaMater 100
+fileName = '../ttl parser/mappingbased_objects_en_extracted.csv'
 articles = {}
-i = int(sys.argv[2])
 property = sys.argv[1]
+maxResults = int(sys.argv[2])
+printStatus = True
+if(len(sys.argv) >= 4):
+	printStatus = sys.argv[3]
 
 def segmentate(text):
 	rows = text.split("\n")
@@ -22,24 +26,25 @@ def segmentate(text):
 		
 	return segments
 
-with open(fileName, 'r', encoding='utf-8-sig') as csvfile:
-	wikireader = csv.reader(csvfile, delimiter=' ', quotechar='"')
+with open(fileName, 'r', encoding = 'utf-8-sig') as csvfile:
+	wikireader = csv.reader(csvfile, delimiter = ' ', quotechar = '"')
 	for row in wikireader:
-		if(i == 0):
+		if(maxResults == 0):
 			break
 		if(row[1].find(property) == -1):
 			continue
 		if row[0] in articles:
 			content = articles[row[0]]
 		else:
-			i = i - 1
+			maxResults -= 1
 			
 			url = urllib.parse.urlsplit(row[0])
 			url = list(url)
 			url[2] = urllib.parse.quote(url[2])
 			url = urllib.parse.urlunsplit(url)
 			url = url.replace("dbpedia.org/resource", "en.wikipedia.org/wiki")
-			print(url)
+			if printStatus:
+				print(url)
 			html = urlreq.urlopen(url).read()
 
 			html = html.replace(b"&nbsp;", b"&#0160;")
@@ -63,8 +68,9 @@ with open(fileName, 'r', encoding='utf-8-sig') as csvfile:
 		#print(text)
 		
 		sentences = segmentate(text)
-		print(len(sentences), "sentences")
-		print(searchStr)
+		if printStatus:
+			print(len(sentences), "sentences")
+			print(searchStr)
 
 		for sentence in sentences:
 			#print(sentence)
@@ -72,8 +78,8 @@ with open(fileName, 'r', encoding='utf-8-sig') as csvfile:
 				if(sentence == search): continue
 				pos = sentence.find(search)
 				if(pos > -1):
-					print("1", sentence[:pos])
-					print("2", search)
 					last = len(search) + pos
-					print("3", sentence[last:])
+					consoleGreen = '\x1b[6;30;42m'
+					consoleNormal = '\x1b[0m'
+					print(sentence[:pos] + consoleGreen + search + consoleNormal + sentence[last:])
 					print("")
