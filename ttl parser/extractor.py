@@ -2,42 +2,59 @@ import sys
 import re
 from collections import namedtuple
 from itertools import takewhile
+import os
 
-pathObjects = 'C:/Users/Nirwana/Private Dokumente/ITSE/16.17/KDLD/Turtle Parse/mappingbased_objects_en.ttl'
-pathLiterals = 'C:/Users/Nirwana/Private Dokumente/ITSE/16.17/KDLD/Turtle Parse/mappingbased_literals_en.ttl'
-savePathObjects = 'C:/Users/Nirwana/Private Dokumente/ITSE/16.17/KDLD/Turtle Parse/mappingbased_objects_en_extracted.csv'
-savePathLiterals = 'C:/Users/Nirwana/Private Dokumente/ITSE/16.17/KDLD/Turtle Parse/mappingbased_literals_en_extracted.csv'
-maxLines = 100 # 0 means parse all lines
+currentPath = os.path.dirname(os.path.abspath(__file__)) + '\\'
+pathObjects = currentPath + 'mappingbased_objects_en.ttl'
+pathLiterals = currentPath + 'mappingbased_literals_en.ttl'
+savePathObjects = currentPath + 'mappingbased_objects_en_extracted.csv'
+savePathLiterals = currentPath + 'mappingbased_literals_en_extracted.csv'
+maxLines = 0 # 0 means parse all lines
 
 def main(argv):
-	#print(filterTTL(pathObjects, savePathObjects))
-	print(filterTTL(pathLiterals, savePathLiterals))
+	print(filterTTL(pathObjects, savePathObjects))
+	#print(filterTTL(pathLiterals, savePathLiterals))
 
 def filterTTL(path, saveInto):
-	#lines = num_lines = sum(1 for line in open(path))
-	#print lines
-	with open(path, 'r') as file:
-		fout = open(saveInto,'w')
+	lines = rawpycount(path)
+	
+	with open(path, 'r', encoding = "utf8") as file:
+		fout = open(saveInto, 'w', encoding = "utf8")
 		relations = ['/almaMater>', '/knownFor>', '/occupation>', '/award>']
+		counter = [0] * len(relations)
 		lineCounter = 0
-		hits = 0
 		for line in file:
-			print line
-			for rel in relations:
+			#print(line)
+			for i in range(len(relations)):
+				rel = relations[i]
 				if(rel in line):
 					line = line.replace("<", "\"")
 					line = line.replace(">", "\"")
 					#print(line)
 					fout.write(line)
-					hits += 1
+					counter[i] += 1
 
 			lineCounter += 1
-			#print(100 * lineCounter / lines)
 			if(maxLines != 0 and lineCounter >= maxLines):
 				break
 				
+			#print progress
+			if(lineCounter % 100000 == 0):
+				print(str(int(100 * lineCounter / lines)) + "%")
+				
 		fout.close()
-		return hits
-	
+		return counter
+
+def _make_gen(reader):
+    b = reader(1024 * 1024)
+    while b:
+        yield b
+        b = reader(1024*1024)
+
+def rawpycount(filename): #http://stackoverflow.com/questions/19001402/how-to-count-the-total-number-of-lines-in-a-text-file-using-python
+    f = open(filename, 'rb')
+    f_gen = _make_gen(f.raw.read)
+    return sum( buf.count(b'\n') for buf in f_gen )		
+
 if __name__ == "__main__":
 	main(sys.argv)
