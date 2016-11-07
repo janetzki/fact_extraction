@@ -5,19 +5,25 @@ import xml.etree.ElementTree as ET
 import sys
 import codecs
 import re
+from termcolor import colored
 
-sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
+#consoleRed = '\x1b[6;30;41m'
+#consoleGreen = '\x1b[6;30;42m'
+#consoleNormal = '\x1b[0m'
 
-#example usage: python wikiCrawler.py almaMater 100
-fileName = '../ttl parser/mappingbased_objects_en_extracted.csv'
-articles = {}
-property = sys.argv[1]
-maxResults = int(sys.argv[2])
-printStatus = True
-if(len(sys.argv) >= 4):
-	printStatus = sys.argv[3]
+if __name__ == "__main__":
+	sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
 
-def segmentate(text):
+	fileName = '../ttl parser/mappingbased_objects_en_extracted.csv'
+	articles = {}
+	if(len(sys.argv) != 3):
+		print("usage:   python wikiCrawler.py [property] [maxResults]")
+		print("example: python wikiCrawler.py almaMater 100")
+		exit()
+	property = sys.argv[1]
+	maxResults = int(sys.argv[2])
+
+def segment(text):
 	rows = text.split("\n")
 	segments = []
 	for row in rows:
@@ -25,35 +31,41 @@ def segmentate(text):
 			segments = segments + row.split(".")
 		
 	return segments
+	
+def extractContent(url):
+	url = list(url)
+	url[2] = urllib.parse.quote(url[2])
+	url = urllib.parse.urlunsplit(url)
+	url = url.replace("dbpedia.org/resource", "en.wikipedia.org/wiki")
+	print(colored(url, 'red'))
+	html = urlreq.urlopen(url).read()
 
+	html = html.replace(b"&nbsp;", b"&#0160;")
+	root = ET.fromstring(html)
+	content = root.findall(".//div[@id='mw-content-text']")[0]
+	return content
+	
 with open(fileName, 'r', encoding = 'utf-8-sig') as csvfile:
 	wikireader = csv.reader(csvfile, delimiter = ' ', quotechar = '"')
 	for row in wikireader:
+		subject = row[0]
+		relation = row[1]
+		value = row[2]
+		print(colored(subject + ' ' + relation + ' ' + value, 'blue'))
+		
 		if(maxResults == 0):
 			break
-		if(row[1].find(property) == -1):
+		if(relation.find(property) == -1):
 			continue
-		if row[0] in articles:
-			content = articles[row[0]]
+		if subject in articles:
+			content = articles[subject]
 		else:
 			maxResults -= 1
-			
-			url = urllib.parse.urlsplit(row[0])
-			url = list(url)
-			url[2] = urllib.parse.quote(url[2])
-			url = urllib.parse.urlunsplit(url)
-			url = url.replace("dbpedia.org/resource", "en.wikipedia.org/wiki")
-			if printStatus:
-				print(url)
-			html = urlreq.urlopen(url).read()
-
-			html = html.replace(b"&nbsp;", b"&#0160;")
-			root = ET.fromstring(html)
-			content = root.findall(".//div[@id='mw-content-text']")[0]
-			
-			articles[row[0]] = content
+			url = urllib.parse.urlsplit(subject)
+			content = extractContent(url)
+			articles[subject] = content
 		
-		prop = row[2].replace("http://dbpedia.org/resource", "/wiki")
+		prop = value.replace("http://dbpedia.org/resource", "/wiki")
 		entity = prop.replace("/wiki/", "")
 		
 		
@@ -67,19 +79,22 @@ with open(fileName, 'r', encoding = 'utf-8-sig') as csvfile:
 		text = "".join(content.itertext())
 		#print(text)
 		
-		sentences = segmentate(text)
-		if printStatus:
-			print(len(sentences), "sentences")
-			print(searchStr)
-
+		sentences = segment(text)
+		print(colored(str(len(sentences)) + ' sentences', 'red'))
+		print(colored(searchStr, 'red'))
+			
 		for sentence in sentences:
 			#print(sentence)
 			for search in searchStr:
 				if(sentence == search): continue
 				pos = sentence.find(search)
-				if(pos > -1):
+				if(pos > -1):					
 					last = len(search) + pos
-					consoleGreen = '\x1b[6;30;42m'
-					consoleNormal = '\x1b[0m'
-					print(sentence[:pos] + consoleGreen + search + consoleNormal + sentence[last:])
-					print("")
+					print(sentence[:pos], end = '')
+					print(colored(search, 'green'), end = '')
+					print(sentence[last:])
+					print('')
+					
+		print('')
+		print('')
+		print('')
