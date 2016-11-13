@@ -16,20 +16,21 @@ import re
 import sys
 import requests
 import csv
+import itertools
 
 
 class WikiPatternExtractor(object):
-    def __init__(self, path = '../ttl parser/mappingbased_objects_en_extracted.csv',\
-                 relationships = [], limit = 500):
+    def __init__(self, path='../ttl parser/mappingbased_objects_en_extracted.csv', \
+                 relationships=[], limit=500):
         self.path = path
         self.relationships = ['http://dbpedia.org/ontology/' + r for r in relationships if r]
         self.limit = limit
         self.dbpedia = {}
         self.relationship_patterns = {}
 
-# -------------------------------------------------------------------------------------------------
-#                               Data Preprocessing
-# -------------------------------------------------------------------------------------------------
+    # -------------------------------------------------------------------------------------------------
+    #                               Data Preprocessing
+    # -------------------------------------------------------------------------------------------------
 
     def filter_DBpedia_data(self, relationships):
         pass  # TODO:
@@ -37,7 +38,7 @@ class WikiPatternExtractor(object):
     def parse_DBpedia_data(self):
         """
         Takes all DBpedia ontology relations (subj verb target) stored in file_name
-        and return a dictionary with subjects as keys and all their related infomations
+        and returns a dictionary with subjects as keys and all of their related information
         as dict values.
         more precisely {subj: { verb1: [val1, val2, val3...],
                                 verb2: [val1, ...]
@@ -68,15 +69,19 @@ class WikiPatternExtractor(object):
         response = requests.get(wiki_url)
         article = response.content.decode('utf-8')
         soup = bs(article, 'lxml')
-        text = [p.get_text() for p in soup.find_all('p')]
-        return self.__cleanInput(' '.join(text))
+        text = soup.find_all('p')  # [p.get_text() for p in soup.find_all('p')]
+        return text  # self.__cleanInput(' '.join(text))
 
     def normalize_DBP_uri(self, uri):
         """
-        http://dbpedia.org/resource/Alain_Connes -> 'alain connes'
+        #http://dbpedia.org/resource/Alain_Connes -> 'alain connes'
+        http://dbpedia.org/resource/Alain_Connes -> '/wiki/Alian_Connes'
         """
-        name = uri.split('/')[-1].replace('_', ' ').lower()
+        name = uri.split('/')[-1].replace('_', ' ')  # .lower()
         return self.__cleanInput(name)
+
+    def wikipedia_uri(self, DBP_uri):
+        return DBP_uri.replace("http://dbpedia.org/resource/", "/wiki/")
 
     def __cleanInput(self, input):
         """
@@ -85,8 +90,10 @@ class WikiPatternExtractor(object):
         """
         input = re.sub('\n+', " ", input)
         input = re.sub(' +', " ", input)
+
         # get rid of non-ascii characters
-        input = re.sub(r'[^\x00-\x7f]',r'', input)
+        input = re.sub(r'[^\x00-\x7f]', r'', input)
+
         # get rid of citations
         input = re.sub(r'\[\d+\]', r'', input)
         cleanInput = []
@@ -95,22 +102,40 @@ class WikiPatternExtractor(object):
             item = item.strip('?!;,')
             if len(item) > 1 or (item.lower() == 'a' or item.lower() == 'i'):
                 cleanInput.append(item)
-        return ' '.join(cleanInput).lower().encode('utf-8')
+        return ' '.join(cleanInput).encode('utf-8')  # ' '.join(cleanInput).lower().encode('utf-8')
 
-    def filter_relevant_sentences(self, sentences, dbpedia_resources):
-        """ Returns sentences which contain any of given DBpedia resources """
-        sentences = sent_tokenize(sentences)
-        return filter(lambda s: any(resource in s for resource in dbpedia_resources), sentences)
+    def splitkeepsep(self, s, sep):
+        """ http://programmaticallyspeaking.com/split-on-separator-but-keep-the-separator-in-python.html """
+        return reduce(lambda acc, elem: acc[:-1] + [acc[-1] + elem] if elem == sep else acc + [elem],
+                      re.split("(%s)" % re.escape(sep), s), [])
+
+    def html_sent_tokenize(self, paragraphs):
+        sentences = []
+        for p in paragraphs:
+            sentences.extend(self.splitkeepsep(p.prettify(), '.'))
+        return sentences
+
+    def remove_tags(self, html_text):
+        return re.sub(r'<.*?>', '', html_text)
+
+    def filter_relevant_sentences(self, paragraphs, wikipedia_resources):
+        """ Returns cleaned sentences which contain any of given Wikipedia resources """
+        # sentences = sent_tokenize(text)
+        sentences = self.html_sent_tokenize(paragraphs)
+        sentences = map(self.__cleanInput, sentences)
+        relevant_sentences = filter(lambda s: any(resource in s for resource in wikipedia_resources), sentences)
+        relevant_sentences = map(self.remove_tags, relevant_sentences)
+        return relevant_sentences
 
     def discover_patterns(self, relationships=[]):
         """
         Preprocesses data (initializing main data structure)
         1. Filter relevant DBpedia facts by relationships -> still TODO
         2. Turn DBpedia data into in-memory dictionary where all processing takes place
-        3. Fetch relevant Wikipedia articles and filter relevant sentences out of raw text
+        3. Fetch relevant Wikipedia articles and filter relevant sentences out of html text (for link search)
         4. Data is stored in self.dbpedia
         """
-        # filter dbpedia dataset for relevant relationshis - still TODO
+        # filter dbpedia dataset for relevant relationships - still TODO
         self.filter_DBpedia_data(relationships)
 
         # parse dbpedia information
@@ -118,19 +143,20 @@ class WikiPatternExtractor(object):
 
         for entity, values in self.dbpedia.iteritems():
             # fetch corresponding wiki article
-            raw_text = self.scrape_wikipedia_article(entity)
+            html_text = self.scrape_wikipedia_article(entity)
 
             # for each relationship filter sentences that contain
             # target resources of entity's relationship
             for rel, resources in values.iteritems():
-                target_resources = map(self.normalize_DBP_uri, resources)
-                relevant_sentences = self.filter_relevant_sentences(raw_text, target_resources)
-                values[rel] = {'resources': target_resources,
+                wikipedia_target_resources = map(self.wikipedia_uri, resources)
+                DBP_target_resources = map(self.normalize_DBP_uri, resources)
+                relevant_sentences = self.filter_relevant_sentences(html_text, wikipedia_target_resources)
+                values[rel] = {'resources': DBP_target_resources,
                                'sentences': relevant_sentences}
 
-# ---------------------------------------------------------------------------------------------
-#                               Statistics and Visualizations
-# ---------------------------------------------------------------------------------------------
+                # ---------------------------------------------------------------------------------------------
+                #                               Statistics and Visualizations
+                # ---------------------------------------------------------------------------------------------
 
     def print_pos_tagged_sentences(self):
         """
@@ -151,32 +177,35 @@ class WikiPatternExtractor(object):
         corpus = deepcopy(self.dbpedia)
 
         for entity, relations in corpus.iteritems():
-            for rel_ontologie, values in relations.iteritems():
+            for rel_ontology, values in relations.iteritems():
                 target_resources = values['resources']
                 sentences = values['sentences']
                 entity = self.normalize_DBP_uri(entity)
-                rel_ontologie = rel_ontologie.split('/')[-1]
-                data = [[entity, rel_ontologie, res, sent] for res in target_resources
-                                                            for sent in sentences
-                                                            if res in sent]
+                rel_ontology = rel_ontology.split('/')[-1]
+                data = [[entity, rel_ontology, res, sent] for res in target_resources
+                        for sent in sentences]  # if res in sent] # TODO# : Here the duplicates can occur. Correct this.
                 # POS tag sentences
                 for entry in data:
                     sentence = entry[3]
                     tokenized_sentences = map(word_tokenize, [sentence])
                     pos_tagged_sentences = pos_tag_sents(tokenized_sentences).pop()
                     # color sentence parts according to POS tag
-                    colored_sentence = [ colored(word, color_mapping.setdefault(pos, 'white'))
-                                            for word, pos in pos_tagged_sentences ]
+                    colored_sentence = [colored(word, color_mapping.setdefault(pos, 'white'))
+                                        for word, pos in pos_tagged_sentences]
                     entry[3] = ' '.join(colored_sentence)
 
                 results.extend(data)
+
+        # drop duplicates
+        results.sort()
+        results = list(x for x, _ in itertools.groupby(results))
 
         # print results
         # 0 -> entity  1 -> relationship 2 -> target resource 3 -> sentence
         for entry in results:
             print(colored('[DBP Entitity] \t', 'red',
                           attrs={'concealed', 'bold'}) + colored(entry[0], 'white')).expandtabs(20)
-            print(colored('[DBP Ontologie] \t', 'red',
+            print(colored('[DBP Ontology] \t', 'red',
                           attrs={'concealed', 'bold'}) + colored(entry[1], 'white')).expandtabs(20)
             print(colored('[DBP Resource] \t', 'red',
                           attrs={'concealed', 'bold'}) + colored(entry[2], 'white')).expandtabs(20)
@@ -184,7 +213,7 @@ class WikiPatternExtractor(object):
                           'red', attrs={'concealed', 'bold'}) + entry[3] + '\n').expandtabs(20)
 
         print('[KEY]\t' + colored('NOUN\t', 'magenta') + colored('VERB\t', 'cyan')
-                      + colored('ADJ\t', 'yellow')).expandtabs(20)
+              + colored('ADJ\t', 'yellow')).expandtabs(20)
 
     def count_occurences(self, values, sentences):
         """ self-explanatory """
@@ -212,14 +241,14 @@ class WikiPatternExtractor(object):
         num_rel = len(occurence_count)
         data = [('%  ' + str(vals['matched']) + '/' + str(vals['total']) + ' ' + rel.split('/')[-1],
                  vals['matched'] / vals['total'] * 100)
-                    for rel, vals in occurence_count.iteritems()]
+                for rel, vals in occurence_count.iteritems()]
         graph = Pyasciigraph()
         for line in graph.graph('occured facts in percentage', data):
             print(line)
 
 
 if __name__ == '__main__':
-    wiki = WikiPatternExtractor(limit=600)
+    wiki = WikiPatternExtractor(limit=100)
     # preprocess data
     wiki.discover_patterns()
     # print Part-of-speech tagged sentences
