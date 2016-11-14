@@ -154,9 +154,9 @@ class WikiPatternExtractor(object):
                 values[rel] = {'resources': DBP_target_resources,
                                'sentences': relevant_sentences}
 
-                # ---------------------------------------------------------------------------------------------
-                #                               Statistics and Visualizations
-                # ---------------------------------------------------------------------------------------------
+    # ---------------------------------------------------------------------------------------------
+    #                               Statistics and Visualizations
+    # ---------------------------------------------------------------------------------------------
 
     def print_pos_tagged_sentences(self):
         """
@@ -182,8 +182,10 @@ class WikiPatternExtractor(object):
                 sentences = values['sentences']
                 entity = self.normalize_DBP_uri(entity)
                 rel_ontology = rel_ontology.split('/')[-1]
-                data = [[entity, rel_ontology, res, sent] for res in target_resources
-                        for sent in sentences]  # if res in sent] # TODO# : Here the duplicates can occur. Correct this.
+                data = [[entity, rel_ontology, res, sent]
+                            for res in target_resources
+                            for sent in sentences
+                            if res in sent]  # if res in sent] # TODO# : Here the duplicates can occur. Correct this.
                 # POS tag sentences
                 for entry in data:
                     sentence = entry[3]
