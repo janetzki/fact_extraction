@@ -185,7 +185,7 @@ class WikiPatternExtractor(object):
                 data = [[entity, rel_ontology, res, sent]
                             for res in target_resources
                             for sent in sentences
-                            if res in sent]  # if res in sent] # TODO# : Here the duplicates can occur. Correct this.
+                            if res in sent and res != entity] 
                 # POS tag sentences
                 for entry in data:
                     sentence = entry[3]
@@ -218,7 +218,7 @@ class WikiPatternExtractor(object):
               + colored('ADJ\t', 'yellow')).expandtabs(20)
 
     def count_occurences(self, values, sentences):
-        """ self-explanatory """
+        """ Self-explanatory """
         total_count, occured_count = 0, 0
         for val in values:
             total_count += 1
