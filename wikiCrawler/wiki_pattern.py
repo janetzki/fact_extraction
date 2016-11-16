@@ -69,8 +69,10 @@ class WikiPatternExtractor(object):
         response = requests.get(wiki_url)
         article = response.content.decode('utf-8')
         soup = bs(article, 'lxml')
-        text = soup.find_all('p')  # [p.get_text() for p in soup.find_all('p')]
-        return text  # self.__cleanInput(' '.join(text))
+        # text = [p.get_text() for p in soup.find_all('p')]
+        # self.__cleanInput(' '.join(text))
+        text = soup.find_all('p')
+        return text
 
     def normalize_DBP_uri(self, uri):
         """
@@ -165,7 +167,8 @@ class WikiPatternExtractor(object):
         Nouns, verbs and adjectives are printed in colour.
         """
         color_mapping = {
-            'magenta': ['NN', 'NNS', 'NNP', 'NNPS'],
+            'magenta': ['NN', 'NNS'],
+            'green': ['NNP', 'NNPS'],
             'cyan': ['VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
             'yellow': ['JJ', 'JJR', 'JJS']
         }
@@ -183,9 +186,9 @@ class WikiPatternExtractor(object):
                 entity = self.normalize_DBP_uri(entity)
                 rel_ontology = rel_ontology.split('/')[-1]
                 data = [[entity, rel_ontology, res, sent]
-                            for res in target_resources
-                            for sent in sentences
-                            if res in sent and res != entity] 
+                        for res in target_resources
+                        for sent in sentences
+                        if res in sent and res != entity]
                 # POS tag sentences
                 for entry in data:
                     sentence = entry[3]
@@ -214,7 +217,10 @@ class WikiPatternExtractor(object):
             print(colored('[Wiki Occurence] \t',
                           'red', attrs={'concealed', 'bold'}) + entry[3] + '\n').expandtabs(20)
 
-        print('[KEY]\t' + colored('NOUN\t', 'magenta') + colored('VERB\t', 'cyan')
+        print('[KEY]\t'
+              + colored('NORMAL NOUN\t', 'magenta')
+              + colored('PROPER NOUN\t', 'green')
+              + colored('VERB\t', 'cyan')
               + colored('ADJ\t', 'yellow')).expandtabs(20)
 
     def count_occurences(self, values, sentences):
