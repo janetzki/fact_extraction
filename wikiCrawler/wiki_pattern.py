@@ -12,6 +12,7 @@ from nltk.tokenize import sent_tokenize, word_tokenize
 from nltk.tag import pos_tag_sents
 from copy import deepcopy
 from ascii_graph import Pyasciigraph
+from pattern.en import parsetree
 import re
 import sys
 import requests
@@ -76,8 +77,7 @@ class WikiPatternExtractor(object):
 
     def normalize_DBP_uri(self, uri):
         """
-        #http://dbpedia.org/resource/Alain_Connes -> 'alain connes'
-        http://dbpedia.org/resource/Alain_Connes -> '/wiki/Alian_Connes'
+        http://dbpedia.org/resource/Alain_Connes -> 'alain connes'
         """
         name = uri.split('/')[-1].replace('_', ' ')  # .lower()
         return self.__cleanInput(name)
@@ -129,6 +129,17 @@ class WikiPatternExtractor(object):
         relevant_sentences = map(self.remove_tags, relevant_sentences)
         return relevant_sentences
 
+    def shorten_sentence(self, items):
+        """
+        Takes [entity, relation, resource, sentence] list and crops the
+        sentence after the last appearance of the target resource.
+        Returns [entity, relation, resource, sentence, shortened_sentence] list
+        """
+        entity, relation, resource, sentence = items
+        shortened_sentence = ' '.join(sentence.split(resource)[:-1]) + ' ' + resource
+        return [entity, relation, resource, sentence, shortened_sentence]
+
+
     def discover_patterns(self, relationships=[]):
         """
         Preprocesses data (initializing main data structure)
@@ -160,7 +171,7 @@ class WikiPatternExtractor(object):
     #                               Statistics and Visualizations
     # ---------------------------------------------------------------------------------------------
 
-    def print_pos_tagged_sentences(self):
+    def print_pos_tagged_and_chunked_sentences(self):
         """
         Prints each occurence of a given DBpedia fact with their corresponding and matched sentence.
         The matched sentence is POS tagges using maxent treebank pos tagging model.
@@ -189,6 +200,8 @@ class WikiPatternExtractor(object):
                         for res in target_resources
                         for sent in sentences
                         if res in sent and res != entity]
+                # remove needless sentence information based on relation facts
+                data = map(self.shorten_sentence, data)
                 # POS tag sentences
                 for entry in data:
                     sentence = entry[3]
@@ -198,6 +211,17 @@ class WikiPatternExtractor(object):
                     colored_sentence = [colored(word, color_mapping.setdefault(pos, 'white'))
                                         for word, pos in pos_tagged_sentences]
                     entry[3] = ' '.join(colored_sentence)
+
+                for entry in data:
+                    # Parse sentence chunks
+                    shortened_sent = entry[4]
+                    [parsed_sentence] = parsetree(shortened_sent, relations=True)
+                    parts = dict()
+                    for chunk in parsed_sentence.chunk:
+                        parts.setdefault(chunk.relation, []).append(chunk)
+                    relations = parts.values()
+                    entry.append(relations)
+
 
                 results.extend(data)
 
@@ -216,8 +240,12 @@ class WikiPatternExtractor(object):
                           attrs={'concealed', 'bold'}) + colored(entry[2], 'white')).expandtabs(20)
             print(colored('[Wiki Occurence] \t',
                           'red', attrs={'concealed', 'bold'}) + entry[3] + '\n').expandtabs(20)
+            print(colored('[Trimmed Sentence] \t',
+                          'red', attrs={'concealed', 'bold'}) + entry[4] + '\n').expandtabs(20)
+            print(colored('[Sentence Relations] \t',
+                          'red', attrs={'concealed', 'bold'}) + str(entry[5]) + '\n').expandtabs(20)
 
-        print('[KEY]\t'
+        print('[POS KEY]\t'
               + colored('NORMAL NOUN\t', 'magenta')
               + colored('PROPER NOUN\t', 'green')
               + colored('VERB\t', 'cyan')
@@ -260,6 +288,6 @@ if __name__ == '__main__':
     # preprocess data
     wiki.discover_patterns()
     # print Part-of-speech tagged sentences
-    wiki.print_pos_tagged_sentences()
+    wiki.print_pos_tagged_and_chunked_sentences()
     # calculate occured facts coverage
     wiki.calculate_text_coverage()
