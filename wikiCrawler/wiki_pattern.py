@@ -18,16 +18,21 @@ import sys
 import requests
 import csv
 import itertools
+from timeit import default_timer as timer
 
 
 class WikiPatternExtractor(object):
     def __init__(self, path='../ttl parser/mappingbased_objects_en_extracted.csv', \
-                 relationships=[], limit=500):
+                 relationships=[], limit=500, use_dump=False,
+                 dump_path='D:/Data/large/enwiki-latest-pages-articles.xml'):
         self.path = path
+        self.use_dump = use_dump
+        self.dump_path = dump_path
         self.relationships = ['http://dbpedia.org/ontology/' + r for r in relationships if r]
         self.limit = limit
         self.dbpedia = {}
         self.relationship_patterns = {}
+        self.elapsed_time = 0  # for performance monitoring
 
     # -------------------------------------------------------------------------------------------------
     #                               Data Preprocessing
@@ -60,18 +65,101 @@ class WikiPatternExtractor(object):
                 max_results -= 1
         return entities
 
+    def get_dump_offset_via_index(self, title):
+        index_path = 'index.csv'
+        with open(index_path, 'r') as fin:
+            indexreader = csv.reader(fin, delimiter='#')
+            for line in indexreader:
+                if line[0] == title:
+                    fin.close()
+                    return int(line[1])
+            fin.close()
+        return -1
+
+    def extract_wikipedia_page_via_offset(self, offset, dump_path):
+        with open(dump_path, 'r') as fin:
+            fin.seek(offset)
+            text = "  <page>\n"
+            for line in fin:
+                text += line
+                if line[0:9] == "  </page>":
+                    break
+            return text
+
+    def extract_wikipedia_text_from_page(self, page):
+        soup = bs(page, 'lxml')
+        return soup.find('text').get_text()
+
+    def replace_links(self, match):
+        resource, text = match.groups()
+        if text == "":
+            text = resource
+        resource = resource.replace(' ', '_')
+        html_link = '<a href="/wiki/' + resource + '">' + text + '</a>'
+        return html_link
+
+    def strip_outer_brackets(self, text):
+        # http://stackoverflow.com/questions/14596884/remove-text-between-and-in-python
+        stripped = ''
+        skip = 0
+        for i in text:
+            if i == '{':
+                skip += 1
+            elif i == '}' and skip > 0:
+                skip -= 1
+            elif skip == 0:
+                stripped += i
+        return stripped
+
+    def make_wikipedia_text_to_html(self, text):
+        """ No perfect HTML - just for unified processing, e.g., link search """
+        # drop infobox and other garbage inside {...}
+        html_text = self.strip_outer_brackets(text)
+
+        # remove all headlines
+        html_text = re.sub(r'(=+).*?(\1)', '', html_text)
+        html_text = re.sub(r"'''.*?'''", '', html_text)
+
+        html_text = re.sub(r'\[\[Category:.*\]\]', '', html_text)
+        html_text = re.sub(r'\[http://.*?\]', '', html_text)  # drop hyperlinks
+        html_text = re.sub(r'\* ?', '', html_text)
+
+        # insert HTML links
+        rx_references = re.compile(r'\[\[([^\|\]]*)\|?(.*?)\]\]')
+        html_text = re.sub(rx_references, self.replace_links, html_text)
+        return html_text
+
+    def get_wikipedia_html_from_dump(self, dbpedia_resource):
+        resource = self.normalize_DBP_uri(dbpedia_resource)
+        offset = self.get_dump_offset_via_index(resource)
+        if offset < 0:
+            return ''  # no article found, resource probably contains non-ASCII character TODO: Heed this case.
+        page = self.extract_wikipedia_page_via_offset(offset, self.dump_path)
+        text = self.extract_wikipedia_text_from_page(page)
+        html_text = self.make_wikipedia_text_to_html(text)
+        return html_text
+
     def scrape_wikipedia_article(self, dbpedia_resource):
         """
         Requests wikipedia resource per GET request - extracts text content
-        and returns sanitized text
+        and returns text
         """
         # http://dbpedia.org/resource/Alain_Connes -> http://en.wikipedia.org/wiki/Alain_Connes
         wiki_url = dbpedia_resource.replace("dbpedia.org/resource", "en.wikipedia.org/wiki")
+
         response = requests.get(wiki_url)
         article = response.content.decode('utf-8')
+        return article
+
+    def get_wikipedia_article(self, dbpedia_resource):
+        start = timer()
+        if self.use_dump:
+            article = self.get_wikipedia_html_from_dump(dbpedia_resource)
+        else:
+            article = self.scrape_wikipedia_article(dbpedia_resource)
+        end = timer()
+        self.elapsed_time += end - start
         soup = bs(article, 'lxml')
-        # text = [p.get_text() for p in soup.find_all('p')]
-        # self.__cleanInput(' '.join(text))
         text = soup.find_all('p')
         return text
 
@@ -139,7 +227,6 @@ class WikiPatternExtractor(object):
         shortened_sentence = ' '.join(sentence.split(resource)[:-1]) + ' ' + resource
         return [entity, relation, resource, sentence, shortened_sentence]
 
-
     def discover_patterns(self, relationships=[]):
         """
         Preprocesses data (initializing main data structure)
@@ -156,7 +243,7 @@ class WikiPatternExtractor(object):
 
         for entity, values in self.dbpedia.iteritems():
             # fetch corresponding wiki article
-            html_text = self.scrape_wikipedia_article(entity)
+            html_text = self.get_wikipedia_article(entity)
 
             # for each relationship filter sentences that contain
             # target resources of entity's relationship
@@ -222,7 +309,6 @@ class WikiPatternExtractor(object):
                     relations = parts.values()
                     entry.append(relations)
 
-
                 results.extend(data)
 
         # drop duplicates
@@ -239,11 +325,12 @@ class WikiPatternExtractor(object):
             print(colored('[DBP Resource] \t', 'red',
                           attrs={'concealed', 'bold'}) + colored(entry[2], 'white')).expandtabs(20)
             print(colored('[Wiki Occurence] \t',
-                          'red', attrs={'concealed', 'bold'}) + entry[3] + '\n').expandtabs(20)
+                          'red', attrs={'concealed', 'bold'}) + entry[3]).expandtabs(20)
             print(colored('[Trimmed Sentence] \t',
-                          'red', attrs={'concealed', 'bold'}) + entry[4] + '\n').expandtabs(20)
+                          'red', attrs={'concealed', 'bold'}) + entry[4]).expandtabs(20)
             print(colored('[Sentence Relations] \t',
-                          'red', attrs={'concealed', 'bold'}) + str(entry[5]) + '\n').expandtabs(20)
+                          'red', attrs={'concealed', 'bold'}) + str(entry[5])).expandtabs(20)
+            print("")
 
         print('[POS KEY]\t'
               + colored('NORMAL NOUN\t', 'magenta')
@@ -282,9 +369,20 @@ class WikiPatternExtractor(object):
         for line in graph.graph('occured facts in percentage', data):
             print(line)
 
+    def get_elapsed_time(self):
+        return self.elapsed_time
+
 
 if __name__ == '__main__':
-    wiki = WikiPatternExtractor(limit=100)
+    use_dump = False
+    argv = sys.argv
+    if len(argv) > 1:
+        if argv[1] == '--dump':
+            use_dump = True
+        else:
+            print 'Usage: python wiki_pattern.py [--dump]'
+
+    wiki = WikiPatternExtractor(limit=100, use_dump=use_dump)
     # preprocess data
     wiki.discover_patterns()
     # print Part-of-speech tagged sentences

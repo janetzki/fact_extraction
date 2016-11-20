@@ -16,8 +16,6 @@ def main(argv):
     print(filterTTL(pathObjects, savePathObjects))
 
 
-# print(filterTTL(pathLiterals, savePathLiterals))
-
 def filterTTL(path, saveInto):
     lines = rawpycount(path)
 
@@ -30,7 +28,7 @@ def filterTTL(path, saveInto):
             # print(line)
             for i in range(len(relations)):
                 rel = relations[i]
-                if (rel in line):
+                if rel in line:
                     line = line.replace("<", "\"")
                     line = line.replace(">", "\"")
                     # print(line)
@@ -42,7 +40,7 @@ def filterTTL(path, saveInto):
                 break
 
             # print progress
-            if (lineCounter % 100000 == 0):
+            if lineCounter % 100000 == 0:
                 print(str(int(100 * lineCounter / lines)) + "%")
 
         fout.close()
@@ -56,8 +54,8 @@ def _make_gen(reader):
         b = reader(1024 * 1024)
 
 
-def rawpycount(
-        filename):  # http://stackoverflow.com/questions/19001402/how-to-count-the-total-number-of-lines-in-a-text-file-using-python
+def rawpycount(filename):
+    # http://stackoverflow.com/questions/19001402/how-to-count-the-total-number-of-lines-in-a-text-file-using-python
     f = open(filename, 'rb')
     f_gen = _make_gen(f.raw.read)
     return sum(buf.count(b'\n') for buf in f_gen)
