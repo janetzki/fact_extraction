@@ -24,7 +24,7 @@ from timeit import default_timer as timer
 class WikiPatternExtractor(object):
     def __init__(self, path='../ttl parser/mappingbased_objects_en_extracted.csv', \
                  relationships=[], limit=500, use_dump=False,
-                 dump_path='D:/Data/large/enwiki-latest-pages-articles.xml'):
+                 dump_path='../data/enwiki-latest-pages-articles.xml'):
         self.path = path
         self.use_dump = use_dump
         self.dump_path = dump_path
@@ -221,11 +221,16 @@ class WikiPatternExtractor(object):
         """
         Takes [entity, relation, resource, sentence] list and crops the
         sentence after the last appearance of the target resource.
-        Returns [entity, relation, resource, sentence, shortened_sentence] list
+        Returns [entity, relation, resource, shortened_sentence] list
         """
         entity, relation, resource, sentence = items
         shortened_sentence = ' '.join(sentence.split(resource)[:-1]) + ' ' + resource
-        return [entity, relation, resource, sentence, shortened_sentence]
+        return [entity, relation, resource, shortened_sentence]
+
+    def trimm_sentence(self, pos_tagged_sentence):
+        verbs = ['VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ']
+        trimmed_sentence = ' '.join([word for (word, type) in pos_tagged_sentence if type in verbs])
+        return '[SUBJ] ' + trimmed_sentence + ' [OBJ]'
 
     def discover_patterns(self, relationships=[]):
         """
@@ -294,15 +299,17 @@ class WikiPatternExtractor(object):
                     sentence = entry[3]
                     tokenized_sentences = map(word_tokenize, [sentence])
                     pos_tagged_sentences = pos_tag_sents(tokenized_sentences).pop()
+                    entry.append(self.trimm_sentence(pos_tagged_sentences))
+
                     # color sentence parts according to POS tag
                     colored_sentence = [colored(word, color_mapping.setdefault(pos, 'white'))
                                         for word, pos in pos_tagged_sentences]
-                    entry[3] = ' '.join(colored_sentence)
+                    entry.append(' '.join(colored_sentence))
 
                 for entry in data:
                     # Parse sentence chunks
-                    shortened_sent = entry[4]
-                    [parsed_sentence] = parsetree(shortened_sent, relations=True)
+                    sentence = entry[3]
+                    [parsed_sentence] = parsetree(sentence, relations=True)
                     parts = dict()
                     for chunk in parsed_sentence.chunk:
                         parts.setdefault(chunk.relation, []).append(chunk)
@@ -325,12 +332,12 @@ class WikiPatternExtractor(object):
             print(colored('[DBP Resource] \t', 'red',
                           attrs={'concealed', 'bold'}) + colored(entry[2], 'white')).expandtabs(20)
             print(colored('[Wiki Occurence] \t',
-                          'red', attrs={'concealed', 'bold'}) + entry[3]).expandtabs(20)
-            print(colored('[Trimmed Sentence] \t',
-                          'red', attrs={'concealed', 'bold'}) + entry[4]).expandtabs(20)
+                          'red', attrs={'concealed', 'bold'}) + entry[5]).expandtabs(20)
+            print(colored('[Text Pattern] \t',
+                          'red', attrs={'concealed', 'bold'}) + colored(entry[4], 'white')).expandtabs(20)
             print(colored('[Sentence Relations] \t',
-                          'red', attrs={'concealed', 'bold'}) + str(entry[5])).expandtabs(20)
-            print("")
+                          'red', attrs={'concealed', 'bold'}) + str(entry[6])).expandtabs(20)
+            print('')
 
         print('[POS KEY]\t'
               + colored('NORMAL NOUN\t', 'magenta')
