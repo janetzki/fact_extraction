@@ -10,6 +10,7 @@ from termcolor import colored
 from bs4 import BeautifulSoup as bs
 from nltk.tokenize import sent_tokenize, word_tokenize
 from nltk.tag import pos_tag_sents
+from nltk.corpus import treebank
 from copy import deepcopy
 from ascii_graph import Pyasciigraph
 from pattern.en import parsetree
@@ -189,8 +190,8 @@ class WikiPatternExtractor(object):
         cleanInput = []
         input = input.split(' ')
         for item in input:
-            item = item.strip('?!;,')
-            if len(item) > 1 or (item.lower() == 'a' or item.lower() == 'i'):
+            # item = item.strip('?!;,')
+            if len(item) > 1 or (item.lower() == 'a' or item == 'I'):
                 cleanInput.append(item)
         return ' '.join(cleanInput).encode('utf-8')  # ' '.join(cleanInput).lower().encode('utf-8')
 
@@ -304,7 +305,9 @@ class WikiPatternExtractor(object):
                     # color sentence parts according to POS tag
                     colored_sentence = [colored(word, color_mapping.setdefault(pos, 'white'))
                                         for word, pos in pos_tagged_sentences]
-                    entry.append(' '.join(colored_sentence))
+                    colored_sentence = ' '.join(colored_sentence)
+                    colored_sentence = re.sub(r' (.\[\d+m),', ',', colored_sentence) # remove space before commas
+                    entry.append(colored_sentence)
 
                 for entry in data:
                     # Parse sentence chunks
