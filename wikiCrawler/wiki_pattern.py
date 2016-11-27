@@ -20,6 +20,7 @@ import requests
 import csv
 import itertools
 from timeit import default_timer as timer
+import pattern_extractor
 
 
 class WikiPatternExtractor(object):
@@ -67,7 +68,7 @@ class WikiPatternExtractor(object):
         return entities
 
     def get_dump_offset_via_index(self, title):
-        index_path = 'index.csv'
+        index_path = '../data/index.csv'
         with open(index_path, 'r') as fin:
             indexreader = csv.reader(fin, delimiter='#')
             for line in indexreader:
@@ -131,7 +132,7 @@ class WikiPatternExtractor(object):
         return html_text
 
     def get_wikipedia_html_from_dump(self, dbpedia_resource):
-        resource = self.normalize_DBP_uri(dbpedia_resource)
+        resource = self.normalize_uri(dbpedia_resource)
         offset = self.get_dump_offset_via_index(resource)
         if offset < 0:
             return ''  # no article found, resource probably contains non-ASCII character TODO: Heed this case.
@@ -164,11 +165,11 @@ class WikiPatternExtractor(object):
         text = soup.find_all('p')
         return text
 
-    def normalize_DBP_uri(self, uri):
+    def normalize_uri(self, uri):
         """
-        http://dbpedia.org/resource/Alain_Connes -> 'alain connes'
+        http://dbpedia.org/resource/Alain_Connes -> 'Alain Connes'
         """
-        name = uri.split('/')[-1].replace('_', ' ')  # .lower()
+        name = uri.split('/')[-1].replace('_', ' ')
         return self.__cleanInput(name)
 
     def wikipedia_uri(self, DBP_uri):
@@ -201,21 +202,28 @@ class WikiPatternExtractor(object):
                       re.split("(%s)" % re.escape(sep), s), [])
 
     def html_sent_tokenize(self, paragraphs):
+        # TODO: improve so that valid html comes out
         sentences = []
         for p in paragraphs:
             sentences.extend(self.splitkeepsep(p.prettify(), '.'))
         return sentences
 
-    def remove_tags(self, html_text):
-        return re.sub(r'<.*?>', '', html_text)
+    def clean_tags(self, html_text):
+        # html_text = re.sub(r'<[^a].*?>', '', html_text) # Intention: Only keep <a></a> Tags. Problem: Deletes </a> tags.
+        html_text = '<p>' + html_text + '</p>'
+        return html_text
+
+    def contains_any_reference(self, html, resources):
+        soup = bs(html, 'lxml')
+        return any(soup.find('a', {'href': resource}) for resource in resources)
 
     def filter_relevant_sentences(self, paragraphs, wikipedia_resources):
         """ Returns cleaned sentences which contain any of given Wikipedia resources """
         # sentences = sent_tokenize(text)
         sentences = self.html_sent_tokenize(paragraphs)
         sentences = map(self.__cleanInput, sentences)
-        relevant_sentences = filter(lambda s: any(resource in s for resource in wikipedia_resources), sentences)
-        relevant_sentences = map(self.remove_tags, relevant_sentences)
+        relevant_sentences = filter(lambda sent: self.contains_any_reference(sent, wikipedia_resources), sentences)
+        # relevant_sentences = map(self.clean_tags, relevant_sentences)
         return relevant_sentences
 
     def shorten_sentence(self, items):
@@ -227,11 +235,6 @@ class WikiPatternExtractor(object):
         entity, relation, resource, sentence = items
         shortened_sentence = ' '.join(sentence.split(resource)[:-1]) + ' ' + resource
         return [entity, relation, resource, shortened_sentence]
-
-    def trimm_sentence(self, pos_tagged_sentence):
-        verbs = ['VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ']
-        trimmed_sentence = ' '.join([word for (word, type) in pos_tagged_sentence if type in verbs])
-        return '[SUBJ] ' + trimmed_sentence + ' [OBJ]'
 
     def discover_patterns(self, relationships=[]):
         """
@@ -255,16 +258,23 @@ class WikiPatternExtractor(object):
             # target resources of entity's relationship
             for rel, resources in values.iteritems():
                 wikipedia_target_resources = map(self.wikipedia_uri, resources)
-                DBP_target_resources = map(self.normalize_DBP_uri, resources)
+                # DBP_target_resources = map(self.normalize_DBP_uri, resources)
                 relevant_sentences = self.filter_relevant_sentences(html_text, wikipedia_target_resources)
-                values[rel] = {'resources': DBP_target_resources,
+                values[rel] = {'resources': wikipedia_target_resources,
                                'sentences': relevant_sentences}
 
     # ---------------------------------------------------------------------------------------------
     #                               Statistics and Visualizations
     # ---------------------------------------------------------------------------------------------
 
-    def print_pos_tagged_and_chunked_sentences(self):
+    def find_tokens_in_html(self, html, resource):
+        soup = bs(html, 'lxml')
+        reference = soup.find('a', {'href': resource})
+        reference = reference.get_text()
+        tokens = word_tokenize(reference)
+        return tokens
+
+    def print_patterns(self):
         """
         Prints each occurence of a given DBpedia fact with their corresponding and matched sentence.
         The matched sentence is POS tagges using maxent treebank pos tagging model.
@@ -287,37 +297,34 @@ class WikiPatternExtractor(object):
             for rel_ontology, values in relations.iteritems():
                 target_resources = values['resources']
                 sentences = values['sentences']
-                entity = self.normalize_DBP_uri(entity)
+                entity = self.normalize_uri(entity)
                 rel_ontology = rel_ontology.split('/')[-1]
                 data = [[entity, rel_ontology, res, sent]
                         for res in target_resources
                         for sent in sentences
-                        if res in sent and res != entity]
+                        if self.contains_any_reference(sent, [res]) and res != entity]
                 # remove needless sentence information based on relation facts
-                data = map(self.shorten_sentence, data)
+                # data = map(self.shorten_sentence, data)
                 # POS tag sentences
                 for entry in data:
                     sentence = entry[3]
-                    tokenized_sentences = map(word_tokenize, [sentence])
+                    resource = entry[2]
+                    soup = bs(sentence, 'lxml')
+                    nl_sentence = soup.get_text()
+                    entry.append(nl_sentence)
+                    tokenized_sentences = map(word_tokenize, [nl_sentence])
                     pos_tagged_sentences = pos_tag_sents(tokenized_sentences).pop()
-                    entry.append(self.trimm_sentence(pos_tagged_sentences))
+                    object_tokens = self.find_tokens_in_html(sentence, resource)
+                    patterns = pattern_extractor.extract_patterns(nl_sentence, object_tokens)
+                    entry.append(patterns[0])
+                    entry.append(patterns[1])
 
                     # color sentence parts according to POS tag
                     colored_sentence = [colored(word, color_mapping.setdefault(pos, 'white'))
                                         for word, pos in pos_tagged_sentences]
                     colored_sentence = ' '.join(colored_sentence)
-                    colored_sentence = re.sub(r' (.\[\d+m),', ',', colored_sentence) # remove space before commas
+                    colored_sentence = re.sub(r' (.\[\d+m),', ',', colored_sentence)  # remove space before commas
                     entry.append(colored_sentence)
-
-                for entry in data:
-                    # Parse sentence chunks
-                    sentence = entry[3]
-                    [parsed_sentence] = parsetree(sentence, relations=True)
-                    parts = dict()
-                    for chunk in parsed_sentence.chunk:
-                        parts.setdefault(chunk.relation, []).append(chunk)
-                    relations = parts.values()
-                    entry.append(relations)
 
                 results.extend(data)
 
@@ -333,13 +340,13 @@ class WikiPatternExtractor(object):
             print(colored('[DBP Ontology] \t', 'red',
                           attrs={'concealed', 'bold'}) + colored(entry[1], 'white')).expandtabs(20)
             print(colored('[DBP Resource] \t', 'red',
-                          attrs={'concealed', 'bold'}) + colored(entry[2], 'white')).expandtabs(20)
+                          attrs={'concealed', 'bold'}) + colored(self.normalize_uri(entry[2]), 'white')).expandtabs(20)
             print(colored('[Wiki Occurence] \t',
-                          'red', attrs={'concealed', 'bold'}) + entry[5]).expandtabs(20)
+                          'red', attrs={'concealed', 'bold'}) + entry[7]).expandtabs(20)
             print(colored('[Text Pattern] \t',
-                          'red', attrs={'concealed', 'bold'}) + colored(entry[4], 'white')).expandtabs(20)
-            print(colored('[Sentence Relations] \t',
-                          'red', attrs={'concealed', 'bold'}) + str(entry[6])).expandtabs(20)
+                          'red', attrs={'concealed', 'bold'}) + colored(entry[5], 'white')).expandtabs(20)
+            print(colored('[Text Pattern] \t',
+                          'red', attrs={'concealed', 'bold'}) + colored(entry[6], 'white')).expandtabs(20)
             print('')
 
         print('[POS KEY]\t'
@@ -384,7 +391,7 @@ class WikiPatternExtractor(object):
 
 
 if __name__ == '__main__':
-    use_dump = False
+    use_dump = True
     argv = sys.argv
     if len(argv) > 1:
         if argv[1] == '--dump':
@@ -392,10 +399,10 @@ if __name__ == '__main__':
         else:
             print 'Usage: python wiki_pattern.py [--dump]'
 
-    wiki = WikiPatternExtractor(limit=100, use_dump=use_dump)
+    wiki = WikiPatternExtractor(limit=30, use_dump=use_dump)
     # preprocess data
     wiki.discover_patterns()
     # print Part-of-speech tagged sentences
-    wiki.print_pos_tagged_and_chunked_sentences()
+    wiki.print_patterns()
     # calculate occured facts coverage
     wiki.calculate_text_coverage()
