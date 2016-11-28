@@ -324,8 +324,7 @@ class WikiPatternExtractor(object):
                     pos_tagged_sentences = pos_tag_sents(tokenized_sentences).pop()
                     object_tokens = self.find_tokens_in_html(sentence, resource)
                     patterns = pattern_extractor.extract_patterns(nl_sentence, object_tokens)
-                    entry.append(patterns[0])
-                    entry.append(patterns[1])
+                    entry.extend(patterns)
 
                     # color sentence parts according to POS tag
                     colored_sentence = [colored(word, color_mapping.setdefault(pos, 'white'))
@@ -350,11 +349,15 @@ class WikiPatternExtractor(object):
             print(colored('[DBP Resource] \t', 'red',
                           attrs={'concealed', 'bold'}) + colored(self.normalize_uri(entry[2]), 'white')).expandtabs(20)
             print(colored('[Wiki Occurence] \t',
-                          'red', attrs={'concealed', 'bold'}) + entry[7]).expandtabs(20)
+                          'red', attrs={'concealed', 'bold'}) + entry[9]).expandtabs(20)
             print(colored('[Text Pattern] \t',
                           'red', attrs={'concealed', 'bold'}) + colored(entry[5], 'white')).expandtabs(20)
             print(colored('[Text Pattern] \t',
                           'red', attrs={'concealed', 'bold'}) + colored(entry[6], 'white')).expandtabs(20)
+            print(colored('[Text Pattern] \t',
+                          'red', attrs={'concealed', 'bold'}) + colored(entry[7], 'white')).expandtabs(20)
+            print(colored('[Text Pattern] \t',
+                          'red', attrs={'concealed', 'bold'}) + colored(entry[8], 'white')).expandtabs(20)
             print('')
 
         print('[POS KEY]\t'

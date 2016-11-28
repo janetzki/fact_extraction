@@ -1,7 +1,7 @@
 from nltk.parse.stanford import StanfordDependencyParser
 
-path_to_jar = 'C:\Users\Nirwana\Downloads\stanford-corenlp-full-2016-10-31\stanford-corenlp-3.7.0.jar'
-path_to_models_jar = 'C:\Users\Nirwana\Downloads\stanford-corenlp-full-2016-10-31\stanford-corenlp-3.7.0-models.jar'
+path_to_jar = '..\stanford-corenlp-full-2016-10-31\stanford-corenlp-3.7.0.jar'
+path_to_models_jar = '..\stanford-corenlp-full-2016-10-31\stanford-corenlp-3.7.0-models.jar'
 
 
 def find_addresses(parse, search_term_tokens):
@@ -23,7 +23,13 @@ def find_addresses(parse, search_term_tokens):
     return []
 
 
-def find_related_addresses(parse, search_addresses):
+def find_related_addresses(parse, search_addresses, relation_types=None):
+    """
+    :param parse:
+    :param search_addresses:
+    :param relation_types:      only heed these relation types, None means all
+    :return:
+    """
     addresses = []
     for node in parse.nodes.iteritems():
         dict = node[1]
@@ -31,7 +37,7 @@ def find_related_addresses(parse, search_addresses):
         address = dict['address']
         for dep in deps.iteritems():
             type = dep[0]
-            if type == 'compound' or type == 'root':
+            if type == 'root' or (relation_types != None and type not in relation_types):
                 continue
             related_addresses = dep[1]
             if address in search_addresses:
@@ -66,11 +72,14 @@ def build_pattern(parse, object_addresses, related_addresses_raw):
     return pattern
 
 
-def find_deep_related_addresses(parse, search_addresses, depth):
+def find_deep_related_addresses(parse, search_addresses, depth, relation_types=None):
     related_addresses = list(search_addresses)
     for i in range(0, depth):
         related_addresses.extend(find_related_addresses(parse, related_addresses))
-        related_addresses = sorted(set(related_addresses))
+        if relation_types != None:
+            related_addresses.extend(find_related_addresses(parse, related_addresses, relation_types))
+
+    related_addresses = sorted(set(related_addresses))
     return related_addresses
 
 
@@ -86,12 +95,28 @@ def extract_patterns(sentence, object_tokens):
     # tripels = parse.triples()
     # for triple in tripels:
     #    print triple
-    # [parse.tree().pretty_print() for parse in parser.raw_parse('A primary subject of his research later became known as Markov chain and Markov process.')]
+    # [parse.tree().pretty_print() for parse in parser.raw_parse(sentence)]
+
+    object_addresses = find_addresses(parse, object_tokens)
 
     for depth in range(1, 3):
-        object_addresses = find_addresses(parse, object_tokens)
-        related_addresses = find_deep_related_addresses(parse, object_addresses, depth)
-        pattern = build_pattern(parse, object_addresses, related_addresses)
-        patterns.append(' '.join(pattern))
+        for mode in range(0, 2):
+            if mode == 0:
+                important_relations = None
+            else:
+                important_relations = ['xcmp', 'auxpass']
+            related_addresses = find_deep_related_addresses(parse, object_addresses, depth, important_relations)
+            pattern = build_pattern(parse, object_addresses, related_addresses)
+            patterns.append(' '.join(pattern))
 
     return patterns
+
+
+def test():
+    sentence = 'After graduating from Hanover College class of 1841, Hendricks studied law in Shelbyville, Indiana and Chambersburg, Pennsylvania.'
+    print extract_patterns(sentence, ['Hanover', 'College'])
+
+
+if __name__ == '__main__':
+    pass
+    # test()
