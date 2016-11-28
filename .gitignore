@@ -3,3 +3,6 @@
 
 # IDE files
 .idea/
+
+# compiled files
+*.pyc

@@ -50,8 +50,12 @@ def build_pattern(parse, object_addresses, related_addresses_raw):
         if not object_added and address > max(object_addresses):
             pattern.append('[OBJ]')
             object_added = True
-        elif last_address > -1 and address - last_address > 1:
+            last_address = max(object_addresses)
+            continue
+
+        if last_address > -1 and address - last_address > 1:
             pattern.append('[...]')
+
         partner_node = parse.nodes[address]
         pattern.append(partner_node['word'])
         last_address = address

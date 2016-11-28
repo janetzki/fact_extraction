@@ -21,6 +21,7 @@ import csv
 import itertools
 from timeit import default_timer as timer
 import pattern_extractor
+from random import randint
 
 
 class WikiPatternExtractor(object):
@@ -56,6 +57,13 @@ class WikiPatternExtractor(object):
         entities = dict()
         with open(self.path, 'r') as f:
             wikireader = csv.reader(f, delimiter=' ', quotechar='"')
+
+            random_offset = randint(0, 10000)
+            for row in wikireader:
+                random_offset -= 1
+                if random_offset == 0:
+                    break
+
             max_results = self.limit
             for row in wikireader:
                 if max_results is 0:
@@ -399,7 +407,7 @@ if __name__ == '__main__':
         else:
             print 'Usage: python wiki_pattern.py [--dump]'
 
-    wiki = WikiPatternExtractor(limit=30, use_dump=use_dump)
+    wiki = WikiPatternExtractor(limit=15, use_dump=use_dump)
     # preprocess data
     wiki.discover_patterns()
     # print Part-of-speech tagged sentences
