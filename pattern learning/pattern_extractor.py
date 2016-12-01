@@ -19,7 +19,9 @@ def find_addresses(parse, search_term_tokens):
             contiguous_words = 0
             addresses = []
 
-    assert (False)  # Should not happen, but program might not crash if assertion is removed.
+    print parse
+    print search_term_tokens
+    assert False  # Should not happen, but program might not crash if assertion is removed.
     return []
 
 

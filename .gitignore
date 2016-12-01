@@ -1,5 +1,7 @@
 # large data
 /ttl parser/mappingbased_objects_en.ttl
+stanford-corenlp-full-2016-10-31/
+data/enwiki-latest-pages-articles.xml
 
 # IDE files
 .idea/

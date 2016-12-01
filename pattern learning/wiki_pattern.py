@@ -20,17 +20,17 @@ import requests
 import csv
 import itertools
 from timeit import default_timer as timer
-import pattern_extractor
 from random import randint
+import imp
 
+import pattern_extractor
+dump_extractor = imp.load_source('dump_extractor', '../wikipedia dump connector/dump_extractor.py')
 
 class WikiPatternExtractor(object):
     def __init__(self, path='../ttl parser/mappingbased_objects_en_extracted.csv', \
-                 relationships=[], limit=500, use_dump=False,
-                 dump_path='../data/enwiki-latest-pages-articles.xml'):
+                 relationships=[], limit=500, use_dump=False):
         self.path = path
         self.use_dump = use_dump
-        self.dump_path = dump_path
         self.relationships = ['http://dbpedia.org/ontology/' + r for r in relationships if r]
         self.limit = limit
         self.dbpedia = {}
@@ -75,80 +75,6 @@ class WikiPatternExtractor(object):
                 max_results -= 1
         return entities
 
-    def get_dump_offset_via_index(self, title):
-        index_path = '../data/index.csv'
-        with open(index_path, 'r') as fin:
-            indexreader = csv.reader(fin, delimiter='#')
-            for line in indexreader:
-                if line[0] == title:
-                    fin.close()
-                    return int(line[1])
-            fin.close()
-        return -1
-
-    def extract_wikipedia_page_via_offset(self, offset, dump_path):
-        with open(dump_path, 'r') as fin:
-            fin.seek(offset)
-            text = "  <page>\n"
-            for line in fin:
-                text += line
-                if line[0:9] == "  </page>":
-                    break
-            return text
-
-    def extract_wikipedia_text_from_page(self, page):
-        soup = bs(page, 'lxml')
-        return soup.find('text').get_text()
-
-    def replace_links(self, match):
-        resource, text = match.groups()
-        if text == "":
-            text = resource
-        resource = resource.replace(' ', '_')
-        html_link = '<a href="/wiki/' + resource + '">' + text + '</a>'
-        return html_link
-
-    def strip_outer_brackets(self, text):
-        # http://stackoverflow.com/questions/14596884/remove-text-between-and-in-python
-        stripped = ''
-        skip = 0
-        for i in text:
-            if i == '{':
-                skip += 1
-            elif i == '}' and skip > 0:
-                skip -= 1
-            elif skip == 0:
-                stripped += i
-        return stripped
-
-    def make_wikipedia_text_to_html(self, text):
-        """ No perfect HTML - just for unified processing, e.g., link search """
-        # drop infobox and other garbage inside {...}
-        html_text = self.strip_outer_brackets(text)
-
-        # remove all headlines
-        html_text = re.sub(r'(=+).*?(\1)', '', html_text)
-        html_text = re.sub(r"'''.*?'''", '', html_text)
-
-        html_text = re.sub(r'\[\[Category:.*\]\]', '', html_text)
-        html_text = re.sub(r'\[http://.*?\]', '', html_text)  # drop hyperlinks
-        html_text = re.sub(r'\* ?', '', html_text)
-
-        # insert HTML links
-        rx_references = re.compile(r'\[\[([^\|\]]*)\|?(.*?)\]\]')
-        html_text = re.sub(rx_references, self.replace_links, html_text)
-        return html_text
-
-    def get_wikipedia_html_from_dump(self, dbpedia_resource):
-        resource = self.normalize_uri(dbpedia_resource)
-        offset = self.get_dump_offset_via_index(resource)
-        if offset < 0:
-            return ''  # no article found, resource probably contains non-ASCII character TODO: Heed this case.
-        page = self.extract_wikipedia_page_via_offset(offset, self.dump_path)
-        text = self.extract_wikipedia_text_from_page(page)
-        html_text = self.make_wikipedia_text_to_html(text)
-        return html_text
-
     def scrape_wikipedia_article(self, dbpedia_resource):
         """
         Requests wikipedia resource per GET request - extracts text content
@@ -164,7 +90,8 @@ class WikiPatternExtractor(object):
     def get_wikipedia_article(self, dbpedia_resource):
         start = timer()
         if self.use_dump:
-            article = self.get_wikipedia_html_from_dump(dbpedia_resource)
+            resource = self.normalize_uri(dbpedia_resource)
+            article = dump_extractor.get_wikipedia_html_from_dump(resource)
         else:
             article = self.scrape_wikipedia_article(dbpedia_resource)
         end = timer()
@@ -401,7 +328,7 @@ class WikiPatternExtractor(object):
         return self.elapsed_time
 
 
-if __name__ == '__main__':
+def parse_input_parameters():
     use_dump = True
     argv = sys.argv
     if len(argv) > 1:
@@ -409,7 +336,11 @@ if __name__ == '__main__':
             use_dump = True
         else:
             print 'Usage: python wiki_pattern.py [--dump]'
+    return use_dump
 
+
+if __name__ == '__main__':
+    use_dump = parse_input_parameters()
     wiki = WikiPatternExtractor(limit=15, use_dump=use_dump)
     # preprocess data
     wiki.discover_patterns()
