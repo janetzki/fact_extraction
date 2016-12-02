@@ -13,7 +13,6 @@ from nltk.tag import pos_tag_sents
 from nltk.corpus import treebank
 from copy import deepcopy
 from ascii_graph import Pyasciigraph
-from pattern.en import parsetree
 import re
 import sys
 import requests
@@ -24,11 +23,14 @@ from random import randint
 import imp
 
 import pattern_extractor
+from tagged_sentence import TaggedSentence
+
 dump_extractor = imp.load_source('dump_extractor', '../wikipedia dump connector/dump_extractor.py')
+
 
 class WikiPatternExtractor(object):
     def __init__(self, path='../ttl parser/mappingbased_objects_en_extracted.csv', \
-                 relationships=[], limit=500, use_dump=False):
+                 relationships=[], limit=500, use_dump=False, randomize=False):
         self.path = path
         self.use_dump = use_dump
         self.relationships = ['http://dbpedia.org/ontology/' + r for r in relationships if r]
@@ -36,6 +38,7 @@ class WikiPatternExtractor(object):
         self.dbpedia = {}
         self.relationship_patterns = {}
         self.elapsed_time = 0  # for performance monitoring
+        self.randomize = randomize
 
     # -------------------------------------------------------------------------------------------------
     #                               Data Preprocessing
@@ -58,11 +61,12 @@ class WikiPatternExtractor(object):
         with open(self.path, 'r') as f:
             wikireader = csv.reader(f, delimiter=' ', quotechar='"')
 
-            random_offset = randint(0, 10000)
-            for row in wikireader:
-                random_offset -= 1
-                if random_offset == 0:
-                    break
+            if self.randomize:
+                random_offset = randint(0, 10000)
+                for row in wikireader:
+                    random_offset -= 1
+                    if random_offset == 0:
+                        break
 
             max_results = self.limit
             for row in wikireader:
@@ -157,7 +161,11 @@ class WikiPatternExtractor(object):
         # sentences = sent_tokenize(text)
         sentences = self.html_sent_tokenize(paragraphs)
         sentences = map(self.__cleanInput, sentences)
-        relevant_sentences = filter(lambda sent: self.contains_any_reference(sent, wikipedia_resources), sentences)
+        article_length = len(sentences)
+        for i in range(0, article_length):
+            sentences[i] = TaggedSentence(sentences[i], i, article_length)
+        relevant_sentences = filter(lambda sent: self.contains_any_reference(sent.as_string(), wikipedia_resources),
+                                    sentences)
         # relevant_sentences = map(self.clean_tags, relevant_sentences)
         return relevant_sentences
 
@@ -237,20 +245,21 @@ class WikiPatternExtractor(object):
                 data = [[entity, rel_ontology, res, sent]
                         for res in target_resources
                         for sent in sentences
-                        if self.contains_any_reference(sent, [res]) and res != entity]
+                        if self.contains_any_reference(sent.as_string(), [res]) and res != entity]
                 # remove needless sentence information based on relation facts
                 # data = map(self.shorten_sentence, data)
                 # POS tag sentences
                 for entry in data:
                     sentence = entry[3]
                     resource = entry[2]
-                    soup = bs(sentence, 'lxml')
+                    relative_position = sentence.calculate_relative_position()
+                    soup = bs(sentence.as_string(), 'lxml')
                     nl_sentence = soup.get_text()
                     entry.append(nl_sentence)
                     tokenized_sentences = map(word_tokenize, [nl_sentence])
                     pos_tagged_sentences = pos_tag_sents(tokenized_sentences).pop()
-                    object_tokens = self.find_tokens_in_html(sentence, resource)
-                    patterns = pattern_extractor.extract_patterns(nl_sentence, object_tokens)
+                    object_tokens = self.find_tokens_in_html(sentence.as_string(), resource)
+                    patterns = pattern_extractor.extract_patterns(nl_sentence, object_tokens, relative_position)
                     entry.extend(patterns)
 
                     # color sentence parts according to POS tag
@@ -276,15 +285,11 @@ class WikiPatternExtractor(object):
             print(colored('[DBP Resource] \t', 'red',
                           attrs={'concealed', 'bold'}) + colored(self.normalize_uri(entry[2]), 'white')).expandtabs(20)
             print(colored('[Wiki Occurence] \t',
-                          'red', attrs={'concealed', 'bold'}) + entry[9]).expandtabs(20)
-            print(colored('[Text Pattern] \t',
+                          'red', attrs={'concealed', 'bold'}) + entry[7]).expandtabs(20)
+            print(colored('[Pattern] \t',
                           'red', attrs={'concealed', 'bold'}) + colored(entry[5], 'white')).expandtabs(20)
-            print(colored('[Text Pattern] \t',
+            print(colored('[Pattern] \t',
                           'red', attrs={'concealed', 'bold'}) + colored(entry[6], 'white')).expandtabs(20)
-            print(colored('[Text Pattern] \t',
-                          'red', attrs={'concealed', 'bold'}) + colored(entry[7], 'white')).expandtabs(20)
-            print(colored('[Text Pattern] \t',
-                          'red', attrs={'concealed', 'bold'}) + colored(entry[8], 'white')).expandtabs(20)
             print('')
 
         print('[POS KEY]\t'
@@ -309,7 +314,7 @@ class WikiPatternExtractor(object):
         for entity, relationships in self.dbpedia.iteritems():
             for rel, values in relationships.iteritems():
                 target_resources = values.get('resources', [])
-                sentences = values.get('sentences', [])
+                sentences = map(lambda sent: sent.as_string(), values.get('sentences', []))
                 total_facts, occured_facts = self.count_occurences(target_resources, sentences)
                 relation_count = occurence_count.setdefault(rel, {'total': 0, 'matched': 0})
                 relation_count['total'] += total_facts
@@ -341,7 +346,8 @@ def parse_input_parameters():
 
 if __name__ == '__main__':
     use_dump = parse_input_parameters()
-    wiki = WikiPatternExtractor(limit=15, use_dump=use_dump)
+    randomize = False
+    wiki = WikiPatternExtractor(limit=15, use_dump=use_dump, randomize=randomize)
     # preprocess data
     wiki.discover_patterns()
     # print Part-of-speech tagged sentences
