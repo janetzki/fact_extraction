@@ -23,6 +23,7 @@ from random import randint
 import imp
 
 import pattern_extractor
+from pattern_extractor import Pattern
 from tagged_sentence import TaggedSentence
 
 dump_extractor = imp.load_source('dump_extractor', '../wikipedia dump connector/dump_extractor.py')
@@ -204,7 +205,8 @@ class WikiPatternExtractor(object):
                 # DBP_target_resources = map(self.normalize_DBP_uri, resources)
                 relevant_sentences = self.filter_relevant_sentences(html_text, wikipedia_target_resources)
                 values[rel] = {'resources': wikipedia_target_resources,
-                               'sentences': relevant_sentences}
+                               'sentences': relevant_sentences,
+                               'patterns': []}
 
     # ---------------------------------------------------------------------------------------------
     #                               Statistics and Visualizations
@@ -234,9 +236,9 @@ class WikiPatternExtractor(object):
 
         # build table data
         results = []
-        corpus = deepcopy(self.dbpedia)
+        # corpus = deepcopy(self.dbpedia)
 
-        for entity, relations in corpus.iteritems():
+        for entity, relations in self.dbpedia.iteritems():
             for rel_ontology, values in relations.iteritems():
                 target_resources = values['resources']
                 sentences = values['sentences']
@@ -260,6 +262,7 @@ class WikiPatternExtractor(object):
                     pos_tagged_sentences = pos_tag_sents(tokenized_sentences).pop()
                     object_tokens = self.find_tokens_in_html(sentence.as_string(), resource)
                     patterns = pattern_extractor.extract_patterns(nl_sentence, object_tokens, relative_position)
+                    values['patterns'].extend(patterns)
                     entry.extend(patterns)
 
                     # color sentence parts according to POS tag
@@ -286,10 +289,12 @@ class WikiPatternExtractor(object):
                           attrs={'concealed', 'bold'}) + colored(self.normalize_uri(entry[2]), 'white')).expandtabs(20)
             print(colored('[Wiki Occurence] \t',
                           'red', attrs={'concealed', 'bold'}) + entry[7]).expandtabs(20)
-            print(colored('[Pattern] \t',
+
+            #print(entry[5])
+            '''print(colored('[Pattern] \t',
                           'red', attrs={'concealed', 'bold'}) + colored(entry[5], 'white')).expandtabs(20)
             print(colored('[Pattern] \t',
-                          'red', attrs={'concealed', 'bold'}) + colored(entry[6], 'white')).expandtabs(20)
+                          'red', attrs={'concealed', 'bold'}) + colored(entry[6], 'white')).expandtabs(20)'''
             print('')
 
         print('[POS KEY]\t'
@@ -332,25 +337,45 @@ class WikiPatternExtractor(object):
     def get_elapsed_time(self):
         return self.elapsed_time
 
+    def merge_patterns(self):
+        pattern_per_relation = dict()
+        for entity, relations in self.dbpedia.iteritems():
+            for rel, values in relations.iteritems():
+                patterns = values['patterns']
+                if len(patterns) == 0:
+                    continue
+                pattern = patterns[0]  # just consider first pattern for now
+                if rel in pattern_per_relation.keys():
+                    pattern_per_relation[rel] = Pattern.merge(pattern_per_relation[rel], pattern)
+                else:
+                    pattern_per_relation[rel] = pattern
+        # print pattern_per_relation
+
 
 def parse_input_parameters():
     use_dump = True
-    argv = sys.argv
-    if len(argv) > 1:
-        if argv[1] == '--dump':
+    randomize = False
+    helped = False
+
+    for arg in sys.argv[1:]:
+        if arg == '--dump':
             use_dump = True
-        else:
-            print 'Usage: python wiki_pattern.py [--dump]'
-    return use_dump
+        elif arg == '--rand':
+            randomize = True
+        elif not helped:
+            print 'Usage: python wiki_pattern.py [--dump] [--rand]'
+            helped = True
+
+    return use_dump, randomize
 
 
 if __name__ == '__main__':
-    use_dump = parse_input_parameters()
-    randomize = False
-    wiki = WikiPatternExtractor(limit=15, use_dump=use_dump, randomize=randomize)
+    use_dump, randomize = parse_input_parameters()
+    wiki = WikiPatternExtractor(limit=30, use_dump=use_dump, randomize=randomize)
     # preprocess data
     wiki.discover_patterns()
     # print Part-of-speech tagged sentences
     wiki.print_patterns()
     # calculate occured facts coverage
     wiki.calculate_text_coverage()
+    wiki.merge_patterns()

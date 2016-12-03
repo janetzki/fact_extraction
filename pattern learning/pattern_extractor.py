@@ -1,5 +1,5 @@
 from nltk.parse.stanford import StanfordDependencyParser
-from pattern import Pattern, DependencyNode, Dependency
+from pattern import Pattern, DependencyNode, DependencyKey
 
 path_to_jar = '..\stanford-corenlp-full-2016-10-31\stanford-corenlp-3.7.0.jar'
 path_to_models_jar = '..\stanford-corenlp-full-2016-10-31\stanford-corenlp-3.7.0-models.jar'
@@ -8,7 +8,7 @@ path_to_models_jar = '..\stanford-corenlp-full-2016-10-31\stanford-corenlp-3.7.0
 def find_main_address(parse, search_term_tokens):
     """ assume that node with more outgoing dependencies is closer too root and return its address """
     contiguous_words = 0
-    max_dependencies = 0
+    max_dependencies = -1
     max_address = 0
 
     for node in parse.nodes.iteritems():
@@ -21,16 +21,17 @@ def find_main_address(parse, search_term_tokens):
                 max_dependencies = dependencies
                 max_address = dict['address']
             if contiguous_words == len(search_term_tokens):
+                if max_address == -1:
+                    pass
                 return max_address
         else:
             contiguous_words = 0
-            max_dependencies = 0
-            max_address = -1
+            max_dependencies = -1
+            max_address = None
 
     print parse
     print search_term_tokens
     assert False
-    return -1
 
 
 def build_graph(parse):
@@ -52,10 +53,11 @@ def build_graph(parse):
 
 
 def build_pattern(parse, graph, object_address, relative_position, depth):
-    pattern = Pattern(relative_position)
+    pattern = Pattern(relative_position, object_address)
     visited, queue = set(), [object_address]
     distances = {k: float('inf') for k in parse.nodes.keys()}
     distances[object_address] = 0
+    addresses_in_pattern = {k: k for k in parse.nodes.keys()}
 
     # BFS
     while queue:
@@ -72,8 +74,17 @@ def build_pattern(parse, graph, object_address, relative_position, depth):
 
             queue.extend(adjacent_addresses - visited)
 
-            # construct node for pattern and insert it
-            dependencies = set()
+            # construct node for pattern and insert it (if not yet existing, otherwise add only word string)
+            properties = parse.nodes[address]
+            address_in_pattern = addresses_in_pattern[address]
+            if address == address_in_pattern:
+                # insert new node
+                dep_node = DependencyNode.from_word(properties['tag'], properties['word'])
+                pattern.add_node(address, dep_node)
+            else:
+                # merge into existing node
+                pattern.nodes[address_in_pattern].add_word(properties['word'])
+
             for dep in node:
                 from_node = dep[0]
                 to_node = dep[1]
@@ -83,10 +94,11 @@ def build_pattern(parse, graph, object_address, relative_position, depth):
                 else:
                     partner = from_node
                 if partner in adjacent_addresses:
-                    dependencies.add(Dependency(from_node, to_node, meaning))
-            properties = parse.nodes[address]
-            dep_node = DependencyNode(properties['tag'], properties['word'], dependencies=dependencies)
-            pattern.add_node(address, dep_node)
+                    key = DependencyKey(meaning, addresses_in_pattern[from_node], addresses_in_pattern[to_node],
+                                        address_in_pattern)
+
+                    # address differs if there already is another partner node for this dependency
+                    addresses_in_pattern[partner] = pattern.add_dependency_to_node(address_in_pattern, key, partner)
 
     return pattern
 
@@ -110,7 +122,7 @@ def extract_patterns(sentence, object_tokens, relative_position):
     graph = build_graph(parse)
 
     for depth in range(1, 3):
-        pattern = build_pattern(parse, graph, object_address, relative_position, 1)
+        pattern = build_pattern(parse, graph, object_address, relative_position, depth)
         patterns.append(pattern)
 
     '''

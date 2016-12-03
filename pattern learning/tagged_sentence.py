@@ -1,8 +1,8 @@
 class TaggedSentence(object):
-    def __init__(self, sentence, absolute_position, article_length = -1):
-        self.sentence = sentence # provisional - TODO: replace with token and tag list
-        self.absolute_position = absolute_position # zero based counting
-        self.article_length = article_length # number of sentences
+    def __init__(self, sentence, absolute_position, article_length=-1):
+        self.sentence = sentence  # provisional - TODO: replace with token and tag list
+        self.absolute_position = absolute_position  # zero based counting
+        self.article_length = article_length  # number of sentences
 
     def set_article_length(self, article_length):
         self.article_length = article_length
