@@ -13,15 +13,16 @@ maxLines = 0  # 0 means parse all lines
 
 
 def main(argv):
-    print(filterTTL(pathObjects, savePathObjects))
+    relationships= ['almaMater', 'knownFor', 'occupation', 'award']
+    print(filterTTL(relationships, pathObjects, savePathObjects))
 
 
-def filterTTL(path, saveInto):
+def filterTTL(relationships, path, saveInto):
     lines = rawpycount(path)
+    relations = map(lambda s: '/' + s + '>', relationships)
 
     with open(path, 'r', encoding="utf8") as file:
         fout = open(saveInto, 'w', encoding="utf8")
-        relations = ['/almaMater>', '/knownFor>', '/occupation>', '/award>']
         counter = [0] * len(relations)
         lineCounter = 0
         for line in file:
