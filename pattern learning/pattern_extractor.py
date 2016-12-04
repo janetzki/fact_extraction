@@ -21,8 +21,6 @@ def find_main_address(parse, search_term_tokens):
                 max_dependencies = dependencies
                 max_address = dict['address']
             if contiguous_words == len(search_term_tokens):
-                if max_address == -1:
-                    pass
                 return max_address
         else:
             contiguous_words = 0
@@ -52,7 +50,7 @@ def build_graph(parse):
     return graph
 
 
-def build_pattern(parse, graph, object_address, relative_position, depth):
+def build_pattern(parse, graph, object_address, relative_position, depth, strong_relations):
     pattern = Pattern(relative_position, object_address)
     visited, queue = set(), [object_address]
     distances = {k: float('inf') for k in parse.nodes.keys()}
@@ -61,38 +59,45 @@ def build_pattern(parse, graph, object_address, relative_position, depth):
 
     # BFS
     while queue:
-        address = queue.pop(0)
-        if address not in visited:
-            visited.add(address)
-            node = graph[address]
-            adjacent_addresses = zip(*node)
-            adjacent_addresses = set(adjacent_addresses[0] + adjacent_addresses[1])
-            for adj in adjacent_addresses:
-                distances[adj] = distances[address] + 1
+        node_addr = queue.pop(0)
+        if node_addr not in visited:
+            visited.add(node_addr)
+            node = graph[node_addr]
+
+            normal_adjacent_addresses = set()
+            strong_adjacent_addresses = set()
+            for dep in node:
+                from_node, to_node, meaning = dep[0:3]
+                partner = DependencyKey.partner_node(from_node, to_node, node_addr)
+                if meaning in strong_relations:
+                    strong_adjacent_addresses.add(partner)
+                else:
+                    normal_adjacent_addresses.add(partner)
+
+            # don't go back towards root
+            normal_adjacent_addresses -= visited
+            strong_adjacent_addresses -= visited
+
+            for adj in normal_adjacent_addresses:
+                distances[adj] = distances[node_addr] + 1
+            for adj in strong_adjacent_addresses:
+                distances[adj] = distances[node_addr]
+
             # cut off distant nodes
+            assert len(normal_adjacent_addresses & strong_adjacent_addresses) == 0
+            adjacent_addresses = normal_adjacent_addresses | strong_adjacent_addresses
             adjacent_addresses = set(filter(lambda x: distances[x] <= depth, adjacent_addresses))
 
-            queue.extend(adjacent_addresses - visited)
+            queue.extend(adjacent_addresses)
 
             # construct node for pattern and insert it (if not yet existing, otherwise add only word string)
-            properties = parse.nodes[address]
-            address_in_pattern = addresses_in_pattern[address]
-            if address == address_in_pattern:
-                # insert new node
-                dep_node = DependencyNode.from_word(properties['tag'], properties['word'])
-                pattern.add_node(address, dep_node)
-            else:
-                # merge into existing node
-                pattern.nodes[address_in_pattern].add_word(properties['word'])
+            properties = parse.nodes[node_addr]
+            address_in_pattern = addresses_in_pattern[node_addr]
+            pattern.add_word_to_node_or_create_node(address_in_pattern, properties['word'])
 
             for dep in node:
-                from_node = dep[0]
-                to_node = dep[1]
-                meaning = dep[2]
-                if from_node == address:
-                    partner = to_node
-                else:
-                    partner = from_node
+                from_node, to_node, meaning = dep[0:3]
+                partner = DependencyKey.partner_node(from_node, to_node, node_addr)
                 if partner in adjacent_addresses:
                     key = DependencyKey(meaning, addresses_in_pattern[from_node], addresses_in_pattern[to_node],
                                         address_in_pattern)
@@ -100,13 +105,14 @@ def build_pattern(parse, graph, object_address, relative_position, depth):
                     # address differs if there already is another partner node for this dependency
                     addresses_in_pattern[partner] = pattern.add_dependency_to_node(address_in_pattern, key, partner)
 
+    pattern.assert_is_tree()
     return pattern
 
 
-def extract_patterns(sentence, object_tokens, relative_position):
-    patterns = []
-    if len(sentence) > 1000:
-        return '***ERROR: Sentence too long!***'  # otherwise memory error would occur
+def extract_pattern(sentence, object_tokens, relative_position):
+    depth = 1
+    if len(sentence) == 0 or len(sentence) > 1000:
+        return None  # memory error would occur for too long sentence
 
     object_tokens = filter(lambda x: x != ',', object_tokens)
     parser = StanfordDependencyParser(path_to_jar=path_to_jar, path_to_models_jar=path_to_models_jar)
@@ -121,9 +127,8 @@ def extract_patterns(sentence, object_tokens, relative_position):
     object_address = find_main_address(parse, object_tokens)
     graph = build_graph(parse)
 
-    for depth in range(1, 3):
-        pattern = build_pattern(parse, graph, object_address, relative_position, depth)
-        patterns.append(pattern)
+    strong_relations = ['xcmp', 'auxpass']
+    return build_pattern(parse, graph, object_address, relative_position, depth, strong_relations)
 
     '''
         for mode in range(0, 2):
@@ -136,13 +141,11 @@ def extract_patterns(sentence, object_tokens, relative_position):
             patterns.append(' '.join(pattern))
     '''
 
-    return patterns
-
 
 def test():
     sentence = 'Allain Connes won. a very boring prize in 1987.'
     object_tokens = ['prize']
-    print(extract_patterns(sentence, object_tokens, 0.0))
+    print(extract_pattern(sentence, object_tokens, 0.0))
 
 
 if __name__ == '__main__':

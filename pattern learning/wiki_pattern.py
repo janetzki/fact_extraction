@@ -30,16 +30,20 @@ dump_extractor = imp.load_source('dump_extractor', '../wikipedia dump connector/
 
 
 class WikiPatternExtractor(object):
-    def __init__(self, path='../ttl parser/mappingbased_objects_en_extracted.csv', \
-                 relationships=[], limit=500, use_dump=False, randomize=False):
+    def __init__(self, limit_training, limit_discovery, path='../ttl parser/mappingbased_objects_en_extracted.csv',
+                 relationships=[], use_dump=False, randomize=False, perform_tests=False, match_threshold=0.1):
         self.path = path
         self.use_dump = use_dump
         self.relationships = ['http://dbpedia.org/ontology/' + r for r in relationships if r]
-        self.limit = limit
+        self.limit_training = limit_training
+        self.limit_discovery = limit_discovery
         self.dbpedia = {}
-        self.relationship_patterns = {}
+        self.relation_patterns = {}
         self.elapsed_time = 0  # for performance monitoring
         self.randomize = randomize
+        self.perform_tests = perform_tests
+        self.fact_discovery_resources = set()
+        self.match_threshold = match_threshold
 
     # -------------------------------------------------------------------------------------------------
     #                               Data Preprocessing
@@ -69,15 +73,24 @@ class WikiPatternExtractor(object):
                     if random_offset == 0:
                         break
 
-            max_results = self.limit
+            max_results = self.limit_training
             for row in wikireader:
-                if max_results is 0:
+                if max_results == 0:
                     break
                 subject, relation, value = row[0], row[1], row[2]
                 # maintain a dict for each entity with given relations as key
                 # and their target values as list
                 entities.setdefault(subject, {}).setdefault(relation, []).append(value)
                 max_results -= 1
+
+            max_results = self.limit_discovery
+            for row in wikireader:
+                if max_results == 0:
+                    break
+                subject = row[0]
+                if subject not in entities.keys() and subject not in self.fact_discovery_resources:
+                    self.fact_discovery_resources.add(subject)
+                    max_results -= 1
         return entities
 
     def scrape_wikipedia_article(self, dbpedia_resource):
@@ -146,6 +159,7 @@ class WikiPatternExtractor(object):
         sentences = []
         for p in paragraphs:
             sentences.extend(self.splitkeepsep(p.prettify(), '.'))
+        sentences = map(self.__cleanInput, sentences)
         return sentences
 
     def clean_tags(self, html_text):
@@ -153,20 +167,24 @@ class WikiPatternExtractor(object):
         html_text = '<p>' + html_text + '</p>'
         return html_text
 
-    def contains_any_reference(self, html, resources):
+    def contains_any_reference(self, html, resources=None):
         soup = bs(html, 'lxml')
-        return any(soup.find('a', {'href': resource}) for resource in resources)
+        if resources is None:
+            return soup.find('a')
+        else:
+            return any(soup.find('a', {'href': resource}) for resource in resources)
 
-    def filter_relevant_sentences(self, paragraphs, wikipedia_resources):
-        """ Returns cleaned sentences which contain any of given Wikipedia resources """
-        # sentences = sent_tokenize(text)
-        sentences = self.html_sent_tokenize(paragraphs)
-        sentences = map(self.__cleanInput, sentences)
+    def make_to_tagged_sentences(self, sentences):
         article_length = len(sentences)
         for i in range(0, article_length):
             sentences[i] = TaggedSentence(sentences[i], i, article_length)
+        return sentences
+
+    def filter_relevant_sentences(self, tagged_sentences, wikipedia_resources):
+        """ Returns cleaned sentences which contain any of given Wikipedia resources """
+        # sentences = sent_tokenize(text)
         relevant_sentences = filter(lambda sent: self.contains_any_reference(sent.as_string(), wikipedia_resources),
-                                    sentences)
+                                    tagged_sentences)
         # relevant_sentences = map(self.clean_tags, relevant_sentences)
         return relevant_sentences
 
@@ -203,10 +221,11 @@ class WikiPatternExtractor(object):
             for rel, resources in values.iteritems():
                 wikipedia_target_resources = map(self.wikipedia_uri, resources)
                 # DBP_target_resources = map(self.normalize_DBP_uri, resources)
-                relevant_sentences = self.filter_relevant_sentences(html_text, wikipedia_target_resources)
+                sentences = self.html_sent_tokenize(html_text)
+                tagged_sentences = self.make_to_tagged_sentences(sentences)
+                relevant_sentences = self.filter_relevant_sentences(tagged_sentences, wikipedia_target_resources)
                 values[rel] = {'resources': wikipedia_target_resources,
-                               'sentences': relevant_sentences,
-                               'patterns': []}
+                               'sentences': relevant_sentences}
 
     # ---------------------------------------------------------------------------------------------
     #                               Statistics and Visualizations
@@ -215,9 +234,14 @@ class WikiPatternExtractor(object):
     def find_tokens_in_html(self, html, resource):
         soup = bs(html, 'lxml')
         reference = soup.find('a', {'href': resource})
-        reference = reference.get_text()
-        tokens = word_tokenize(reference)
-        return tokens
+        reference_text = reference.get_text()
+        return word_tokenize(reference_text)
+
+    def find_tokens_of_references_in_html(self, html):
+        soup = bs(html, 'lxml')
+        references = soup.findAll('a')
+        references = map(lambda ref: (ref['href'], ref.get_text()), references)
+        return map(lambda (href, text): (href, word_tokenize(text)), references)
 
     def print_patterns(self):
         """
@@ -261,9 +285,9 @@ class WikiPatternExtractor(object):
                     tokenized_sentences = map(word_tokenize, [nl_sentence])
                     pos_tagged_sentences = pos_tag_sents(tokenized_sentences).pop()
                     object_tokens = self.find_tokens_in_html(sentence.as_string(), resource)
-                    patterns = pattern_extractor.extract_patterns(nl_sentence, object_tokens, relative_position)
-                    values['patterns'].extend(patterns)
-                    entry.extend(patterns)
+                    pattern = pattern_extractor.extract_pattern(nl_sentence, object_tokens, relative_position)
+                    values['pattern'] = pattern
+                    entry.append(pattern)
 
                     # color sentence parts according to POS tag
                     colored_sentence = [colored(word, color_mapping.setdefault(pos, 'white'))
@@ -288,9 +312,9 @@ class WikiPatternExtractor(object):
             print(colored('[DBP Resource] \t', 'red',
                           attrs={'concealed', 'bold'}) + colored(self.normalize_uri(entry[2]), 'white')).expandtabs(20)
             print(colored('[Wiki Occurence] \t',
-                          'red', attrs={'concealed', 'bold'}) + entry[7]).expandtabs(20)
+                          'red', attrs={'concealed', 'bold'}) + entry[6]).expandtabs(20)
 
-            #print(entry[5])
+            # print(entry[5])
             '''print(colored('[Pattern] \t',
                           'red', attrs={'concealed', 'bold'}) + colored(entry[5], 'white')).expandtabs(20)
             print(colored('[Pattern] \t',
@@ -338,23 +362,62 @@ class WikiPatternExtractor(object):
         return self.elapsed_time
 
     def merge_patterns(self):
-        pattern_per_relation = dict()
         for entity, relations in self.dbpedia.iteritems():
             for rel, values in relations.iteritems():
-                patterns = values['patterns']
-                if len(patterns) == 0:
+                if 'pattern' not in values.keys():
                     continue
-                pattern = patterns[0]  # just consider first pattern for now
-                if rel in pattern_per_relation.keys():
-                    pattern_per_relation[rel] = Pattern.merge(pattern_per_relation[rel], pattern)
+                pattern = values['pattern']
+                if rel in self.relation_patterns.keys():
+                    self.relation_patterns[rel] = Pattern.merge(self.relation_patterns[rel], pattern,
+                                                                self.perform_tests)
                 else:
-                    pattern_per_relation[rel] = pattern
-        # print pattern_per_relation
+                    self.relation_patterns[rel] = pattern
+
+    def match_pattern_against_relation_patterns(self, pattern):
+        matching_relations = []
+        for relation, relation_pattern in self.relation_patterns.iteritems():
+            match_score = Pattern.match_patterns_bidirectional(relation_pattern, pattern)
+            if match_score >= self.match_threshold:
+                matching_relations.append((relation, match_score))
+        return matching_relations
+
+    def discover_facts_in_sentences(self, sentences):
+        facts = []
+        for sent in sentences:
+            relative_position = sent.calculate_relative_position()
+            soup = bs(sent.as_string(), 'lxml')
+            nl_sentence = soup.get_text()
+            object_tokens_of_references = self.find_tokens_of_references_in_html(sent.as_string())
+            for object_resource, object_tokens in object_tokens_of_references:
+                pattern = pattern_extractor.extract_pattern(nl_sentence, object_tokens, relative_position)
+                if len(nl_sentence) == 0 or len(nl_sentence) > 1000:  # TODO: solve issue #18
+                    continue
+                matching_relations = self.match_pattern_against_relation_patterns(pattern)
+                new_facts = [(rel, object_resource, score) for (rel, score) in matching_relations]
+                facts.extend(new_facts)
+                for fact in new_facts:
+                    print fact
+        return facts
+
+    def discover_new_facts(self):
+        print('---------- Discovered Facts ----------')
+        facts = []
+        for resource in self.fact_discovery_resources:
+            print('--- ' + resource + ' ----')
+            html_text = self.get_wikipedia_article(resource)
+            sentences = self.html_sent_tokenize(html_text)
+            tagged_sentences = self.make_to_tagged_sentences(sentences)
+            referenced_sentences = filter(lambda sent: self.contains_any_reference(sent.as_string()), tagged_sentences)
+            new_facts = self.discover_facts_in_sentences(referenced_sentences)
+            new_facts = [(resource, rel, obj, score) for (rel, obj, score) in new_facts]
+            facts.extend(new_facts)
+
+        for fact in facts:
+            print fact
 
 
 def parse_input_parameters():
-    use_dump = True
-    randomize = False
+    use_dump, randomize, perform_tests = True, False, True
     helped = False
 
     for arg in sys.argv[1:]:
@@ -362,20 +425,24 @@ def parse_input_parameters():
             use_dump = True
         elif arg == '--rand':
             randomize = True
+        elif arg == '--test':
+            perform_tests = True
         elif not helped:
-            print 'Usage: python wiki_pattern.py [--dump] [--rand]'
+            print 'Usage: python wiki_pattern.py [--dump] [--rand] [--test]'
             helped = True
 
-    return use_dump, randomize
+    return use_dump, randomize, perform_tests
 
 
 if __name__ == '__main__':
-    use_dump, randomize = parse_input_parameters()
-    wiki = WikiPatternExtractor(limit=30, use_dump=use_dump, randomize=randomize)
+    use_dump, randomize, perform_tests = parse_input_parameters()
+    wiki = WikiPatternExtractor(200, 5, use_dump=use_dump, randomize=randomize, perform_tests=perform_tests)
     # preprocess data
     wiki.discover_patterns()
     # print Part-of-speech tagged sentences
     wiki.print_patterns()
     # calculate occured facts coverage
     wiki.calculate_text_coverage()
+
     wiki.merge_patterns()
+    wiki.discover_new_facts()
