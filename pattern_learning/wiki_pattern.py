@@ -26,8 +26,10 @@ import pattern_extractor
 from pattern_extractor import Pattern
 from tagged_sentence import TaggedSentence
 
-dump_extractor = imp.load_source('dump_extractor', '../wikipedia dump connector/dump_extractor.py')
-
+try:
+    dump_extractor = imp.load_source('dump_extractor', '../wikipedia dump connector/dump_extractor.py')
+except:
+    pass
 
 class WikiPatternExtractor(object):
     def __init__(self, path='../ttl parser/mappingbased_objects_en_extracted.csv', \
@@ -82,7 +84,7 @@ class WikiPatternExtractor(object):
 
     def scrape_wikipedia_article(self, dbpedia_resource):
         """
-        Requests wikipedia resource per GET request - extracts text content
+        Request wikipedia resource per GET request - extract text content
         and returns text
         """
         # http://dbpedia.org/resource/Alain_Connes -> http://en.wikipedia.org/wiki/Alain_Connes
@@ -115,27 +117,6 @@ class WikiPatternExtractor(object):
     def wikipedia_uri(self, DBP_uri):
         return DBP_uri.replace("http://dbpedia.org/resource/", "/wiki/")
 
-    def __cleanInput(self, input):
-        """
-        Sanitize text - remove multiple new lines and spaces - get rid of non ascii chars
-        and citations - strip words from punctuation signs - returns sanitized string
-        """
-        input = re.sub('\n+', " ", input)
-        input = re.sub(' +', " ", input)
-
-        # get rid of non-ascii characters
-        input = re.sub(r'[^\x00-\x7f]', r'', input)
-
-        # get rid of citations
-        input = re.sub(r'\[\d+\]', r'', input)
-        cleanInput = []
-        input = input.split(' ')
-        for item in input:
-            # item = item.strip('?!;,')
-            if len(item) > 1 or (item.lower() == 'a' or item == 'I'):
-                cleanInput.append(item)
-        return ' '.join(cleanInput).encode('utf-8')  # ' '.join(cleanInput).lower().encode('utf-8')
-
     def splitkeepsep(self, s, sep):
         """ http://programmaticallyspeaking.com/split-on-separator-but-keep-the-separator-in-python.html """
         return reduce(lambda acc, elem: acc[:-1] + [acc[-1] + elem] if elem == sep else acc + [elem],
@@ -153,21 +134,12 @@ class WikiPatternExtractor(object):
         html_text = '<p>' + html_text + '</p>'
         return html_text
 
-    def contains_any_reference(self, html, resources):
-        soup = bs(html, 'lxml')
-        return any(soup.find('a', {'href': resource}) for resource in resources)
-
     def filter_relevant_sentences(self, paragraphs, wikipedia_resources):
         """ Returns cleaned sentences which contain any of given Wikipedia resources """
-        # sentences = sent_tokenize(text)
-        sentences = self.html_sent_tokenize(paragraphs)
-        sentences = map(self.__cleanInput, sentences)
-        article_length = len(sentences)
-        for i in range(0, article_length):
-            sentences[i] = TaggedSentence(sentences[i], i, article_length)
-        relevant_sentences = filter(lambda sent: self.contains_any_reference(sent.as_string(), wikipedia_resources),
-                                    sentences)
-        # relevant_sentences = map(self.clean_tags, relevant_sentences)
+        sentences = []
+        sentences.extend([tagged_s for p in paragraphs for tagged_s in TaggedSentence.parse_html(p)])
+        print(str(sentences))
+        relevant_sentences = filter(lambda sent: sent.contains_any(wikipedia_resources), sentences)
         return relevant_sentences
 
     def shorten_sentence(self, items):
