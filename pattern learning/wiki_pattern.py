@@ -28,12 +28,14 @@ import pattern_extractor
 from pattern_extractor import Pattern
 from tagged_sentence import TaggedSentence
 
+redirector = imp.load_source('subst_redirects', '../data cleaning/subst_redirects.py')
 dump_extractor = imp.load_source('dump_extractor', '../wikipedia dump connector/dump_extractor.py')
 
 
 class WikiPatternExtractor(object):
     def __init__(self, limit_training, limit_discovery, path='../ttl parser/mappingbased_objects_en_extracted.csv',
-                 relationships=[], use_dump=False, randomize=False, perform_tests=False, match_threshold=0.01):
+                 relationships=[], use_dump=False, randomize=False, perform_tests=False, match_threshold=0.01,
+                 redirects_path='../data/redirects_en.txt'):
         self.path = path
         self.use_dump = use_dump
         self.relationships = ['http://dbpedia.org/ontology/' + r for r in relationships if r]
@@ -47,6 +49,10 @@ class WikiPatternExtractor(object):
         self.fact_discovery_resources = set()
         self.match_threshold = match_threshold
         self.patterns_file = '../data/patterns.pkl'
+        if use_dump:
+            self.redirector = False
+        else:
+            self.redirector = redirector.Substitutor(redirects_path)
 
     # -------------------------------------------------------------------------------------------------
     #                               Data Preprocessing
@@ -139,6 +145,10 @@ class WikiPatternExtractor(object):
         input = re.sub(r'\n+', " ", input)
         input = re.sub(r' +', " ", input)
         input = input.replace("\'", "")
+
+        # substitute redirects
+        if self.redirector:
+            input = self.redirector.substitute_all(input)
 
         # get rid of non-ascii characters
         input = re.sub(r'[^\x00-\x7f]', r'', input)
@@ -447,7 +457,7 @@ class WikiPatternExtractor(object):
 
 
 def parse_input_parameters():
-    use_dump, randomize, perform_tests = True, False, True
+    use_dump, randomize, perform_tests = False, False, True
     helped = False
 
     for arg in sys.argv[1:]:
