@@ -21,6 +21,8 @@ import itertools
 from timeit import default_timer as timer
 from random import randint
 import imp
+from tqdm import tqdm
+import pickle
 
 import pattern_extractor
 from pattern_extractor import Pattern
@@ -31,7 +33,7 @@ dump_extractor = imp.load_source('dump_extractor', '../wikipedia dump connector/
 
 class WikiPatternExtractor(object):
     def __init__(self, limit_training, limit_discovery, path='../ttl parser/mappingbased_objects_en_extracted.csv',
-                 relationships=[], use_dump=False, randomize=False, perform_tests=False, match_threshold=0.1):
+                 relationships=[], use_dump=False, randomize=False, perform_tests=False, match_threshold=0.01):
         self.path = path
         self.use_dump = use_dump
         self.relationships = ['http://dbpedia.org/ontology/' + r for r in relationships if r]
@@ -44,6 +46,7 @@ class WikiPatternExtractor(object):
         self.perform_tests = perform_tests
         self.fact_discovery_resources = set()
         self.match_threshold = match_threshold
+        self.patterns_file = '../data/patterns.pkl'
 
     # -------------------------------------------------------------------------------------------------
     #                               Data Preprocessing
@@ -133,8 +136,9 @@ class WikiPatternExtractor(object):
         Sanitize text - remove multiple new lines and spaces - get rid of non ascii chars
         and citations - strip words from punctuation signs - returns sanitized string
         """
-        input = re.sub('\n+', " ", input)
-        input = re.sub(' +', " ", input)
+        input = re.sub(r'\n+', " ", input)
+        input = re.sub(r' +', " ", input)
+        input = input.replace("\'", "")
 
         # get rid of non-ascii characters
         input = re.sub(r'[^\x00-\x7f]', r'', input)
@@ -154,12 +158,19 @@ class WikiPatternExtractor(object):
         return reduce(lambda acc, elem: acc[:-1] + [acc[-1] + elem] if elem == sep else acc + [elem],
                       re.split("(%s)" % re.escape(sep), s), [])
 
+    @staticmethod
+    def has_appropriate_text_length(html):
+        soup = bs(html, 'lxml')
+        length = len(soup.get_text())
+        return 0 < length < 200
+
     def html_sent_tokenize(self, paragraphs):
-        # TODO: improve so that valid html comes out
+        # TODO: improve so that valid html comes out, issue #18
         sentences = []
         for p in paragraphs:
             sentences.extend(self.splitkeepsep(p.prettify(), '.'))
         sentences = map(self.__cleanInput, sentences)
+        sentences = filter(WikiPatternExtractor.has_appropriate_text_length, sentences)
         return sentences
 
     def clean_tags(self, html_text):
@@ -212,7 +223,8 @@ class WikiPatternExtractor(object):
         # parse dbpedia information
         self.dbpedia = self.parse_DBpedia_data()
 
-        for entity, values in self.dbpedia.iteritems():
+        print('Collecting training data...')
+        for entity, values in tqdm(self.dbpedia.iteritems(), total=len(self.dbpedia)):
             # fetch corresponding wiki article
             html_text = self.get_wikipedia_article(entity)
 
@@ -226,6 +238,7 @@ class WikiPatternExtractor(object):
                 relevant_sentences = self.filter_relevant_sentences(tagged_sentences, wikipedia_target_resources)
                 values[rel] = {'resources': wikipedia_target_resources,
                                'sentences': relevant_sentences}
+        print
 
     # ---------------------------------------------------------------------------------------------
     #                               Statistics and Visualizations
@@ -241,7 +254,9 @@ class WikiPatternExtractor(object):
         soup = bs(html, 'lxml')
         references = soup.findAll('a')
         references = map(lambda ref: (ref['href'], ref.get_text()), references)
-        return map(lambda (href, text): (href, word_tokenize(text)), references)
+        references = map(lambda (href, text): (href, word_tokenize(text)), references)
+        assert len(references) > 0
+        return references
 
     def print_patterns(self):
         """
@@ -262,7 +277,8 @@ class WikiPatternExtractor(object):
         results = []
         # corpus = deepcopy(self.dbpedia)
 
-        for entity, relations in self.dbpedia.iteritems():
+        print('Extracting patterns for training...')
+        for entity, relations in tqdm(self.dbpedia.iteritems(), total=len(self.dbpedia)):
             for rel_ontology, values in relations.iteritems():
                 target_resources = values['resources']
                 sentences = values['sentences']
@@ -286,8 +302,9 @@ class WikiPatternExtractor(object):
                     pos_tagged_sentences = pos_tag_sents(tokenized_sentences).pop()
                     object_tokens = self.find_tokens_in_html(sentence.as_string(), resource)
                     pattern = pattern_extractor.extract_pattern(nl_sentence, object_tokens, relative_position)
-                    values['pattern'] = pattern
-                    entry.append(pattern)
+                    if pattern is not None:
+                        values['pattern'] = pattern
+                        entry.append(pattern)
 
                     # color sentence parts according to POS tag
                     colored_sentence = [colored(word, color_mapping.setdefault(pos, 'white'))
@@ -297,8 +314,9 @@ class WikiPatternExtractor(object):
                     entry.append(colored_sentence)
 
                 results.extend(data)
+        print
 
-        # drop duplicates
+        """"# drop duplicates
         results.sort()
         results = list(x for x, _ in itertools.groupby(results))
 
@@ -325,7 +343,7 @@ class WikiPatternExtractor(object):
               + colored('NORMAL NOUN\t', 'magenta')
               + colored('PROPER NOUN\t', 'green')
               + colored('VERB\t', 'cyan')
-              + colored('ADJ\t', 'yellow')).expandtabs(20)
+              + colored('ADJ\t', 'yellow')).expandtabs(20)"""
 
     def count_occurences(self, values, sentences):
         """ Self-explanatory """
@@ -362,7 +380,8 @@ class WikiPatternExtractor(object):
         return self.elapsed_time
 
     def merge_patterns(self):
-        for entity, relations in self.dbpedia.iteritems():
+        print('Training patterns...')
+        for entity, relations in tqdm(self.dbpedia.iteritems(), total=len(self.dbpedia)):
             for rel, values in relations.iteritems():
                 if 'pattern' not in values.keys():
                     continue
@@ -372,6 +391,7 @@ class WikiPatternExtractor(object):
                                                                 self.perform_tests)
                 else:
                     self.relation_patterns[rel] = pattern
+        print
 
     def match_pattern_against_relation_patterns(self, pattern):
         matching_relations = []
@@ -383,25 +403,26 @@ class WikiPatternExtractor(object):
 
     def discover_facts_in_sentences(self, sentences):
         facts = []
-        for sent in sentences:
+        for sent in tqdm(sentences, total=len(sentences)):
             relative_position = sent.calculate_relative_position()
             soup = bs(sent.as_string(), 'lxml')
             nl_sentence = soup.get_text()
             object_tokens_of_references = self.find_tokens_of_references_in_html(sent.as_string())
             for object_resource, object_tokens in object_tokens_of_references:
                 pattern = pattern_extractor.extract_pattern(nl_sentence, object_tokens, relative_position)
-                if len(nl_sentence) == 0 or len(nl_sentence) > 1000:  # TODO: solve issue #18
+                if pattern is None:
                     continue
                 matching_relations = self.match_pattern_against_relation_patterns(pattern)
-                new_facts = [(rel, object_resource, score) for (rel, score) in matching_relations]
+                new_facts = [(rel, object_resource, score, nl_sentence) for (rel, score) in matching_relations]
                 facts.extend(new_facts)
                 for fact in new_facts:
+                    print
                     print fact
         return facts
 
     def discover_new_facts(self):
-        print('---------- Discovered Facts ----------')
         facts = []
+        print('Discovering new facts...')
         for resource in self.fact_discovery_resources:
             print('--- ' + resource + ' ----')
             html_text = self.get_wikipedia_article(resource)
@@ -409,11 +430,20 @@ class WikiPatternExtractor(object):
             tagged_sentences = self.make_to_tagged_sentences(sentences)
             referenced_sentences = filter(lambda sent: self.contains_any_reference(sent.as_string()), tagged_sentences)
             new_facts = self.discover_facts_in_sentences(referenced_sentences)
-            new_facts = [(resource, rel, obj, score) for (rel, obj, score) in new_facts]
+            new_facts = [(resource, rel, obj, score, nl_sentence) for (rel, obj, score, nl_sentence) in new_facts]
             facts.extend(new_facts)
 
+        print('\n----- Discovered facts ------')
         for fact in facts:
             print fact
+
+    '''def save_patterns(self):
+        with open(self.patterns_file) as fin:
+
+
+
+    def load_patterns(self):
+        pass'''
 
 
 def parse_input_parameters():
@@ -436,7 +466,7 @@ def parse_input_parameters():
 
 if __name__ == '__main__':
     use_dump, randomize, perform_tests = parse_input_parameters()
-    wiki = WikiPatternExtractor(200, 5, use_dump=use_dump, randomize=randomize, perform_tests=perform_tests)
+    wiki = WikiPatternExtractor(200, 20, use_dump=use_dump, randomize=randomize, perform_tests=perform_tests)
     # preprocess data
     wiki.discover_patterns()
     # print Part-of-speech tagged sentences

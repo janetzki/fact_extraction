@@ -1,5 +1,5 @@
 from nltk.parse.stanford import StanfordDependencyParser
-from pattern import Pattern, DependencyNode, DependencyKey
+from pattern import Pattern, DependencyKey
 
 path_to_jar = '..\stanford-corenlp-full-2016-10-31\stanford-corenlp-3.7.0.jar'
 path_to_models_jar = '..\stanford-corenlp-full-2016-10-31\stanford-corenlp-3.7.0-models.jar'
@@ -10,6 +10,9 @@ def find_main_address(parse, search_term_tokens):
     contiguous_words = 0
     max_dependencies = -1
     max_address = 0
+
+    if len(search_term_tokens) == 0:
+        return None
 
     for node in parse.nodes.iteritems():
         dict = node[1]
@@ -29,6 +32,7 @@ def find_main_address(parse, search_term_tokens):
 
     print parse
     print search_term_tokens
+    return None
     assert False
 
 
@@ -111,8 +115,6 @@ def build_pattern(parse, graph, object_address, relative_position, depth, strong
 
 def extract_pattern(sentence, object_tokens, relative_position):
     depth = 1
-    if len(sentence) == 0 or len(sentence) > 1000:
-        return None  # memory error would occur for too long sentence
 
     object_tokens = filter(lambda x: x != ',', object_tokens)
     parser = StanfordDependencyParser(path_to_jar=path_to_jar, path_to_models_jar=path_to_models_jar)
@@ -125,6 +127,8 @@ def extract_pattern(sentence, object_tokens, relative_position):
     # [parse.tree().pretty_print() for parse in parser.raw_parse(sentence)]
 
     object_address = find_main_address(parse, object_tokens)
+    if object_address is None:
+        return Pattern()
     graph = build_graph(parse)
 
     strong_relations = ['xcmp', 'auxpass']
