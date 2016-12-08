@@ -2,11 +2,11 @@ from bs4 import BeautifulSoup as bs
 import re
 import csv
 
-dump_path = '../data/enwiki-latest-pages-articles.xml'
+dump_path = '../data/enwiki-latest-pages-articles-redirected.xml'
 
 
 def get_dump_offset_via_index(title):
-    index_path = '../data/index.csv'
+    index_path = '../data/index-r.csv'
     with open(index_path, 'r') as fin:
         indexreader = csv.reader(fin, delimiter='#')
         for line in indexreader:

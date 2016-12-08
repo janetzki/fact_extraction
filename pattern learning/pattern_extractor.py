@@ -128,7 +128,7 @@ def extract_pattern(sentence, object_tokens, relative_position):
 
     object_address = find_main_address(parse, object_tokens)
     if object_address is None:
-        return Pattern()
+        return None
     graph = build_graph(parse)
 
     strong_relations = ['xcmp', 'auxpass']
