@@ -1,4 +1,7 @@
+import imp
 from nltk.parse.stanford import StanfordDependencyParser
+
+pattern = imp.load_source('pattern', '../pattern learning/pattern.py')
 from pattern import Pattern, DependencyKey
 
 path_to_jar = '..\stanford-corenlp-full-2016-10-31\stanford-corenlp-3.7.0.jar'
