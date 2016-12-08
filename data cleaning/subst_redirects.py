@@ -6,6 +6,7 @@ import sys
 import os
 from tqdm import tqdm
 import csv
+import codecs
 
 delimiter = "#"
 dump_path = '../data/enwiki-latest-pages-articles.xml'
@@ -14,19 +15,24 @@ limit = 1e12
 total_lines = 930000000
 REGEX = re.compile('\[\[(.+?)(\|(.+?))?\]\]') # look for [[linked_article]] or [[linked_article|link_text]]
 
+def unicode_csv_reader(utf8_data, dialect=csv.excel, **kwargs):
+    csv_reader = csv.reader(utf8_data, dialect=dialect, **kwargs)
+    for row in csv_reader:
+        yield [unicode(cell, 'utf-8') for cell in row]
 
 class Substitutor:
 	def __init__(self, redirects_path='../data/redirects_en.txt'):
 		self.redirects_path = redirects_path
 		self.redirects = {}
 		
-		with open(redirects_path, 'r', encoding="utf8") as file:
+		with open(redirects_path, 'r') as file:
 			next(file)
-			reader = csv.reader(file, delimiter=delimiter)
-			for name, ressource in reader:
+
+			reader = unicode_csv_reader(file, delimiter=delimiter)
+			for name, ressource in tqdm(reader, total=7340000):
 				if name:
 					self.redirects[name] = ressource
-	
+
 	def substitute(self, ressource, falseIfNone=False):
 		if ressource in self.redirects:
 			return self.redirects[ressource]

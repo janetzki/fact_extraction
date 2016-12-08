@@ -26,12 +26,14 @@ import pattern_extractor
 from pattern_extractor import Pattern
 from tagged_sentence import TaggedSentence
 
+redirector = imp.load_source('subst_redirects', '../data cleaning/subst_redirects.py')
 dump_extractor = imp.load_source('dump_extractor', '../wikipedia dump connector/dump_extractor.py')
 
 
 class WikiPatternExtractor(object):
     def __init__(self, limit_training, limit_discovery, path='../ttl parser/mappingbased_objects_en_extracted.csv',
-                 relationships=[], use_dump=False, randomize=False, perform_tests=False, match_threshold=0.1):
+                 relationships=[], use_dump=False, randomize=False, perform_tests=False, match_threshold=0.1,
+                 redirects_path='/media/sf_project/data/redirects_en.txt'):
         self.path = path
         self.use_dump = use_dump
         self.relationships = ['http://dbpedia.org/ontology/' + r for r in relationships if r]
@@ -44,6 +46,10 @@ class WikiPatternExtractor(object):
         self.perform_tests = perform_tests
         self.fact_discovery_resources = set()
         self.match_threshold = match_threshold
+        if not use_dump:
+            self.redirector = redirector.Substitutor(redirects_path)
+        else:
+            self.redirector = False
 
     # -------------------------------------------------------------------------------------------------
     #                               Data Preprocessing
@@ -135,6 +141,10 @@ class WikiPatternExtractor(object):
         """
         input = re.sub('\n+', " ", input)
         input = re.sub(' +', " ", input)
+
+        # substitute redirects
+        if self.redirector:
+            input = self.redirector.substitute_all(input)
 
         # get rid of non-ascii characters
         input = re.sub(r'[^\x00-\x7f]', r'', input)
@@ -417,7 +427,7 @@ class WikiPatternExtractor(object):
 
 
 def parse_input_parameters():
-    use_dump, randomize, perform_tests = True, False, True
+    use_dump, randomize, perform_tests = False, False, True
     helped = False
 
     for arg in sys.argv[1:]:
@@ -436,7 +446,7 @@ def parse_input_parameters():
 
 if __name__ == '__main__':
     use_dump, randomize, perform_tests = parse_input_parameters()
-    wiki = WikiPatternExtractor(200, 5, use_dump=use_dump, randomize=randomize, perform_tests=perform_tests)
+    wiki = WikiPatternExtractor(20, 5, use_dump=use_dump, randomize=randomize, perform_tests=perform_tests)
     # preprocess data
     wiki.discover_patterns()
     # print Part-of-speech tagged sentences
