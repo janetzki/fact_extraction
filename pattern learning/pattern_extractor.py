@@ -33,6 +33,7 @@ def find_main_address(parse, search_term_tokens):
             max_dependencies = -1
             max_address = None
 
+    print "Error: Search term not found"
     print parse
     print search_term_tokens
     return None
