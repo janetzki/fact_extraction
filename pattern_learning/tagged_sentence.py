@@ -55,7 +55,7 @@ class TaggedSentence(object):
 
     @property
     def links(self):
-        return [token for token in self.sentence if token.is_link()]
+        return [(token, position) for token in enumerate(self.sentence) if token.is_link()]
 
     def contains_any(self, resources):
         resources = map(lambda s: s.replace("dbpedia.org/resource/", ''), resources)
