@@ -54,11 +54,19 @@ class TaggedSentence(object):
         return self.__str__()
 
     @property
-    def links(self):
+    def link_positions(self):
         return [(token, position) for token in enumerate(self.sentence) if token.is_link()]
 
+    @property
+    def links(self):
+        return [token for token in self.sentence if token.is_link()]
+
+    @property
+    def relative_pos(self):
+        return self.relative_position
+
     def contains_any(self, resources):
-        resources = map(lambda s: s.replace("dbpedia.org/resource/", ''), resources)
+        resources = map(lambda s: s.replace("/wiki/", ''), resources)
         contained_links = map(lambda token: token.link.replace('/wiki/', ''), self.links)
         for res in resources:
             if res in contained_links:
@@ -87,18 +95,17 @@ class TaggedSentence(object):
         return ' '.join(cleanInput).encode('utf-8')
 
     @classmethod
-    def parse_html(cls, html):
+    def parse_html(cls, bs_tag):
         # replace links with intermediary representation
         # html = html.decode('utf-8')
-        soup = bs(html, 'lxml')
-        for link in soup.find_all('a'):
+        for link in bs_tag.find_all('a'):
             target = link.get('href')
-            if target.startswith('#'):
-                continue  # ignore intern links
+            if target.startswith('#') or not link.string:
+                continue  # ignore intern links and links with no enclosed text
             link.string = '#' + target + '#' + link.string + '#'
 
         # get raw_text
-        text = soup.get_text()
+        text = bs_tag.get_text()
         # split sentences
         sentences = sent_tokenize(text)
         count = sentences.__len__()

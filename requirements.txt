@@ -2,6 +2,7 @@ ascii-graph==1.2.0
 beautifulsoup4==4.5.1
 bs4==0.0.1
 cycler==0.10.0
+enum==0.4.6
 lxml==3.6.4
 matplotlib==1.5.3
 nltk==3.2.1
