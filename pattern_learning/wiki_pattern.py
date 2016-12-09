@@ -26,8 +26,10 @@ import pattern_extractor
 from pattern_extractor import Pattern
 from tagged_sentence import TaggedSentence
 
-dump_extractor = imp.load_source('dump_extractor', '../wikipedia dump connector/dump_extractor.py')
-
+try:
+    dump_extractor = imp.load_source('dump_extractor', '../wikipedia dump connector/dump_extractor.py')
+except:
+    pass
 
 class WikiPatternExtractor(object):
     def __init__(self, path='../ttl parser/mappingbased_objects_en_extracted.csv', \
@@ -82,7 +84,7 @@ class WikiPatternExtractor(object):
 
     def scrape_wikipedia_article(self, dbpedia_resource):
         """
-        Requests wikipedia resource per GET request - extracts text content
+        Request wikipedia resource per GET request - extract text content
         and returns text
         """
         # http://dbpedia.org/resource/Alain_Connes -> http://en.wikipedia.org/wiki/Alain_Connes
@@ -110,31 +112,10 @@ class WikiPatternExtractor(object):
         http://dbpedia.org/resource/Alain_Connes -> 'Alain Connes'
         """
         name = uri.split('/')[-1].replace('_', ' ')
-        return self.__cleanInput(name)
+        return name
 
     def wikipedia_uri(self, DBP_uri):
         return DBP_uri.replace("http://dbpedia.org/resource/", "/wiki/")
-
-    def __cleanInput(self, input):
-        """
-        Sanitize text - remove multiple new lines and spaces - get rid of non ascii chars
-        and citations - strip words from punctuation signs - returns sanitized string
-        """
-        input = re.sub('\n+', " ", input)
-        input = re.sub(' +', " ", input)
-
-        # get rid of non-ascii characters
-        input = re.sub(r'[^\x00-\x7f]', r'', input)
-
-        # get rid of citations
-        input = re.sub(r'\[\d+\]', r'', input)
-        cleanInput = []
-        input = input.split(' ')
-        for item in input:
-            # item = item.strip('?!;,')
-            if len(item) > 1 or (item.lower() == 'a' or item == 'I'):
-                cleanInput.append(item)
-        return ' '.join(cleanInput).encode('utf-8')  # ' '.join(cleanInput).lower().encode('utf-8')
 
     def splitkeepsep(self, s, sep):
         """ http://programmaticallyspeaking.com/split-on-separator-but-keep-the-separator-in-python.html """
@@ -153,21 +134,12 @@ class WikiPatternExtractor(object):
         html_text = '<p>' + html_text + '</p>'
         return html_text
 
-    def contains_any_reference(self, html, resources):
-        soup = bs(html, 'lxml')
-        return any(soup.find('a', {'href': resource}) for resource in resources)
-
     def filter_relevant_sentences(self, paragraphs, wikipedia_resources):
         """ Returns cleaned sentences which contain any of given Wikipedia resources """
-        # sentences = sent_tokenize(text)
-        sentences = self.html_sent_tokenize(paragraphs)
-        sentences = map(self.__cleanInput, sentences)
-        article_length = len(sentences)
-        for i in range(0, article_length):
-            sentences[i] = TaggedSentence(sentences[i], i, article_length)
-        relevant_sentences = filter(lambda sent: self.contains_any_reference(sent.as_string(), wikipedia_resources),
-                                    sentences)
-        # relevant_sentences = map(self.clean_tags, relevant_sentences)
+
+        sentences = []
+        sentences.extend([tagged_s for p in paragraphs for tagged_s in TaggedSentence.parse_html(p)])
+        relevant_sentences = filter(lambda sent: sent.contains_any(wikipedia_resources), sentences)
         return relevant_sentences
 
     def shorten_sentence(self, items):
@@ -196,14 +168,14 @@ class WikiPatternExtractor(object):
 
         for entity, values in self.dbpedia.iteritems():
             # fetch corresponding wiki article
-            html_text = self.get_wikipedia_article(entity)
-
+            html_tags = self.get_wikipedia_article(entity)
             # for each relationship filter sentences that contain
             # target resources of entity's relationship
             for rel, resources in values.iteritems():
                 wikipedia_target_resources = map(self.wikipedia_uri, resources)
                 # DBP_target_resources = map(self.normalize_DBP_uri, resources)
-                relevant_sentences = self.filter_relevant_sentences(html_text, wikipedia_target_resources)
+                relevant_sentences = self.filter_relevant_sentences(html_tags, wikipedia_target_resources)
+                print(relevant_sentences)
                 values[rel] = {'resources': wikipedia_target_resources,
                                'sentences': relevant_sentences,
                                'patterns': []}
@@ -212,12 +184,13 @@ class WikiPatternExtractor(object):
     #                               Statistics and Visualizations
     # ---------------------------------------------------------------------------------------------
 
-    def find_tokens_in_html(self, html, resource):
-        soup = bs(html, 'lxml')
-        reference = soup.find('a', {'href': resource})
-        reference = reference.get_text()
-        tokens = word_tokenize(reference)
-        return tokens
+    def find_tokens_in_sentence(self, sentence, resource):
+        links = sentence.links
+        for link in links:
+            if link.link == resource:
+                tokens = word_tokenize(link.text)
+                return tokens
+
 
     def print_patterns(self):
         """
@@ -247,20 +220,22 @@ class WikiPatternExtractor(object):
                 data = [[entity, rel_ontology, res, sent]
                         for res in target_resources
                         for sent in sentences
-                        if self.contains_any_reference(sent.as_string(), [res]) and res != entity]
+                        if sent.contains_any([res]) and res != entity]
+                print(data)
                 # remove needless sentence information based on relation facts
                 # data = map(self.shorten_sentence, data)
                 # POS tag sentences
                 for entry in data:
                     sentence = entry[3]
                     resource = entry[2]
-                    relative_position = sentence.calculate_relative_position()
-                    soup = bs(sentence.as_string(), 'lxml')
-                    nl_sentence = soup.get_text()
+                    print('sent ' + sentence.as_string())
+                    print('res ' + resource)
+                    nl_sentence = sentence.as_string()
+                    relative_position = sentence.relative_pos
                     entry.append(nl_sentence)
                     tokenized_sentences = map(word_tokenize, [nl_sentence])
                     pos_tagged_sentences = pos_tag_sents(tokenized_sentences).pop()
-                    object_tokens = self.find_tokens_in_html(sentence.as_string(), resource)
+                    object_tokens = self.find_tokens_in_sentence(sentence, resource)
                     patterns = pattern_extractor.extract_patterns(nl_sentence, object_tokens, relative_position)
                     values['patterns'].extend(patterns)
                     entry.extend(patterns)
@@ -353,7 +328,7 @@ class WikiPatternExtractor(object):
 
 
 def parse_input_parameters():
-    use_dump = True
+    use_dump = False
     randomize = False
     helped = False
 
