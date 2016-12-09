@@ -23,6 +23,7 @@ import pickle
 import itertools
 
 import pattern_extractor
+from pattern_extractor import Pattern
 
 wikipedia_connector = imp.load_source('wikipedia_connector', '../wikipedia connector/wikipedia_connector.py')
 from wikipedia_connector import WikipediaConnector
@@ -200,14 +201,14 @@ class WikiPatternExtractor(object):
         # print results
         # 0 -> entity  1 -> relationship 2 -> target resource 3 -> sentence
         for entry in results:
-            print(colored('[DBP Entitity] \t', 'red',
+            '''print(colored('[DBP Entitity] \t', 'red',
                           attrs={'concealed', 'bold'}) + colored(entry[0], 'white')).expandtabs(20)
             print(colored('[DBP Ontology] \t', 'red',
                           attrs={'concealed', 'bold'}) + colored(entry[1], 'white')).expandtabs(20)
             print(colored('[DBP Resource] \t', 'red',
                           attrs={'concealed', 'bold'}) + colored(self.wikipedia_connector.normalize_uri(entry[2]), 'white')).expandtabs(20)
             print(colored('[Wiki Occurence] \t',
-                          'red', attrs={'concealed', 'bold'}) + entry[6]).expandtabs(20)
+                          'red', attrs={'concealed', 'bold'}) + entry[6]).expandtabs(20)'''
 
             # print(entry[5])
             '''print(colored('[Pattern] \t',
@@ -293,7 +294,7 @@ def parse_input_parameters():
 
 if __name__ == '__main__':
     use_dump, randomize, perform_tests = parse_input_parameters()
-    wiki = WikiPatternExtractor(20, use_dump=use_dump, randomize=randomize, perform_tests=perform_tests)
+    wiki = WikiPatternExtractor(1000, use_dump=use_dump, randomize=randomize, perform_tests=perform_tests)
     # preprocess data
     wiki.discover_patterns()
     # print Part-of-speech tagged sentences

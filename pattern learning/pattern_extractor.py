@@ -117,8 +117,9 @@ def build_pattern(parse, graph, object_address, relative_position, depth, strong
     return pattern
 
 
-def extract_pattern(sentence, object_tokens, relative_position):
-    depth = 1
+def extract_pattern(sentence, object_tokens, relative_position, depth=2):
+    if len(sentence.strip(' ')) == 0:
+        return None
 
     object_tokens = filter(lambda x: x != ',', object_tokens)
     parser = StanfordDependencyParser(path_to_jar=path_to_jar, path_to_models_jar=path_to_models_jar)
@@ -151,8 +152,8 @@ def extract_pattern(sentence, object_tokens, relative_position):
 
 
 def test():
-    sentence = 'Allain Connes won. a very boring prize in 1987.'
-    object_tokens = ['prize']
+    sentence = 'He currently is professor at the Uppsala University.'
+    object_tokens = ['University']
     print(extract_pattern(sentence, object_tokens, 0.0))
 
 
