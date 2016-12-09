@@ -1,5 +1,6 @@
 from enum import Enum
 from ppretty import ppretty
+import copy
 
 
 class Direction(Enum):
@@ -25,6 +26,16 @@ class DependencyKey(object):
         else:
             assert False
 
+    @staticmethod
+    def partner_node(from_node, to_node, node_addr):
+        direction = DependencyKey.direction(from_node, to_node, node_addr)
+        if direction == Direction.outgoing or direction == Direction.loop:
+            return to_node
+        elif direction == Direction.incoming:
+            return from_node
+        else:
+            assert False
+
     def __hash__(self):
         return hash((self.meaning, self.direction))
 
@@ -36,15 +47,15 @@ class DependencyKey(object):
 
 
 class DependencyNode(object):
-    def __init__(self, tag, wordfrequnecies, dependencies=None):
+    def __init__(self, tag, word_frequnecies, dependencies=None):
         self.tag = tag
-        self.word_frequencies = wordfrequnecies
+        self.word_frequencies = word_frequnecies
         if dependencies is None:
             dependencies = {}
         self.dependencies = dependencies
 
     @classmethod
-    def from_word(cls, tag, word):
+    def from_word(cls, word, tag=None):
         return cls(tag, {word: 1})
 
     @staticmethod
@@ -86,12 +97,14 @@ class Pattern(object):
         nodes_string += ']'
         return position_string + ', ' + nodes_string'''
 
-    def add_node(self, key, value):
-        assert key not in self.nodes
-        self.nodes[key] = value
+    def add_word_to_node_or_create_node(self, node_addr, word):
+        if node_addr in self.nodes_keys():
+            self.nodes[node_addr].add_word(word)
+        else:
+            self.nodes[node_addr] = DependencyNode.from_word(word)
 
     def add_dependency_to_node(self, node_addr, key, value):
-        assert node_addr in self.nodes.keys()
+        assert node_addr in self.nodes_keys()
         dependencies = self.nodes[node_addr].dependencies
         if key not in dependencies.keys():
             dependencies[key] = value
@@ -100,7 +113,7 @@ class Pattern(object):
     @staticmethod
     def insert_nodes(root_node_addr, from_nodes, into_nodes):
         node = from_nodes[root_node_addr]
-        new_node = node
+        new_node = copy.deepcopy(node)
         new_node.dependencies = {}
         into_nodes.append(new_node)
         new_node_addr = len(into_nodes) - 1
@@ -130,10 +143,14 @@ class Pattern(object):
             future_node_addr = len(new_nodes)
             if dep2 not in node1.dependencies.keys():
                 Pattern.insert_nodes(node2.dependencies[dep2], nodes2, new_nodes)
-            new_nodes[new_node_addr].dependencies[dep2] = future_node_addr
+                new_nodes[new_node_addr].dependencies[dep2] = future_node_addr
 
     @staticmethod
-    def merge(pattern1, pattern2):
+    def merge(pattern1, pattern2, assert_valid=False):
+        if assert_valid:
+            pattern1.assert_is_tree()
+            pattern2.assert_is_tree()
+
         new_covered_sentences = pattern1.covered_sentences + pattern2.covered_sentences
         new_relative_position = (
                                     pattern1.covered_sentences * pattern1.relative_position + pattern2.covered_sentences * pattern2.relative_position) / new_covered_sentences
@@ -142,9 +159,70 @@ class Pattern(object):
         Pattern.merge_nodes(pattern1.root, pattern2.root, pattern1.nodes, pattern2.nodes, new_nodes)
         new_pattern = Pattern(new_relative_position, 0, new_nodes, new_covered_sentences)
 
-        print '---------- Pattern Merge ----------'
+        '''print '---------- Pattern Merge ----------'
         print pattern1
         print pattern2
-        print new_pattern
+        print new_pattern'''
+        if assert_valid:
+            # pattern1 and pattern2 still have to be valid (protect against side effects)
+            pattern1.assert_is_tree()
+            pattern2.assert_is_tree()
+            new_pattern.assert_is_tree()
 
         return new_pattern
+
+    def nodes_keys(self):
+        if type(self.nodes) is dict:
+            return self.nodes.keys()
+        elif type(self.nodes) is list:
+            return range(len(self.nodes))
+        else:
+            assert False
+
+    def assert_is_tree(self):
+        visited, queue = set(), [self.root]
+        while queue:  # BFS
+            node_addr = queue.pop(0)
+            assert node_addr not in visited  # forbid loops
+            visited.add(node_addr)
+            adjacent_addresses = self.nodes[node_addr].dependencies.values()
+            assert len(adjacent_addresses) == len(set(adjacent_addresses))  # forbid double edges
+            queue.extend(adjacent_addresses)
+
+        assert visited == set(
+            self.nodes_keys())  # forbid unconnected nodes or dependencies that don't face from the root
+
+    def total_words_under_node(self, node_addr):
+        node = self.nodes[node_addr]
+        total_words = sum(node.word_frequencies.values())
+        for partner in node.dependencies.values():
+            total_words += self.total_words_under_node(partner)
+        return total_words
+
+    @staticmethod
+    def _match_patterns_unidirectional_from_nodes(pattern1, node1_addr, pattern2, node2_addr, weighting=None):
+        '''
+        Calculate how much of pattern2 is inside pattern1.
+        :return:    between 0.0 and 1.0
+        '''
+        match_score = 0
+        if weighting is None:
+            weighting = 1 / float(pattern1.total_words_under_node(node1_addr))
+        node1, node2 = pattern1.nodes[node1_addr], pattern2.nodes[node2_addr]
+        for dep2 in node2.dependencies.keys():
+            if dep2 in node1.dependencies.keys():
+                child1_addr, child2_addr = node1.dependencies[dep2], node2.dependencies[dep2]
+                child1, child2 = pattern1.nodes[child1_addr], pattern2.nodes[child2_addr]
+                if any(word in child1.word_frequencies.keys() for word in child2.word_frequencies.keys()):
+                    match_score += sum(child1.word_frequencies.values()) * weighting
+                    match_score += Pattern._match_patterns_unidirectional_from_nodes(pattern1, child1_addr,
+                                                                                     pattern2, child2_addr, weighting)
+        return match_score
+
+    @staticmethod
+    def match_patterns_bidirectional(pattern1, pattern2):
+        '''
+        :return:    between 0.0 and 1.0
+        '''
+        return Pattern._match_patterns_unidirectional_from_nodes(pattern1, pattern1.root, pattern2, pattern2.root) \
+               * Pattern._match_patterns_unidirectional_from_nodes(pattern2, pattern2.root, pattern1, pattern1.root)
