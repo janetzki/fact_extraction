@@ -4,7 +4,6 @@
 # -------------------------------------------------------------------------------------------------
 #                               Imports
 # -------------------------------------------------------------------------------------------------
-
 from __future__ import division
 from termcolor import colored
 from bs4 import BeautifulSoup as bs
@@ -15,16 +14,21 @@ from copy import deepcopy
 from ascii_graph import Pyasciigraph
 import re
 import sys
-import requests
 import csv
-import itertools
-from timeit import default_timer as timer
 from random import randint
 import imp
+from tqdm import tqdm
+import pickle
+import itertools
 
 import pattern_extractor
-from pattern_extractor import Pattern
+from pattern_extractor import Pattern, extract_pattern
+
+wikipedia_connector = imp.load_source('wikipedia_connector', '../wikipedia connector/wikipedia_connector.py')
+from wikipedia_connector import WikipediaConnector
+wikipedia_connector = imp.load_source('tagged_sentence', '../wikipedia connector/tagged_sentence.py')
 from tagged_sentence import TaggedSentence
+
 
 try:
     dump_extractor = imp.load_source('dump_extractor', '../wikipedia dump connector/dump_extractor.py')
@@ -32,16 +36,19 @@ except:
     pass
 
 class WikiPatternExtractor(object):
-    def __init__(self, path='../ttl parser/mappingbased_objects_en_extracted.csv', \
-                 relationships=[], limit=500, use_dump=False, randomize=False):
-        self.path = path
+    def __init__(self, limit, resources_path='../ttl parser/mappingbased_objects_en_extracted.csv',
+                 relationships=[], use_dump=False, randomize=False, perform_tests=False,
+                 write_path='../data/patterns.pkl'):
+        self.resources_path = resources_path
         self.use_dump = use_dump
         self.relationships = ['http://dbpedia.org/ontology/' + r for r in relationships if r]
         self.limit = limit
         self.dbpedia = {}
-        self.relationship_patterns = {}
-        self.elapsed_time = 0  # for performance monitoring
+        self.relation_patterns = {}
         self.randomize = randomize
+        self.perform_tests = perform_tests
+        self.write_path = write_path
+        self.wikipedia_connector = WikipediaConnector(self.use_dump)
 
     # -------------------------------------------------------------------------------------------------
     #                               Data Preprocessing
@@ -61,7 +68,7 @@ class WikiPatternExtractor(object):
                         }
         """
         entities = dict()
-        with open(self.path, 'r') as f:
+        with open(self.resources_path, 'r') as f:
             wikireader = csv.reader(f, delimiter=' ', quotechar='"')
 
             if self.randomize:
@@ -73,7 +80,7 @@ class WikiPatternExtractor(object):
 
             max_results = self.limit
             for row in wikireader:
-                if max_results is 0:
+                if max_results == 0:
                     break
                 subject, relation, value = row[0], row[1], row[2]
                 # maintain a dict for each entity with given relations as key
@@ -81,58 +88,6 @@ class WikiPatternExtractor(object):
                 entities.setdefault(subject, {}).setdefault(relation, []).append(value)
                 max_results -= 1
         return entities
-
-    def scrape_wikipedia_article(self, dbpedia_resource):
-        """
-        Request wikipedia resource per GET request - extract text content
-        and returns text
-        """
-        # http://dbpedia.org/resource/Alain_Connes -> http://en.wikipedia.org/wiki/Alain_Connes
-        wiki_url = dbpedia_resource.replace("dbpedia.org/resource", "en.wikipedia.org/wiki")
-
-        response = requests.get(wiki_url)
-        article = response.content.decode('utf-8')
-        return article
-
-    def get_wikipedia_article(self, dbpedia_resource):
-        start = timer()
-        if self.use_dump:
-            resource = self.normalize_uri(dbpedia_resource)
-            article = dump_extractor.get_wikipedia_html_from_dump(resource)
-        else:
-            article = self.scrape_wikipedia_article(dbpedia_resource)
-        end = timer()
-        self.elapsed_time += end - start
-        soup = bs(article, 'lxml')
-        text = soup.find_all('p')
-        return text
-
-    def normalize_uri(self, uri):
-        """
-        http://dbpedia.org/resource/Alain_Connes -> 'Alain Connes'
-        """
-        name = uri.split('/')[-1].replace('_', ' ')
-        return name
-
-    def wikipedia_uri(self, DBP_uri):
-        return DBP_uri.replace("http://dbpedia.org/resource/", "/wiki/")
-
-    def splitkeepsep(self, s, sep):
-        """ http://programmaticallyspeaking.com/split-on-separator-but-keep-the-separator-in-python.html """
-        return reduce(lambda acc, elem: acc[:-1] + [acc[-1] + elem] if elem == sep else acc + [elem],
-                      re.split("(%s)" % re.escape(sep), s), [])
-
-    def html_sent_tokenize(self, paragraphs):
-        # TODO: improve so that valid html comes out
-        sentences = []
-        for p in paragraphs:
-            sentences.extend(self.splitkeepsep(p.prettify(), '.'))
-        return sentences
-
-    def clean_tags(self, html_text):
-        # html_text = re.sub(r'<[^a].*?>', '', html_text) # Intention: Only keep <a></a> Tags. Problem: Deletes </a> tags.
-        html_text = '<p>' + html_text + '</p>'
-        return html_text
 
     def filter_relevant_sentences(self, paragraphs, wikipedia_resources):
         """ Returns cleaned sentences which contain any of given Wikipedia resources """
@@ -166,19 +121,19 @@ class WikiPatternExtractor(object):
         # parse dbpedia information
         self.dbpedia = self.parse_DBpedia_data()
 
-        for entity, values in self.dbpedia.iteritems():
+        print('Sentence Extraction...')
+        for entity, values in tqdm(self.dbpedia.iteritems(), total=len(self.dbpedia)):
             # fetch corresponding wiki article
-            html_tags = self.get_wikipedia_article(entity)
+
+            html_tags = self.wikipedia_connector.get_wikipedia_article(entity)
             # for each relationship filter sentences that contain
             # target resources of entity's relationship
             for rel, resources in values.iteritems():
-                wikipedia_target_resources = map(self.wikipedia_uri, resources)
+                wikipedia_target_resources = map(self.wikipedia_connector.wikipedia_uri, resources)
                 # DBP_target_resources = map(self.normalize_DBP_uri, resources)
                 relevant_sentences = self.filter_relevant_sentences(html_tags, wikipedia_target_resources)
-                print(relevant_sentences)
                 values[rel] = {'resources': wikipedia_target_resources,
-                               'sentences': relevant_sentences,
-                               'patterns': []}
+                               'sentences': relevant_sentences}
 
     # ---------------------------------------------------------------------------------------------
     #                               Statistics and Visualizations
@@ -190,7 +145,6 @@ class WikiPatternExtractor(object):
             if link.link == resource:
                 tokens = word_tokenize(link.text)
                 return tokens
-
 
     def print_patterns(self):
         """
@@ -211,17 +165,19 @@ class WikiPatternExtractor(object):
         results = []
         # corpus = deepcopy(self.dbpedia)
 
-        for entity, relations in self.dbpedia.iteritems():
+        print('Pattern extraction...')
+        for entity, relations in tqdm(self.dbpedia.iteritems(), total=len(self.dbpedia)):
             for rel_ontology, values in relations.iteritems():
                 target_resources = values['resources']
                 sentences = values['sentences']
-                entity = self.normalize_uri(entity)
+                entity = self.wikipedia_connector.normalize_uri(entity)
                 rel_ontology = rel_ontology.split('/')[-1]
                 data = [[entity, rel_ontology, res, sent]
                         for res in target_resources
                         for sent in sentences
                         if sent.contains_any([res]) and res != entity]
                 print(data)
+
                 # remove needless sentence information based on relation facts
                 # data = map(self.shorten_sentence, data)
                 # POS tag sentences
@@ -236,9 +192,10 @@ class WikiPatternExtractor(object):
                     tokenized_sentences = map(word_tokenize, [nl_sentence])
                     pos_tagged_sentences = pos_tag_sents(tokenized_sentences).pop()
                     object_tokens = self.find_tokens_in_sentence(sentence, resource)
-                    patterns = pattern_extractor.extract_patterns(nl_sentence, object_tokens, relative_position)
-                    values['patterns'].extend(patterns)
-                    entry.extend(patterns)
+                    patterns = extract_pattern(nl_sentence, object_tokens, relative_position)
+                    if pattern is not None:
+                        values['pattern'] = pattern
+                        entry.append(pattern)
 
                     # color sentence parts according to POS tag
                     colored_sentence = [colored(word, color_mapping.setdefault(pos, 'white'))
@@ -248,6 +205,7 @@ class WikiPatternExtractor(object):
                     entry.append(colored_sentence)
 
                 results.extend(data)
+        print
 
         # drop duplicates
         results.sort()
@@ -261,11 +219,11 @@ class WikiPatternExtractor(object):
             print(colored('[DBP Ontology] \t', 'red',
                           attrs={'concealed', 'bold'}) + colored(entry[1], 'white')).expandtabs(20)
             print(colored('[DBP Resource] \t', 'red',
-                          attrs={'concealed', 'bold'}) + colored(self.normalize_uri(entry[2]), 'white')).expandtabs(20)
+                          attrs={'concealed', 'bold'}) + colored(self.wikipedia_connector.normalize_uri(entry[2]), 'white')).expandtabs(20)
             print(colored('[Wiki Occurence] \t',
-                          'red', attrs={'concealed', 'bold'}) + entry[7]).expandtabs(20)
+                          'red', attrs={'concealed', 'bold'}) + entry[6]).expandtabs(20)
 
-            #print(entry[5])
+            # print(entry[5])
             '''print(colored('[Pattern] \t',
                           'red', attrs={'concealed', 'bold'}) + colored(entry[5], 'white')).expandtabs(20)
             print(colored('[Pattern] \t',
@@ -309,27 +267,28 @@ class WikiPatternExtractor(object):
         for line in graph.graph('occured facts in percentage', data):
             print(line)
 
-    def get_elapsed_time(self):
-        return self.elapsed_time
-
     def merge_patterns(self):
-        pattern_per_relation = dict()
-        for entity, relations in self.dbpedia.iteritems():
+        print('Pattern merging...')
+        for entity, relations in tqdm(self.dbpedia.iteritems(), total=len(self.dbpedia)):
             for rel, values in relations.iteritems():
-                patterns = values['patterns']
-                if len(patterns) == 0:
+                if 'pattern' not in values.keys():
                     continue
-                pattern = patterns[0]  # just consider first pattern for now
-                if rel in pattern_per_relation.keys():
-                    pattern_per_relation[rel] = Pattern.merge(pattern_per_relation[rel], pattern)
+                pattern = values['pattern']
+                if rel in self.relation_patterns.keys():
+                    self.relation_patterns[rel] = Pattern.merge(self.relation_patterns[rel], pattern,
+                                                                self.perform_tests)
                 else:
-                    pattern_per_relation[rel] = pattern
-        # print pattern_per_relation
+                    self.relation_patterns[rel] = pattern
+        print
+
+    def save_patterns(self):
+        with open(self.write_path, 'wb') as fout:
+            output = (self.dbpedia.keys(), self.relation_patterns)
+            pickle.dump(output, fout, pickle.HIGHEST_PROTOCOL)
 
 
 def parse_input_parameters():
-    use_dump = False
-    randomize = False
+    use_dump, randomize, perform_tests = False, False, True
     helped = False
 
     for arg in sys.argv[1:]:
@@ -337,20 +296,24 @@ def parse_input_parameters():
             use_dump = True
         elif arg == '--rand':
             randomize = True
+        elif arg == '--test':
+            perform_tests = True
         elif not helped:
-            print 'Usage: python wiki_pattern.py [--dump] [--rand]'
+            print 'Usage: python wiki_pattern.py [--dump] [--rand] [--test]'
             helped = True
 
-    return use_dump, randomize
+    return use_dump, randomize, perform_tests
 
 
 if __name__ == '__main__':
-    use_dump, randomize = parse_input_parameters()
-    wiki = WikiPatternExtractor(limit=30, use_dump=use_dump, randomize=randomize)
+    use_dump, randomize, perform_tests = parse_input_parameters()
+    wiki = WikiPatternExtractor(50, use_dump=use_dump, randomize=randomize, perform_tests=perform_tests)
     # preprocess data
     wiki.discover_patterns()
     # print Part-of-speech tagged sentences
     wiki.print_patterns()
     # calculate occured facts coverage
     wiki.calculate_text_coverage()
+
     wiki.merge_patterns()
+    wiki.save_patterns()

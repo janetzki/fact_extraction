@@ -13,7 +13,7 @@ maxLines = 0  # 0 means parse all lines
 
 
 def main(argv):
-    relationships= ['almaMater', 'knownFor', 'occupation', 'award']
+    relationships = ['almaMater', 'knownFor', 'occupation', 'award']
     print(filterTTL(relationships, pathObjects, savePathObjects))
 
 
