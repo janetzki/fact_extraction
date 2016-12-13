@@ -1,11 +1,12 @@
 import imp
+import os
 from nltk.parse.stanford import StanfordDependencyParser
 
-pattern = imp.load_source('pattern', '../pattern learning/pattern.py')
+pattern = imp.load_source('pattern', '../pattern_learning/pattern.py')
 from pattern import Pattern, DependencyKey
 
-path_to_jar = '..\stanford-corenlp-full-2016-10-31\stanford-corenlp-3.7.0.jar'
-path_to_models_jar = '..\stanford-corenlp-full-2016-10-31\stanford-corenlp-3.7.0-models.jar'
+path_to_jar = os.path.join('..', 'stanford-corenlp-full-2016-10-31', 'stanford-corenlp-3.7.0.jar')
+path_to_models_jar = os.path.join('..', 'stanford-corenlp-full-2016-10-31', 'stanford-corenlp-3.7.0-models.jar')
 
 
 def find_main_address(parse, search_term_tokens):
@@ -33,6 +34,7 @@ def find_main_address(parse, search_term_tokens):
             max_dependencies = -1
             max_address = None
 
+    return None
     print "Error: Search term not found"
     print parse
     print search_term_tokens
@@ -117,7 +119,7 @@ def build_pattern(parse, graph, object_address, relative_position, depth, strong
     return pattern
 
 
-def extract_pattern(sentence, object_tokens, relative_position, depth=2):
+def extract_pattern(sentence, object_tokens, relative_position, depth=1):
     if len(sentence.strip(' ')) == 0:
         return None
 
