@@ -85,7 +85,7 @@ class WikiPatternExtractor(object):
 
     def filter_relevant_sentences(self, tagged_sentences, wikipedia_resources):
         """ Returns sentences which contain any of given Wikipedia resources """
-        return filter(lambda sent: sent.contains_any(wikipedia_resources), tagged_sentences)
+        return filter(lambda sent: sent.contains_any_link(wikipedia_resources), tagged_sentences)
 
     def discover_patterns(self, relationships=[]):
         """
@@ -103,14 +103,12 @@ class WikiPatternExtractor(object):
 
         print('Sentence Extraction...')
         for entity, values in tqdm(self.dbpedia.iteritems(), total=len(self.dbpedia)):
-            # fetch corresponding wiki article
-            html_text = self.wikipedia_connector.get_wikipedia_article(entity)
+            tagged_sentences = self.wikipedia_connector.get_parsed_wikipedia_article(entity)
 
             # for each relationship filter sentences that contain
             # target resources of entity's relationship
             for rel, resources in values.iteritems():
                 wikipedia_target_resources = map(self.wikipedia_connector.wikipedia_uri, resources)
-                tagged_sentences = self.wikipedia_connector.make_to_tagged_sentences(html_text)
                 relevant_sentences = self.filter_relevant_sentences(tagged_sentences, wikipedia_target_resources)
                 values[rel] = {'resources': wikipedia_target_resources,
                                'sentences': relevant_sentences,
@@ -150,7 +148,7 @@ class WikiPatternExtractor(object):
                 data = [{'entity': entity, 'relation': rel_ontology, 'resource': res, 'sentence': sent}
                         for res in target_resources
                         for sent in sentences
-                        if sent.contains_any([res]) and res != entity]
+                        if sent.contains_any_link([res]) and res != entity]
 
                 # remove needless sentence information based on relation facts
                 # data = map(self.shorten_sentence, data)
@@ -164,8 +162,8 @@ class WikiPatternExtractor(object):
                     tokenized_sentences = map(word_tokenize, [nl_sentence])
                     pos_tagged_sentences = pos_tag_sents(tokenized_sentences).pop()
 
-                    object_tokens = self.wikipedia_connector.find_tokens_in_sentence(sentence, resource)
-                    pattern = pattern_extractor.extract_pattern(nl_sentence, object_tokens, relative_position)
+                    object_addresses = sentence.addresses_of_link(resource)
+                    pattern = pattern_extractor.extract_pattern(nl_sentence, object_addresses, relative_position)
                     if pattern is not None:
                         values['patterns'].append(pattern)
                         entry['pattern'] = pattern
@@ -252,7 +250,7 @@ class WikiPatternExtractor(object):
 
 
 def parse_input_parameters():
-    use_dump, randomize, perform_tests = True, False, True
+    use_dump, randomize, perform_tests, limit = False, False, True, 30
     helped = False
 
     for arg in sys.argv[1:]:
@@ -263,15 +261,15 @@ def parse_input_parameters():
         elif arg == '--test':
             perform_tests = True
         elif not helped:
-            print 'Usage: python wiki_pattern.py [--dump] [--rand] [--test]'
+            print('Usage: python wiki_pattern.py [--dump] [--rand] [--test]')
             helped = True
 
-    return use_dump, randomize, perform_tests
+    return use_dump, randomize, perform_tests, limit
 
 
 if __name__ == '__main__':
-    use_dump, randomize, perform_tests = parse_input_parameters()
-    wiki = WikiPatternExtractor(3, use_dump=use_dump, randomize=randomize, perform_tests=perform_tests)
+    use_dump, randomize, perform_tests, limit = parse_input_parameters()
+    wiki = WikiPatternExtractor(limit, use_dump=use_dump, randomize=randomize, perform_tests=perform_tests)
 
     # preprocess data
     wiki.discover_patterns()

@@ -61,23 +61,22 @@ class FactExtractor(object):
                 matching_relations.append((relation, match_score))
         return matching_relations
 
-    def discover_facts_in_sentences(self, sentences):
+    def extract_facts_from_sentences(self, sentences):
         facts = []
         for sent in tqdm(sentences, total=len(sentences)):
-            relative_position = sent.calculate_relative_position()
-            soup = bs(sent.as_string(), 'lxml')
-            nl_sentence = soup.get_text()
-            object_tokens_of_references = self.wikipedia_connector.find_tokens_of_references_in_html(sent.as_string())
-            for object_resource, object_tokens in object_tokens_of_references:
-                pattern = pattern_extractor.extract_pattern(nl_sentence, object_tokens, relative_position)
+            relative_position = sent.relative_pos
+            nl_sentence = sent.as_string()
+            object_addresses_of_links = sent.addresses_of_links()
+            for object_link, object_addresses in object_addresses_of_links.iteritems():
+                pattern = pattern_extractor.extract_pattern(nl_sentence, object_addresses, relative_position)
                 if pattern is None:
                     continue
                 matching_relations = self.match_pattern_against_relation_patterns(pattern)
-                new_facts = [(rel, object_resource, score, nl_sentence) for (rel, score) in matching_relations]
+                new_facts = [(rel, object_link, score, nl_sentence) for (rel, score) in matching_relations]
                 facts.extend(new_facts)
                 for fact in new_facts:
-                    print
-                    print fact
+                    print('')
+                    print(fact)
         return facts
 
     def extract_facts(self):
@@ -85,12 +84,9 @@ class FactExtractor(object):
         print('Fact extraction...')
         for resource in self.discovery_resources:
             print('--- ' + resource + ' ----')
-            html_text = self.wikipedia_connector.get_wikipedia_article(resource)
-            sentences = self.wikipedia_connector.html_sent_tokenize(html_text)
-            tagged_sentences = self.wikipedia_connector.make_to_tagged_sentences(sentences)
-            referenced_sentences = filter(
-                lambda sent: self.wikipedia_connector.contains_any_reference(sent.as_string()), tagged_sentences)
-            new_facts = self.discover_facts_in_sentences(referenced_sentences)
+            tagged_sentences = self.wikipedia_connector.get_parsed_wikipedia_article(resource)
+            referenced_sentences = filter(lambda sent: sent.contains_any_link(), tagged_sentences)
+            new_facts = self.extract_facts_from_sentences(referenced_sentences)
             new_facts = [(resource, rel, obj, score, nl_sentence) for (rel, obj, score, nl_sentence) in new_facts]
             facts.extend(new_facts)
 
@@ -101,7 +97,7 @@ class FactExtractor(object):
 
 
 def parse_input_parameters():
-    use_dump, randomize = False, False
+    use_dump, randomize, limit = False, False, 3
     helped = False
 
     for arg in sys.argv[1:]:
@@ -113,10 +109,10 @@ def parse_input_parameters():
             print 'Usage: python fact_extractor.py [--dump] [--rand]'
             helped = True
 
-    return use_dump, randomize
+    return use_dump, randomize, limit
 
 
 if __name__ == '__main__':
-    use_dump, randomize = parse_input_parameters()
-    fact_extractor = FactExtractor(1, use_dump=use_dump, randomize=randomize)
+    use_dump, randomize, limit = parse_input_parameters()
+    fact_extractor = FactExtractor(limit, use_dump=use_dump, randomize=randomize)
     fact_extractor.extract_facts()

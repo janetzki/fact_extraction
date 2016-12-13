@@ -21,7 +21,7 @@ class WikipediaConnector(object):
         else:
             self.redirector = False
 
-    def get_wikipedia_article(self, dbpedia_resource):
+    def _get_wikipedia_article(self, dbpedia_resource):
         start = timer()
         if self.use_dump:
             resource = self.normalize_uri(dbpedia_resource)
@@ -51,36 +51,10 @@ class WikipediaConnector(object):
         http://dbpedia.org/resource/Alain_Connes -> 'Alain Connes'
         """
         name = uri.split('/')[-1].replace('_', ' ')
-        return self.__cleanInput(name)
+        return TaggedSentence.clean_input(name)
 
     def wikipedia_uri(self, DBP_uri):
         return DBP_uri.replace("http://dbpedia.org/resource/", "/wiki/")
-
-    def __cleanInput(self, input):
-        """
-        Sanitize text - remove multiple new lines and spaces - get rid of non ascii chars
-        and citations - strip words from punctuation signs - returns sanitized string
-        """
-        input = re.sub(r'\n+', " ", input)
-        input = re.sub(r' +', " ", input)
-        input = input.replace("\'", "")
-
-        # substitute redirects
-        if self.redirector:
-            input = self.redirector.substitute_all(input)
-
-        # get rid of non-ascii characters
-        input = re.sub(r'[^\x00-\x7f]', r'', input)
-
-        # get rid of citations
-        input = re.sub(r'\[\d+\]', r'', input)
-        cleanInput = []
-        input = input.split(' ')
-        for item in input:
-            # item = item.strip('?!;,')
-            if len(item) > 1 or (item.lower() == 'a' or item == 'I'):
-                cleanInput.append(item)
-        return ' '.join(cleanInput).encode('utf-8')
 
     def splitkeepsep(self, s, sep):
         """ http://programmaticallyspeaking.com/split-on-separator-but-keep-the-separator-in-python.html """
@@ -111,13 +85,9 @@ class WikipediaConnector(object):
                 tokens = word_tokenize(link.text)
                 return tokens
 
-    def find_tokens_of_references_in_html(self, html):
-        soup = bs(html, 'lxml')
-        references = soup.findAll('a')
-        references = map(lambda ref: (ref['href'], ref.get_text()), references)
-        references = map(lambda (href, text): (href, word_tokenize(text)), references)
-        assert len(references) > 0
-        return references
-
-    def make_to_tagged_sentences(self, html):
+    def _make_to_tagged_sentences(self, html):
         return [tagged_s for paragraph in html for tagged_s in TaggedSentence.parse_html(paragraph)]
+
+    def get_parsed_wikipedia_article(self, dbpedia_resource):
+        html = self._get_wikipedia_article(dbpedia_resource)
+        return self._make_to_tagged_sentences(html)

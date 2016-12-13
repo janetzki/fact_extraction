@@ -9,36 +9,22 @@ path_to_jar = os.path.join('..', 'stanford-corenlp-full-2016-10-31', 'stanford-c
 path_to_models_jar = os.path.join('..', 'stanford-corenlp-full-2016-10-31', 'stanford-corenlp-3.7.0-models.jar')
 
 
-def find_main_address(parse, search_term_tokens):
+def find_main_address(parse, object_token_addresses):
     """ assume that node with more outgoing dependencies is closer too root and return its address """
-    contiguous_words = 0
     max_dependencies = -1
-    max_address = 0
+    max_address = None
 
-    if len(search_term_tokens) == 0:
+    if len(object_token_addresses) == 0:
         return None
 
-    for node in parse.nodes.iteritems():
-        dict = node[1]
-        word = dict['word']
-        if word == search_term_tokens[contiguous_words]:
-            contiguous_words += 1
-            dependencies = len(dict['deps'])
-            if dependencies > max_dependencies:
-                max_dependencies = dependencies
-                max_address = dict['address']
-            if contiguous_words == len(search_term_tokens):
-                return max_address
-        else:
-            contiguous_words = 0
-            max_dependencies = -1
-            max_address = None
+    for address in object_token_addresses:
+        node = parse.nodes[address]
+        dependencies = len(node['deps'])
+        if dependencies > max_dependencies:
+            max_dependencies = dependencies
+            max_address = node['address']
 
-    print "Error: Search term not found"
-    print parse
-    print search_term_tokens
-    return None
-    assert False
+    return max_address
 
 
 def build_graph(parse):
@@ -118,11 +104,12 @@ def build_pattern(parse, graph, object_address, relative_position, depth, strong
     return pattern
 
 
-def extract_pattern(sentence, object_tokens, relative_position, depth=1):
+def extract_pattern(sentence, object_token_addresses, relative_position, depth=1):
     if len(sentence.strip(' ')) == 0:
         return None
+    object_token_addresses = map(lambda addr: addr + 1,
+                                 object_token_addresses)  # because TOP token will be inserted at 0
 
-    object_tokens = filter(lambda x: x != ',', object_tokens)
     parser = StanfordDependencyParser(path_to_jar=path_to_jar, path_to_models_jar=path_to_models_jar)
     result = parser.raw_parse(sentence)
     parse = result.next()
@@ -132,7 +119,7 @@ def extract_pattern(sentence, object_tokens, relative_position, depth=1):
     #    print triple
     # [parse.tree().pretty_print() for parse in parser.raw_parse(sentence)]
 
-    object_address = find_main_address(parse, object_tokens)
+    object_address = find_main_address(parse, object_token_addresses)
     if object_address is None:
         return None
     graph = build_graph(parse)

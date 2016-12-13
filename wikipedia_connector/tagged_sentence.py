@@ -16,7 +16,7 @@ class TaggedSentence(object):
     def __init__(self, sentence, relative_position):
         self.sentence = []
 
-        for word in self._yield_words(self.__cleanInput(sentence)):
+        for word in self._yield_words(TaggedSentence.clean_input(sentence)):
             if word.strip(',').startswith('#') and word.strip(',').endswith('#'):
                 link, text = word.split('#')[1], word.split('#')[2]
                 self.sentence.append(TaggedToken(text, target_url=link))
@@ -37,7 +37,7 @@ class TaggedSentence(object):
         return self.sentence
 
     def _yield_words(self, sentence):
-        # yield seperate word orfull meta tagged links
+        # yield seperate word or full meta tagged links
         link_component = None
         for word in sentence.split(' '):
             if word.strip(',').startswith('#') and not word.strip(',').endswith('#'):
@@ -67,7 +67,13 @@ class TaggedSentence(object):
     def relative_pos(self):
         return self.relative_position
 
-    def contains_any(self, resources):
+    def contains_any_link(self, resources=None):
+        if resources is None:
+            if len(self.links) > 0:
+                return True
+            else:
+                return False
+
         resources = map(lambda s: s.replace("/wiki/", ''), resources)
         contained_links = map(lambda token: token.link.replace('/wiki/', ''), self.links)
         for res in resources:
@@ -75,7 +81,8 @@ class TaggedSentence(object):
                 return True
         return False
 
-    def __cleanInput(self, input):
+    @staticmethod
+    def clean_input(input):
         """
         Sanitize text - remove multiple new lines and spaces - get rid of non ascii chars
         and citations - strip words from punctuation signs - returns sanitized string
@@ -112,6 +119,27 @@ class TaggedSentence(object):
         sentences = sent_tokenize(text)
         count = sentences.__len__()
         return [TaggedSentence(sent, i / count) for i, sent in enumerate(sentences)]
+
+    def contained_links(self):
+        links = set()
+        for token in self.tokens:
+            if token.is_link():
+                links.add(token.link)
+        return links
+
+    def addresses_of_links(self):
+        links = self.contained_links()
+        addresses_of_links = {link: [] for link in links}
+        for i in range(len(self.sentence)):
+            token = self.sentence[i]
+            if token.link in links:
+                addresses_of_links[token.link].append(i)
+        return addresses_of_links
+
+    def addresses_of_link(self, link):
+        addresses_of_all_contained_links = self.addresses_of_links()
+        assert link in addresses_of_all_contained_links
+        return addresses_of_all_contained_links[link]
 
 
 class TaggedToken(object):
