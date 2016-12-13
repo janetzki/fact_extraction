@@ -8,3 +8,8 @@ data/enwiki-latest-pages-articles.xml
 
 # compiled files
 *.pyc
+
+# rendered patterns
+
+*.svg
+**/visualizations/
