@@ -5,6 +5,7 @@ import imp
 from tqdm import tqdm
 from bs4 import BeautifulSoup as bs
 from random import randint
+from ConfigParser import SafeConfigParser
 
 pattern_extractor = imp.load_source('pattern_extractor', '../pattern_learning/pattern_extractor.py')
 wikipedia_connector = imp.load_source('wikipedia_connector', '../wikipedia_connector/wikipedia_connector.py')
@@ -96,23 +97,16 @@ class FactExtractor(object):
             print fact
 
 
-def parse_input_parameters():
-    use_dump, randomize, limit = False, False, 3
-    helped = False
-
-    for arg in sys.argv[1:]:
-        if arg == '--dump':
-            use_dump = True
-        elif arg == '--rand':
-            randomize = True
-        elif not helped:
-            print 'Usage: python fact_extractor.py [--dump] [--rand]'
-            helped = True
-
+def get_input_parameters_from_file(path):
+    config = SafeConfigParser()
+    config.read(path)
+    use_dump = config.getboolean('general', 'use_dump')
+    randomize = config.getboolean('fact_extractor', 'randomize')
+    limit = config.getint('fact_extractor', 'limit')
     return use_dump, randomize, limit
 
 
 if __name__ == '__main__':
-    use_dump, randomize, limit = parse_input_parameters()
+    use_dump, randomize, limit = get_input_parameters_from_file('../config.ini')
     fact_extractor = FactExtractor(limit, use_dump=use_dump, randomize=randomize)
     fact_extractor.extract_facts()

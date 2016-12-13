@@ -27,6 +27,7 @@ from pattern_extractor import Pattern
 
 wikipedia_connector = imp.load_source('wikipedia_connector', '../wikipedia_connector/wikipedia_connector.py')
 from wikipedia_connector import WikipediaConnector
+from ConfigParser import SafeConfigParser
 
 
 class WikiPatternExtractor(object):
@@ -249,26 +250,18 @@ class WikiPatternExtractor(object):
             pickle.dump(output, fout, pickle.HIGHEST_PROTOCOL)
 
 
-def parse_input_parameters():
-    use_dump, randomize, perform_tests, limit = False, False, True, 200
-    helped = False
-
-    for arg in sys.argv[1:]:
-        if arg == '--dump':
-            use_dump = True
-        elif arg == '--rand':
-            randomize = True
-        elif arg == '--test':
-            perform_tests = True
-        elif not helped:
-            print('Usage: python wiki_pattern.py [--dump] [--rand] [--test]')
-            helped = True
-
+def get_input_parameters_from_file(path):
+    config = SafeConfigParser()
+    config.read(path)
+    use_dump = config.getboolean('general', 'use_dump')
+    randomize = config.getboolean('wiki_pattern', 'randomize')
+    perform_tests = config.getboolean('wiki_pattern', 'randomize')
+    limit = config.getint('wiki_pattern', 'limit')
     return use_dump, randomize, perform_tests, limit
 
 
 if __name__ == '__main__':
-    use_dump, randomize, perform_tests, limit = parse_input_parameters()
+    use_dump, randomize, perform_tests, limit = get_input_parameters_from_file('../config.ini')
     wiki = WikiPatternExtractor(limit, use_dump=use_dump, randomize=randomize, perform_tests=perform_tests)
 
     # preprocess data

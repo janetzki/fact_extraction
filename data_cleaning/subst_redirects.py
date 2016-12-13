@@ -27,6 +27,7 @@ class Substitutor:
         self.redirects_path = redirects_path
         self.redirects = {}
 
+        print('Reading redirects file...')
         with open(redirects_path, 'r') as file:
             next(file)
 
@@ -34,6 +35,7 @@ class Substitutor:
             for name, resource in tqdm(reader, total=7340000):
                 if name:
                     self.redirects[name] = resource
+        print('')
 
     def substitute(self, resource, false_if_none=False):
         if resource in self.redirects:
