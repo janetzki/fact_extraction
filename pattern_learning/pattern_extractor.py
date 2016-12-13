@@ -1,11 +1,11 @@
 import imp
 from nltk.parse.stanford import StanfordDependencyParser
 
-pattern = imp.load_source('pattern', '../pattern learning/pattern.py')
-from pattern import Pattern, DependencyKey
+from pattern import Pattern, DependencyNode, DependencyKey
+import os
 
-path_to_jar = '..\stanford-corenlp-full-2016-10-31\stanford-corenlp-3.7.0.jar'
-path_to_models_jar = '..\stanford-corenlp-full-2016-10-31\stanford-corenlp-3.7.0-models.jar'
+path_to_jar = os.path.join('..', 'stanford-corenlp-full-2016-10-31', 'stanford-corenlp-3.7.0.jar')
+path_to_models_jar = os.path.join('..', 'stanford-corenlp-full-2016-10-31', 'stanford-corenlp-3.7.0-models.jar')
 
 
 def find_main_address(parse, search_term_tokens):
