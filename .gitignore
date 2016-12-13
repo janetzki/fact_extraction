@@ -4,6 +4,9 @@ data/enwiki-latest-pages-articles.xml
 data/enwiki-latest-pages-articles-redirected.xml
 data/redirects_en.txt
 
+#config file
+config.ini
+
 # IDE files
 .idea/
 
@@ -11,6 +14,5 @@ data/redirects_en.txt
 *.pyc
 
 # rendered patterns
-
 *.svg
 **/visualizations/
