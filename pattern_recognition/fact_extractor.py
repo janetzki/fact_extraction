@@ -6,15 +6,15 @@ from tqdm import tqdm
 from bs4 import BeautifulSoup as bs
 from random import randint
 
-pattern_extractor = imp.load_source('pattern_extractor', '../pattern learning/pattern_extractor.py')
-wikipedia_connector = imp.load_source('wikipedia_connector', '../wikipedia connector/wikipedia_connector.py')
+pattern_extractor = imp.load_source('pattern_extractor', '../pattern_learning/pattern_extractor.py')
+wikipedia_connector = imp.load_source('wikipedia_connector', '../wikipedia_connector/wikipedia_connector.py')
 from pattern_extractor import Pattern
 from wikipedia_connector import WikipediaConnector
 
 
 class FactExtractor(object):
     def __init__(self, limit, use_dump=False, randomize=False, match_threshold=0.05, load_path='../data/patterns.pkl',
-                 resources_path='../ttl parser/mappingbased_objects_en_extracted.csv'):
+                 resources_path='../data/mappingbased_objects_en_filtered.csv'):
         self.limit = limit
         self.use_dump = use_dump
         self.randomize = randomize
@@ -37,7 +37,7 @@ class FactExtractor(object):
         with open(self.resources_path, 'r') as f:
             wikireader = csv.reader(f, delimiter=' ', quotechar='"')
 
-            if self.randomize:
+            if True:  # self.randomize:
                 random_offset = randint(0, 10000)
                 for row in wikireader:
                     random_offset -= 1
@@ -101,7 +101,7 @@ class FactExtractor(object):
 
 
 def parse_input_parameters():
-    use_dump, randomize = False, True
+    use_dump, randomize = False, False
     helped = False
 
     for arg in sys.argv[1:]:
@@ -118,5 +118,5 @@ def parse_input_parameters():
 
 if __name__ == '__main__':
     use_dump, randomize = parse_input_parameters()
-    fact_extractor = FactExtractor(5, use_dump=use_dump, randomize=randomize)
+    fact_extractor = FactExtractor(1, use_dump=use_dump, randomize=randomize)
     fact_extractor.extract_facts()

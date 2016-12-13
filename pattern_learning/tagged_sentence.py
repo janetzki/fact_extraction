@@ -7,8 +7,10 @@ from nltk.tokenize import sent_tokenize, word_tokenize
 import re
 
 import sys
+
 reload(sys)
 sys.setdefaultencoding('utf-8')
+
 
 class TaggedSentence(object):
     def __init__(self, sentence, relative_position):
@@ -22,7 +24,7 @@ class TaggedSentence(object):
             self.sentence.append(TaggedToken(word))
 
         # self.sentence = sentence  # provisional - TODO: replace with token and tag list
-        self.relative_position = relative_position   # zero based counting
+        self.relative_position = relative_position  # zero based counting
 
     def __str__(self):
         sent = ''
@@ -109,7 +111,7 @@ class TaggedSentence(object):
         # split sentences
         sentences = sent_tokenize(text)
         count = sentences.__len__()
-        return [TaggedSentence(sent, i/count) for i, sent in enumerate(sentences)]
+        return [TaggedSentence(sent, i / count) for i, sent in enumerate(sentences)]
 
 
 class TaggedToken(object):

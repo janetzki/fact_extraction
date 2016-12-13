@@ -5,8 +5,8 @@ from timeit import default_timer as timer
 from bs4 import BeautifulSoup as bs
 from nltk.tokenize import sent_tokenize, word_tokenize
 
-dump_extractor = imp.load_source('dump_extractor', '../wikipedia connector/dump connector/dump_extractor.py')
-redirector = imp.load_source('subst_redirects', '../data cleaning/subst_redirects.py')
+dump_extractor = imp.load_source('dump_extractor', '../wikipedia_connector/dump_connector/dump_extractor.py')
+redirector = imp.load_source('subst_redirects', '../data_cleaning/subst_redirects.py')
 
 
 class WikipediaConnector(object):
@@ -90,28 +90,10 @@ class WikipediaConnector(object):
         length = len(soup.get_text())
         return 0 < length < 200
 
-    def html_sent_tokenize(self, paragraphs):
-        # TODO: improve so that valid html comes out, issue #18
-        sentences = []
-        for p in paragraphs:
-            sentences.extend(self.splitkeepsep(p.prettify(), '.'))
-        sentences = map(self.__cleanInput, sentences)
-        sentences = filter(WikipediaConnector.has_appropriate_text_length, sentences)
-        return sentences
-
     def clean_tags(self, html_text):
         # html_text = re.sub(r'<[^a].*?>', '', html_text) # Intention: Only keep <a></a> Tags. Problem: Deletes </a> tags.
         html_text = '<p>' + html_text + '</p>'
         return html_text
-
-    def contains_any_reference(self, html, resources=None):
-        soup = bs(html, 'lxml')
-        if resources is None:
-            return soup.find('a')
-        else:
-            return any(soup.find('a', {'href': resource}) for resource in resources)
-
-
 
     def find_tokens_in_html(self, html, resource):
         soup = bs(html, 'lxml')

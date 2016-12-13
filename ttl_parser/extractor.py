@@ -4,11 +4,11 @@ from collections import namedtuple
 from itertools import takewhile
 import os
 
-currentPath = os.path.dirname(os.path.abspath(__file__)) + '\\'
-pathObjects = currentPath + 'mappingbased_objects_en.ttl'
-pathLiterals = currentPath + 'mappingbased_literals_en.ttl'
-savePathObjects = currentPath + 'mappingbased_objects_en_extracted.csv'
-savePathLiterals = currentPath + 'mappingbased_literals_en_extracted.csv'
+mainPath = os.path.dirname(os.path.abspath(__file__)) + '/../data/'
+pathObjects = mainPath + 'mappingbased_objects_en.ttl'
+pathLiterals = mainPath + 'mappingbased_literals_en.ttl'
+savePathObjects = mainPath + 'mappingbased_objects_en_filtered.csv'
+savePathLiterals = mainPath + 'mappingbased_literals_en_filtered.csv'
 maxLines = 0  # 0 means parse all lines
 
 
