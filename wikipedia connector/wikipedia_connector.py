@@ -6,9 +6,7 @@ from bs4 import BeautifulSoup as bs
 from nltk.tokenize import sent_tokenize, word_tokenize
 
 dump_extractor = imp.load_source('dump_extractor', '../wikipedia connector/dump connector/dump_extractor.py')
-tagged_sentence = imp.load_source('tagged_sentence', '../wikipedia connector/tagged_sentence.py')
 redirector = imp.load_source('subst_redirects', '../data cleaning/subst_redirects.py')
-from tagged_sentence import TaggedSentence
 
 
 class WikipediaConnector(object):
@@ -113,17 +111,20 @@ class WikipediaConnector(object):
         else:
             return any(soup.find('a', {'href': resource}) for resource in resources)
 
-    def make_to_tagged_sentences(self, sentences):
-        article_length = len(sentences)
-        for i in range(0, article_length):
-            sentences[i] = TaggedSentence(sentences[i], i, article_length)
-        return sentences
+
 
     def find_tokens_in_html(self, html, resource):
         soup = bs(html, 'lxml')
         reference = soup.find('a', {'href': resource})
         reference_text = reference.get_text()
         return word_tokenize(reference_text)
+
+    def find_tokens_in_sentence(self, sentence, resource):
+        links = sentence.links
+        for link in links:
+            if link.link == resource:
+                tokens = word_tokenize(link.text)
+                return tokens
 
     def find_tokens_of_references_in_html(self, html):
         soup = bs(html, 'lxml')

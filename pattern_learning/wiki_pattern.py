@@ -21,20 +21,18 @@ import imp
 from tqdm import tqdm
 import pickle
 import itertools
+from tagged_sentence import TaggedSentence
 
 import pattern_extractor
 from pattern_extractor import Pattern
 
-<<<<<<< HEAD:pattern learning/wiki_pattern.py
 wikipedia_connector = imp.load_source('wikipedia_connector', '../wikipedia connector/wikipedia_connector.py')
 from wikipedia_connector import WikipediaConnector
 
-=======
 try:
     dump_extractor = imp.load_source('dump_extractor', '../wikipedia dump connector/dump_extractor.py')
 except:
     pass
->>>>>>> 0ceee71d7a32c0bedbca843d42705ed51fd5a980:pattern_learning/wiki_pattern.py
 
 class WikiPatternExtractor(object):
     def __init__(self, limit, resources_path='../ttl parser/mappingbased_objects_en_extracted.csv',
@@ -90,73 +88,12 @@ class WikiPatternExtractor(object):
                 max_results -= 1
         return entities
 
-<<<<<<< HEAD:pattern learning/wiki_pattern.py
-    def filter_relevant_sentences(self, tagged_sentences, wikipedia_resources):
-        """ Returns cleaned sentences which contain any of given Wikipedia resources """
-        # sentences = sent_tokenize(text)
-        relevant_sentences = filter(lambda sent: self.wikipedia_connector.contains_any_reference(sent.as_string(), wikipedia_resources),
-                                    tagged_sentences)
-        # relevant_sentences = map(self.clean_tags, relevant_sentences)
-=======
-    def scrape_wikipedia_article(self, dbpedia_resource):
-        """
-        Request wikipedia resource per GET request - extract text content
-        and returns text
-        """
-        # http://dbpedia.org/resource/Alain_Connes -> http://en.wikipedia.org/wiki/Alain_Connes
-        wiki_url = dbpedia_resource.replace("dbpedia.org/resource", "en.wikipedia.org/wiki")
-
-        response = requests.get(wiki_url)
-        article = response.content.decode('utf-8')
-        return article
-
-    def get_wikipedia_article(self, dbpedia_resource):
-        start = timer()
-        if self.use_dump:
-            resource = self.normalize_uri(dbpedia_resource)
-            article = dump_extractor.get_wikipedia_html_from_dump(resource)
-        else:
-            article = self.scrape_wikipedia_article(dbpedia_resource)
-        end = timer()
-        self.elapsed_time += end - start
-        soup = bs(article, 'lxml')
-        text = soup.find_all('p')
-        return text
-
-    def normalize_uri(self, uri):
-        """
-        http://dbpedia.org/resource/Alain_Connes -> 'Alain Connes'
-        """
-        name = uri.split('/')[-1].replace('_', ' ')
-        return name
-
-    def wikipedia_uri(self, DBP_uri):
-        return DBP_uri.replace("http://dbpedia.org/resource/", "/wiki/")
-
-    def splitkeepsep(self, s, sep):
-        """ http://programmaticallyspeaking.com/split-on-separator-but-keep-the-separator-in-python.html """
-        return reduce(lambda acc, elem: acc[:-1] + [acc[-1] + elem] if elem == sep else acc + [elem],
-                      re.split("(%s)" % re.escape(sep), s), [])
-
-    def html_sent_tokenize(self, paragraphs):
-        # TODO: improve so that valid html comes out
-        sentences = []
-        for p in paragraphs:
-            sentences.extend(self.splitkeepsep(p.prettify(), '.'))
-        return sentences
-
-    def clean_tags(self, html_text):
-        # html_text = re.sub(r'<[^a].*?>', '', html_text) # Intention: Only keep <a></a> Tags. Problem: Deletes </a> tags.
-        html_text = '<p>' + html_text + '</p>'
-        return html_text
-
     def filter_relevant_sentences(self, paragraphs, wikipedia_resources):
         """ Returns cleaned sentences which contain any of given Wikipedia resources """
 
         sentences = []
         sentences.extend([tagged_s for p in paragraphs for tagged_s in TaggedSentence.parse_html(p)])
         relevant_sentences = filter(lambda sent: sent.contains_any(wikipedia_resources), sentences)
->>>>>>> 0ceee71d7a32c0bedbca843d42705ed51fd5a980:pattern_learning/wiki_pattern.py
         return relevant_sentences
 
     def shorten_sentence(self, items):
@@ -186,44 +123,22 @@ class WikiPatternExtractor(object):
         print('Sentence Extraction...')
         for entity, values in tqdm(self.dbpedia.iteritems(), total=len(self.dbpedia)):
             # fetch corresponding wiki article
-<<<<<<< HEAD:pattern learning/wiki_pattern.py
             html_text = self.wikipedia_connector.get_wikipedia_article(entity)
 
-=======
-            html_tags = self.get_wikipedia_article(entity)
->>>>>>> 0ceee71d7a32c0bedbca843d42705ed51fd5a980:pattern_learning/wiki_pattern.py
             # for each relationship filter sentences that contain
             # target resources of entity's relationship
             for rel, resources in values.iteritems():
                 wikipedia_target_resources = map(self.wikipedia_connector.wikipedia_uri, resources)
                 # DBP_target_resources = map(self.normalize_DBP_uri, resources)
-<<<<<<< HEAD:pattern learning/wiki_pattern.py
-                sentences = self.wikipedia_connector.html_sent_tokenize(html_text)
-                tagged_sentences = self.wikipedia_connector.make_to_tagged_sentences(sentences)
-                relevant_sentences = self.filter_relevant_sentences(tagged_sentences, wikipedia_target_resources)
-=======
-                relevant_sentences = self.filter_relevant_sentences(html_tags, wikipedia_target_resources)
-                print(relevant_sentences)
->>>>>>> 0ceee71d7a32c0bedbca843d42705ed51fd5a980:pattern_learning/wiki_pattern.py
+
+                relevant_sentences = self.filter_relevant_sentences(html_text, wikipedia_target_resources)
                 values[rel] = {'resources': wikipedia_target_resources,
                                'sentences': relevant_sentences}
-        print
 
     # ---------------------------------------------------------------------------------------------
     #                               Statistics and Visualizations
     # ---------------------------------------------------------------------------------------------
 
-<<<<<<< HEAD:pattern learning/wiki_pattern.py
-=======
-    def find_tokens_in_sentence(self, sentence, resource):
-        links = sentence.links
-        for link in links:
-            if link.link == resource:
-                tokens = word_tokenize(link.text)
-                return tokens
-
-
->>>>>>> 0ceee71d7a32c0bedbca843d42705ed51fd5a980:pattern_learning/wiki_pattern.py
     def print_patterns(self):
         """
         Prints each occurence of a given DBpedia fact with their corresponding and matched sentence.
@@ -253,12 +168,7 @@ class WikiPatternExtractor(object):
                 data = [[entity, rel_ontology, res, sent]
                         for res in target_resources
                         for sent in sentences
-<<<<<<< HEAD:pattern learning/wiki_pattern.py
-                        if self.wikipedia_connector.contains_any_reference(sent.as_string(), [res]) and res != entity]
-=======
                         if sent.contains_any([res]) and res != entity]
-                print(data)
->>>>>>> 0ceee71d7a32c0bedbca843d42705ed51fd5a980:pattern_learning/wiki_pattern.py
                 # remove needless sentence information based on relation facts
                 # data = map(self.shorten_sentence, data)
                 # POS tag sentences
@@ -272,18 +182,11 @@ class WikiPatternExtractor(object):
                     entry.append(nl_sentence)
                     tokenized_sentences = map(word_tokenize, [nl_sentence])
                     pos_tagged_sentences = pos_tag_sents(tokenized_sentences).pop()
-<<<<<<< HEAD:pattern learning/wiki_pattern.py
-                    object_tokens = self.wikipedia_connector.find_tokens_in_html(sentence.as_string(), resource)
-                    pattern = pattern_extractor.extract_pattern(nl_sentence, object_tokens, relative_position)
-                    if pattern is not None:
-                        values['pattern'] = pattern
-                        entry.append(pattern)
-=======
-                    object_tokens = self.find_tokens_in_sentence(sentence, resource)
-                    patterns = pattern_extractor.extract_patterns(nl_sentence, object_tokens, relative_position)
+
+                    object_tokens = self.wikipedia_connector.find_tokens_in_sentence(sentence, resource)
+                    patterns = pattern_extractor.extract_pattern(nl_sentence, object_tokens, relative_position)
                     values['patterns'].extend(patterns)
                     entry.extend(patterns)
->>>>>>> 0ceee71d7a32c0bedbca843d42705ed51fd5a980:pattern_learning/wiki_pattern.py
 
                     # color sentence parts according to POS tag
                     colored_sentence = [colored(word, color_mapping.setdefault(pos, 'white'))
@@ -293,7 +196,6 @@ class WikiPatternExtractor(object):
                     entry.append(colored_sentence)
 
                 results.extend(data)
-        print
 
         # drop duplicates
         results.sort()
@@ -376,12 +278,7 @@ class WikiPatternExtractor(object):
 
 
 def parse_input_parameters():
-<<<<<<< HEAD:pattern learning/wiki_pattern.py
     use_dump, randomize, perform_tests = False, False, True
-=======
-    use_dump = False
-    randomize = False
->>>>>>> 0ceee71d7a32c0bedbca843d42705ed51fd5a980:pattern_learning/wiki_pattern.py
     helped = False
 
     for arg in sys.argv[1:]:
@@ -400,7 +297,7 @@ def parse_input_parameters():
 
 if __name__ == '__main__':
     use_dump, randomize, perform_tests = parse_input_parameters()
-    wiki = WikiPatternExtractor(1000, use_dump=use_dump, randomize=randomize, perform_tests=perform_tests)
+    wiki = WikiPatternExtractor(300, use_dump=use_dump, randomize=randomize, perform_tests=perform_tests)
     # preprocess data
     wiki.discover_patterns()
     # print Part-of-speech tagged sentences
