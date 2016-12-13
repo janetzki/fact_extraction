@@ -250,7 +250,7 @@ class WikiPatternExtractor(object):
 
 
 def parse_input_parameters():
-    use_dump, randomize, perform_tests, limit = False, False, True, 30
+    use_dump, randomize, perform_tests, limit = False, False, True, 200
     helped = False
 
     for arg in sys.argv[1:]:

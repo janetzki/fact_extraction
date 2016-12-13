@@ -1,23 +1,23 @@
-from pattern import Pattern
+from pattern import Pattern, Direction
 from graphviz import Digraph
 import pickle
 import argparse
 import textwrap
 
-def add_node(graph, identifier, data, title):
+def add_node(graph, identifier, data, color="black", shape="ellipse"):
     reverse_counter = dict()
     for k, v in data.iteritems():
         reverse_counter.setdefault(v, []).append(k)
     text = build_displayed_string_from_counter(reverse_counter)
-    graph.node(str(identifier), text)
+    graph.node(str(identifier), text, color=color, shape=shape)
     return graph
 
 def add_edge(graph, first_node, second_node, direction, label=""):
-    assert direction in [1, 2]
+    assert direction in [Direction.incoming, Direction.outgoing]
     first, second = str(first_node), str(second_node)
-    if direction == 1:
+    if direction == Direction.outgoing:
         dot.edge(first, second, label=label)
-    else:
+    elif direction == Direction.incoming:
         dot.edge(second, first, label=label)
     return graph
 
@@ -50,12 +50,12 @@ if __name__ == '__main__':
 
         # print root node
         root = pattern.get_node_by_id(pattern.root)
-        add_node(dot, pattern.root, root.word_frequencies, 'object')
+        add_node(dot, pattern.root, root.word_frequencies, color="red", shape="doublecircle")
         # print all remaining nodes
         for id, node in enumerate(pattern.nodes):
             if id == pattern.root:
                 continue #  already rendered
-            add_node(dot, id, node.word_frequencies, node.tag)
+            add_node(dot, id, node.word_frequencies)
 
         # add edges
         for id, node in enumerate(pattern.nodes):
