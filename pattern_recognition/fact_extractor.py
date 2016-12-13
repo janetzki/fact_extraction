@@ -38,7 +38,7 @@ class FactExtractor(object):
             wikireader = csv.reader(f, delimiter=' ', quotechar='"')
 
             if True:  # self.randomize:
-                random_offset = 1000  # randint(0, 10000)
+                random_offset = randint(0, 10000)
                 for row in wikireader:
                     random_offset -= 1
                     if random_offset == 0:

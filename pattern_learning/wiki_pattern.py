@@ -84,6 +84,58 @@ class WikiPatternExtractor(object):
                 max_results -= 1
         return entities
 
+    def scrape_wikipedia_article(self, dbpedia_resource):
+        """
+        Request wikipedia resource per GET request - extract text content
+        and returns text
+        """
+        # http://dbpedia.org/resource/Alain_Connes -> http://en.wikipedia.org/wiki/Alain_Connes
+        wiki_url = dbpedia_resource.replace("dbpedia.org/resource", "en.wikipedia.org/wiki")
+
+        response = requests.get(wiki_url)
+        article = response.content.decode('utf-8')
+        return article
+
+    def get_wikipedia_article(self, dbpedia_resource):
+        start = timer()
+        if self.use_dump:
+            resource = self.normalize_uri(dbpedia_resource)
+            article = dump_extractor.get_wikipedia_html_from_dump(resource)
+        else:
+            article = self.scrape_wikipedia_article(dbpedia_resource)
+        end = timer()
+        self.elapsed_time += end - start
+        soup = bs(article, 'lxml')
+        text = soup.find_all('p')
+        return text
+
+    def normalize_uri(self, uri):
+        """
+        http://dbpedia.org/resource/Alain_Connes -> 'Alain Connes'
+        """
+        name = uri.split('/')[-1].replace('_', ' ')
+        return name
+
+    def wikipedia_uri(self, DBP_uri):
+        return DBP_uri.replace("http://dbpedia.org/resource/", "/wiki/")
+
+    def splitkeepsep(self, s, sep):
+        """ http://programmaticallyspeaking.com/split-on-separator-but-keep-the-separator-in-python.html """
+        return reduce(lambda acc, elem: acc[:-1] + [acc[-1] + elem] if elem == sep else acc + [elem],
+                      re.split("(%s)" % re.escape(sep), s), [])
+
+    def html_sent_tokenize(self, paragraphs):
+        # TODO: improve so that valid html comes out
+        sentences = []
+        for p in paragraphs:
+            sentences.extend(self.splitkeepsep(p.prettify(), '.'))
+        return sentences
+
+    def clean_tags(self, html_text):
+        # html_text = re.sub(r'<[^a].*?>', '', html_text) # Intention: Only keep <a></a> Tags. Problem: Deletes </a> tags.
+        html_text = '<p>' + html_text + '</p>'
+        return html_text
+
     def filter_relevant_sentences(self, paragraphs, wikipedia_resources):
         """ Returns cleaned sentences which contain any of given Wikipedia resources """
         sentences = []
@@ -118,7 +170,7 @@ class WikiPatternExtractor(object):
                 values[rel] = {'resources': wikipedia_target_resources,
                                'sentences': relevant_sentences,
                                'patterns': []}
-        print
+        print('')
 
     # ---------------------------------------------------------------------------------------------
     #                               Statistics and Visualizations
@@ -161,6 +213,7 @@ class WikiPatternExtractor(object):
                         for res in target_resources
                         for sent in sentences
                         if sent.contains_any([res]) and res != entity]
+
                 # remove needless sentence information based on relation facts
                 # data = map(self.shorten_sentence, data)
                 # POS tag sentences
@@ -283,7 +336,7 @@ def parse_input_parameters():
 
 if __name__ == '__main__':
     use_dump, randomize, perform_tests = parse_input_parameters()
-    wiki = WikiPatternExtractor(50, use_dump=use_dump, randomize=randomize, perform_tests=perform_tests)
+    wiki = WikiPatternExtractor(10, use_dump=use_dump, randomize=randomize, perform_tests=perform_tests)
     # preprocess data
     wiki.discover_patterns()
     # print Part-of-speech tagged sentences

@@ -47,9 +47,9 @@ class DependencyKey(object):
 
 
 class DependencyNode(object):
-    def __init__(self, tag, word_frequnecies, dependencies=None):
+    def __init__(self, tag, word_frequencies, dependencies=None):
         self.tag = tag
-        self.word_frequencies = word_frequnecies
+        self.word_frequencies = word_frequencies
         if dependencies is None:
             dependencies = {}
         self.dependencies = dependencies
@@ -109,6 +109,12 @@ class Pattern(object):
         if key not in dependencies.keys():
             dependencies[key] = value
         return dependencies[key]
+
+    def get_node_by_id(self, id):
+        assert id >= 0
+        assert id < len(self.nodes)
+        return self.nodes[id]
+
 
     @staticmethod
     def insert_nodes(root_node_addr, from_nodes, into_nodes):
