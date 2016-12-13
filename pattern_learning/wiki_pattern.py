@@ -21,19 +21,12 @@ import imp
 from tqdm import tqdm
 import pickle
 import itertools
-from tagged_sentence import TaggedSentence
 
 import pattern_extractor
 from pattern_extractor import Pattern
-from tagged_sentence import TaggedSentence
 
 wikipedia_connector = imp.load_source('wikipedia_connector', '../wikipedia_connector/wikipedia_connector.py')
 from wikipedia_connector import WikipediaConnector
-
-try:
-    dump_extractor = imp.load_source('dump_extractor', '../wikipedia dump connector/dump_extractor.py')
-except:
-    pass
 
 
 class WikiPatternExtractor(object):
@@ -90,12 +83,9 @@ class WikiPatternExtractor(object):
                 max_results -= 1
         return entities
 
-    def filter_relevant_sentences(self, paragraphs, wikipedia_resources):
-        """ Returns cleaned sentences which contain any of given Wikipedia resources """
-        sentences = []
-        sentences.extend([tagged_s for p in paragraphs for tagged_s in TaggedSentence.parse_html(p)])
-        relevant_sentences = filter(lambda sent: sent.contains_any(wikipedia_resources), sentences)
-        return relevant_sentences
+    def filter_relevant_sentences(self, tagged_sentences, wikipedia_resources):
+        """ Returns sentences which contain any of given Wikipedia resources """
+        return filter(lambda sent: sent.contains_any(wikipedia_resources), tagged_sentences)
 
     def discover_patterns(self, relationships=[]):
         """
@@ -120,12 +110,11 @@ class WikiPatternExtractor(object):
             # target resources of entity's relationship
             for rel, resources in values.iteritems():
                 wikipedia_target_resources = map(self.wikipedia_connector.wikipedia_uri, resources)
-                # DBP_target_resources = map(self.normalize_DBP_uri, resources)
-                relevant_sentences = self.filter_relevant_sentences(html_text, wikipedia_target_resources)
+                tagged_sentences = self.wikipedia_connector.make_to_tagged_sentences(html_text)
+                relevant_sentences = self.filter_relevant_sentences(tagged_sentences, wikipedia_target_resources)
                 values[rel] = {'resources': wikipedia_target_resources,
                                'sentences': relevant_sentences,
                                'patterns': []}
-
 
     # ---------------------------------------------------------------------------------------------
     #                               Statistics and Visualizations
@@ -176,10 +165,10 @@ class WikiPatternExtractor(object):
                     pos_tagged_sentences = pos_tag_sents(tokenized_sentences).pop()
 
                     object_tokens = self.wikipedia_connector.find_tokens_in_sentence(sentence, resource)
-                    patterns = pattern_extractor.extract_pattern(nl_sentence, object_tokens, relative_position)
-                    if pattern:
-                        values['patterns'].extend(patterns)
-                        entry.extend(patterns)
+                    pattern = pattern_extractor.extract_pattern(nl_sentence, object_tokens, relative_position)
+                    if pattern is not None:
+                        values['patterns'].append(pattern)
+                        entry['pattern'] = pattern
 
                     # color sentence parts according to POS tag
                     colored_sentence = [colored(word, color_mapping.setdefault(pos, 'white'))
@@ -263,8 +252,7 @@ class WikiPatternExtractor(object):
 
 
 def parse_input_parameters():
-    use_dump, randomize, perform_tests = False, False, True
-
+    use_dump, randomize, perform_tests = True, False, True
     helped = False
 
     for arg in sys.argv[1:]:
@@ -283,7 +271,7 @@ def parse_input_parameters():
 
 if __name__ == '__main__':
     use_dump, randomize, perform_tests = parse_input_parameters()
-    wiki = WikiPatternExtractor(300, use_dump=use_dump, randomize=randomize, perform_tests=perform_tests)
+    wiki = WikiPatternExtractor(3, use_dump=use_dump, randomize=randomize, perform_tests=perform_tests)
 
     # preprocess data
     wiki.discover_patterns()

@@ -7,6 +7,9 @@ from nltk.tokenize import sent_tokenize, word_tokenize
 
 dump_extractor = imp.load_source('dump_extractor', '../wikipedia_connector/dump_connector/dump_extractor.py')
 redirector = imp.load_source('subst_redirects', '../data_cleaning/subst_redirects.py')
+tagged_sentence = imp.load_source('tagged_sentence', '../wikipedia_connector/tagged_sentence.py')
+
+from tagged_sentence import TaggedSentence
 
 
 class WikipediaConnector(object):
@@ -77,7 +80,7 @@ class WikipediaConnector(object):
             # item = item.strip('?!;,')
             if len(item) > 1 or (item.lower() == 'a' or item == 'I'):
                 cleanInput.append(item)
-        return ' '.join(cleanInput).encode('utf-8')  # ' '.join(cleanInput).lower().encode('utf-8')
+        return ' '.join(cleanInput).encode('utf-8')
 
     def splitkeepsep(self, s, sep):
         """ http://programmaticallyspeaking.com/split-on-separator-but-keep-the-separator-in-python.html """
@@ -115,3 +118,6 @@ class WikipediaConnector(object):
         references = map(lambda (href, text): (href, word_tokenize(text)), references)
         assert len(references) > 0
         return references
+
+    def make_to_tagged_sentences(self, html):
+        return [tagged_s for paragraph in html for tagged_s in TaggedSentence.parse_html(paragraph)]
