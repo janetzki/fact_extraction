@@ -244,10 +244,18 @@ class WikiPatternExtractor(object):
                         self.relation_patterns[rel] = pattern
         print('')
 
+    def clean_patterns(self):
+        print('Pattern cleaning...')
+        for pattern in tqdm(self.relation_patterns.values(), total=len(self.relation_patterns)):
+            pattern.clean()
+        print('')
+
     def save_patterns(self):
+        print('Pattern saving...')
         with open(self.write_path, 'wb') as fout:
             output = self.dbpedia.keys(), self.relation_patterns
             pickle.dump(output, fout, pickle.HIGHEST_PROTOCOL)
+        print('')
 
 
 def get_input_parameters_from_file(path):
@@ -269,6 +277,7 @@ if __name__ == '__main__':
     # print Part-of-speech tagged sentences
     wiki.print_patterns()
     wiki.merge_patterns()
+    wiki.clean_patterns()
     wiki.save_patterns()
 
     # calculate occured facts coverage

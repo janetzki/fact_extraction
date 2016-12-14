@@ -112,9 +112,7 @@ class Pattern(object):
 
     def get_node_by_id(self, id):
         assert id >= 0
-        assert id < len(self.nodes)
         return self.nodes[id]
-
 
     @staticmethod
     def insert_nodes(root_node_addr, from_nodes, into_nodes):
@@ -204,6 +202,11 @@ class Pattern(object):
         for partner in node.dependencies.values():
             total_words += self.total_words_under_node(partner)
         return total_words
+
+    def clean(self, node_addr=None):
+        if node_addr is None:
+            node_addr = self.root
+        least_threshold = 3
 
     @staticmethod
     def _match_patterns_unidirectional_from_nodes(pattern1, node1_addr, pattern2, node2_addr, weighting=None):
