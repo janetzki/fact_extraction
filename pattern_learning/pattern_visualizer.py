@@ -54,13 +54,13 @@ if __name__ == '__main__':
         root = pattern.get_node_by_id(pattern.root)
         add_node(dot, pattern.root, root.word_frequencies, color="red", shape="doublecircle")
         # print all remaining nodes
-        for id, node in enumerate(pattern.nodes):
+        for id, node in pattern.nodes.iteritems():
             if id == pattern.root:
                 continue  # already rendered
             add_node(dot, id, node.word_frequencies)
 
         # add edges
-        for id, node in enumerate(pattern.nodes):
+        for id, node in pattern.nodes.iteritems():
             if not node.dependencies:
                 continue
             first_node = id
