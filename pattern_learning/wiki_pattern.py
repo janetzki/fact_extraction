@@ -102,7 +102,7 @@ class WikiPatternExtractor(object):
         # parse dbpedia information
         self.dbpedia = self.parse_DBpedia_data()
 
-        print('Sentence Extraction...')
+        print('\n\nSentence extraction...')
         for entity, values in tqdm(self.dbpedia.iteritems(), total=len(self.dbpedia)):
             tagged_sentences = self.wikipedia_connector.get_parsed_wikipedia_article(entity)
 
@@ -139,7 +139,7 @@ class WikiPatternExtractor(object):
         results = []
         # corpus = deepcopy(self.dbpedia)
 
-        print('Pattern extraction...')
+        print('\n\nPattern extraction...')
         for entity, relations in tqdm(self.dbpedia.iteritems(), total=len(self.dbpedia)):
             for rel_ontology, values in relations.iteritems():
                 target_resources = values['resources']
@@ -182,8 +182,6 @@ class WikiPatternExtractor(object):
         results.sort()
         results = list(x for x, _ in itertools.groupby(results))
 
-        # print results
-        # 0 -> entity  1 -> relationship 2 -> target resource 3 -> sentence
         for entry in results:
             print(colored('[DBP Entitity] \t', 'red',
                           attrs={'concealed', 'bold'}) + colored(entry['entity'], 'white')).expandtabs(20)
@@ -233,8 +231,8 @@ class WikiPatternExtractor(object):
             print(line)
 
     def merge_patterns(self):
-        print('Pattern merging...')
-        for entity, relations in tqdm(self.dbpedia.iteritems(), total=len(self.dbpedia)):
+        print('\n\nPattern merging...')
+        for entity, relations in tqdm(self.dbpedia.iteritems()):
             for rel, values in relations.iteritems():
                 for pattern in values['patterns']:
                     if rel in self.relation_patterns:
@@ -242,20 +240,18 @@ class WikiPatternExtractor(object):
                                                                     self.perform_tests)
                     else:
                         self.relation_patterns[rel] = pattern
-        print('')
 
     def clean_patterns(self):
-        print('Pattern cleaning...')
-        for pattern in tqdm(self.relation_patterns.values(), total=len(self.relation_patterns)):
-            pattern.clean()
-        print('')
+        print('\n\nPattern cleaning...')
+        for relation, pattern in tqdm(self.relation_patterns.iteritems()):
+            self.relation_patterns[relation] = Pattern.clean_pattern(pattern)
+        self.relation_patterns = dict(filter(lambda (rel, pat): pat is not None, self.relation_patterns.iteritems()))
 
     def save_patterns(self):
-        print('Pattern saving...')
+        print('\n\nPattern saving...')
         with open(self.write_path, 'wb') as fout:
             output = self.dbpedia.keys(), self.relation_patterns
             pickle.dump(output, fout, pickle.HIGHEST_PROTOCOL)
-        print('')
 
 
 def get_input_parameters_from_file(path):

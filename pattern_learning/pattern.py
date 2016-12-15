@@ -111,7 +111,6 @@ class Pattern(object):
         return dependencies[key]
 
     def get_node_by_id(self, id):
-        assert id >= 0
         return self.nodes[id]
 
     @staticmethod
@@ -119,8 +118,8 @@ class Pattern(object):
         node = from_nodes[root_node_addr]
         new_node = copy.deepcopy(node)
         new_node.dependencies = {}
-        into_nodes.append(new_node)
-        new_node_addr = len(into_nodes) - 1
+        new_node_addr = len(into_nodes)
+        into_nodes[new_node_addr] = new_node
 
         for dep in node.dependencies.keys():
             future_node_addr = len(into_nodes)
@@ -132,8 +131,8 @@ class Pattern(object):
         node1 = nodes1[node1_addr]
         node2 = nodes2[node2_addr]
         new_node = DependencyNode.raw_merge(node1, node2)
-        new_nodes.append(new_node)
-        new_node_addr = len(new_nodes) - 1
+        new_node_addr = len(new_nodes)
+        new_nodes[new_node_addr] = new_node
 
         for dep1 in node1.dependencies.keys():
             future_node_addr = len(new_nodes)
@@ -159,14 +158,10 @@ class Pattern(object):
         new_relative_position = (
                                     pattern1.covered_sentences * pattern1.relative_position + pattern2.covered_sentences * pattern2.relative_position) / new_covered_sentences
         # assert self.nodes[self.root].tag == pattern.nodes[pattern.root].tag
-        new_nodes = []
+        new_nodes = {}
         Pattern.merge_nodes(pattern1.root, pattern2.root, pattern1.nodes, pattern2.nodes, new_nodes)
         new_pattern = Pattern(new_relative_position, 0, new_nodes, new_covered_sentences)
 
-        '''print '---------- Pattern Merge ----------'
-        print pattern1
-        print pattern2
-        print new_pattern'''
         if assert_valid:
             # pattern1 and pattern2 still have to be valid (protect against side effects)
             pattern1.assert_is_tree()
@@ -203,10 +198,34 @@ class Pattern(object):
             total_words += self.total_words_under_node(partner)
         return total_words
 
-    def clean(self, node_addr=None):
+    @staticmethod
+    def _delete_node(pattern, node_addr):
+        if node_addr == pattern.root:
+            return None
+
+        node = pattern.nodes[node_addr]
+        for child_addr in node.dependencies.values():
+            pattern._delete_node(pattern, child_addr)
+        pattern.nodes.pop(node_addr)
+        return pattern
+
+    @staticmethod
+    def clean_pattern(pattern, node_addr=None, least_threashold=2):
         if node_addr is None:
-            node_addr = self.root
-        least_threshold = 3
+            node_addr = pattern.root
+        node = pattern.nodes[node_addr]
+
+        for dep, child_addr in node.dependencies.iteritems():
+            child = pattern.nodes[child_addr]
+            child.word_frequencies = dict(filter(lambda (word, frequency): frequency >= least_threashold,
+                                                 child.word_frequencies.iteritems()))
+            if len(child.word_frequencies) == 0:
+                pattern = Pattern._delete_node(pattern, child_addr)
+                node.dependencies[dep] = None
+            else:
+                pattern = Pattern.clean_pattern(pattern, child_addr, least_threashold)
+        node.dependencies = dict(filter(lambda (dep, addr): addr is not None, node.dependencies.iteritems()))
+        return pattern
 
     @staticmethod
     def _match_patterns_unidirectional_from_nodes(pattern1, node1_addr, pattern2, node2_addr, weighting=None):

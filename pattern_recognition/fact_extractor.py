@@ -82,7 +82,7 @@ class FactExtractor(object):
 
     def extract_facts(self):
         facts = []
-        print('Fact extraction...')
+        print('\n\nFact extraction...')
         for resource in self.discovery_resources:
             print('--- ' + resource + ' ----')
             tagged_sentences = self.wikipedia_connector.get_parsed_wikipedia_article(resource)
@@ -92,9 +92,9 @@ class FactExtractor(object):
             facts.extend(new_facts)
 
         facts.sort(key=lambda fact: fact[3], reverse=True)
-        print('\n----- Extracted facts ------')
+        print('\n\n----- Extracted facts ------')
         for fact in facts:
-            print fact
+            print(fact)
 
 
 def get_input_parameters_from_file(path):
