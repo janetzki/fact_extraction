@@ -114,11 +114,6 @@ def extract_pattern(sentence, object_token_addresses, relative_position, depth=1
     result = parser.raw_parse(sentence)
     parse = result.next()
 
-    # tripels = parse.triples()
-    # for triple in tripels:
-    #    print triple
-    # [parse.tree().pretty_print() for parse in parser.raw_parse(sentence)]
-
     object_address = find_main_address(parse, object_token_addresses)
     if object_address is None:
         return None
@@ -126,17 +121,6 @@ def extract_pattern(sentence, object_token_addresses, relative_position, depth=1
 
     strong_relations = ['xcmp', 'auxpass']
     return build_pattern(parse, graph, object_address, relative_position, depth, strong_relations)
-
-    '''
-        for mode in range(0, 2):
-            if mode == 0:
-                important_relations = None
-            else:
-                important_relations = ['xcmp', 'auxpass']
-            related_addresses = find_deep_related_addresses(parse, object_address, depth, important_relations)
-            pattern = build_pattern(parse, object_address, related_addresses, relative_position)
-            patterns.append(' '.join(pattern))
-    '''
 
 
 def test():
