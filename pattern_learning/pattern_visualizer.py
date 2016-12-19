@@ -49,7 +49,7 @@ if __name__ == '__main__':
     for prop in list(patterns[1].iterkeys()):
         dot = Digraph(comment='Pattern Visualizer', format='svg')
         pattern = patterns[1][prop]
-
+        print(pattern.calculate_diversity_measure())
         # print root node
         root = pattern.get_node_by_id(pattern.root)
         add_node(dot, pattern.root, root.word_frequencies, color="red", shape="doublecircle")

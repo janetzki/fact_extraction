@@ -1,3 +1,4 @@
+from __future__ import division
 from enum import Enum
 from ppretty import ppretty
 import copy
@@ -112,6 +113,30 @@ class Pattern(object):
 
     def get_node_by_id(self, id):
         return self.nodes[id]
+
+    def calculate_diversity_measure(self):
+        """
+        Calculates a diversity measure for pattern by dividing the number of unique words
+        found in a dependency node by the number of total covered sentences. It neglects the
+        compound nodes due to it's absence of expressiveness. Furthermore only nodes of depth 1
+        starting at the object are considered.
+        """
+        num_sentences = self.covered_sentences
+        print(num_sentences)
+        root_node = self.nodes[self.root]
+        if not root_node.dependencies:
+            return 0.0
+        word_counts = []
+        for rel, node_id in root_node.dependencies.iteritems():
+            if rel.meaning == 'compound':
+                continue
+            node = self.nodes[node_id]
+            word_count = len(node.word_frequencies)
+            word_counts.append(word_count)
+
+        diversity_scores = map(lambda x: x / num_sentences, word_counts)
+        return sum(diversity_scores) / len(diversity_scores) if diversity_scores else 0.0
+
 
     @staticmethod
     def insert_nodes(root_node_addr, from_nodes, into_nodes):
