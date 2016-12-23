@@ -14,7 +14,7 @@ dump_path_new = '../data/enwiki-latest-pages-articles-redirected.xml'
 limit = 1e12
 total_lines = 930000000
 REGEX = re.compile('\[\[(.+?)(\|(.+?))?\]\]')  # look for [[linked_article]] or [[linked_article|link_text]]
-
+REGEX_HTML = re.compile('(href=\"\/wiki\/)(.*?)(\")') # look for href="wiki/linked_article"
 
 def unicode_csv_reader(utf8_data, dialect=csv.excel, **kwargs):
     csv_reader = csv.reader(utf8_data, dialect=dialect, **kwargs)
@@ -65,6 +65,15 @@ class Substitutor:
         subst += "]]"
         return subst
 
+    def substitute_html(self, input):
+        return REGEX_HTML.sub(self.substitute_match_html, input)
+
+    def substitute_match_html(self, match):
+        if match.group(3) is not None:
+            return match.group(1) + self.substitute(match.group(2)) + match.group(3)
+
+        return match.group(0)
+        
 
 if __name__ == '__main__':
     sub = Substitutor()

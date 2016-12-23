@@ -13,13 +13,14 @@ from tagged_sentence import TaggedSentence
 
 
 class WikipediaConnector(object):
-    def __init__(self, use_dump=False, redirects_path='../data/redirects_en.txt'):
+    def __init__(self, use_dump=False, redirect=False, redirects_path='../data/redirects_en.txt'):
         self.use_dump = use_dump
         self.elapsed_time = 0  # for performance monitoring
         if use_dump:
-            self.redirector = redirector.Substitutor(redirects_path)
-        else:
             self.redirector = False
+        else:
+            if redirect:   
+                self.redirector = redirector.Substitutor(redirects_path)
 
     def _get_wikipedia_article(self, dbpedia_resource):
         start = timer()
@@ -44,6 +45,8 @@ class WikipediaConnector(object):
 
         response = requests.get(wiki_url)
         article = response.content.decode('utf-8')
+        if self.redirector:
+            article = self.redirector.substitute_html(article)
         return article
 
     def normalize_uri(self, uri):

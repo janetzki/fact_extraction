@@ -33,7 +33,7 @@ from ConfigParser import SafeConfigParser
 class WikiPatternExtractor(object):
     def __init__(self, limit, resources_path='../data/mappingbased_objects_en_filtered.csv',
                  relationships=[], use_dump=False, randomize=False, perform_tests=False,
-                 write_path='../data/patterns.pkl'):
+                 write_path='../data/patterns.pkl', replace_redirects=False):
         self.resources_path = resources_path
         self.use_dump = use_dump
         self.relationships = ['http://dbpedia.org/ontology/' + r for r in relationships if r]
@@ -43,7 +43,7 @@ class WikiPatternExtractor(object):
         self.randomize = randomize
         self.perform_tests = perform_tests
         self.write_path = write_path
-        self.wikipedia_connector = WikipediaConnector(self.use_dump)
+        self.wikipedia_connector = WikipediaConnector(use_dump=self.use_dump, redirect=replace_redirects)
 
     # -------------------------------------------------------------------------------------------------
     #                               Data Preprocessing
@@ -261,12 +261,13 @@ def get_input_parameters_from_file(path):
     randomize = config.getboolean('wiki_pattern', 'randomize')
     perform_tests = config.getboolean('wiki_pattern', 'randomize')
     limit = config.getint('wiki_pattern', 'limit')
-    return use_dump, randomize, perform_tests, limit
+    replace_redirects = config.getboolean('wiki_pattern', 'replace_redirects')
+    return use_dump, randomize, perform_tests, limit, replace_redirects
 
 
 if __name__ == '__main__':
-    use_dump, randomize, perform_tests, limit = get_input_parameters_from_file('../config.ini')
-    wiki = WikiPatternExtractor(limit, use_dump=use_dump, randomize=randomize, perform_tests=perform_tests)
+    use_dump, randomize, perform_tests, limit, replace_redirects = get_input_parameters_from_file('../config.ini')
+    wiki = WikiPatternExtractor(limit, use_dump=use_dump, randomize=randomize, perform_tests=perform_tests, replace_redirects=replace_redirects)
 
     # preprocess data
     wiki.discover_patterns()
