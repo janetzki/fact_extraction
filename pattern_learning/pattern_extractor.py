@@ -2,9 +2,13 @@ import imp
 import os
 from nltk.parse.stanford import StanfordDependencyParser
 
+entity_types = imp.load_source('entity_types', '../pattern_learning/entity_types.py')
+from entity_types import InstanceTypes
+
 pattern = imp.load_source('pattern', '../pattern_learning/pattern.py')
 from pattern import Pattern, DependencyKey
 
+inst_types = InstanceTypes()
 path_to_jar = os.path.join('..', 'stanford-corenlp-full-2016-10-31', 'stanford-corenlp-3.7.0.jar')
 path_to_models_jar = os.path.join('..', 'stanford-corenlp-full-2016-10-31', 'stanford-corenlp-3.7.0-models.jar')
 
@@ -45,8 +49,8 @@ def build_graph(parse):
     return graph
 
 
-def build_pattern(parse, graph, object_address, relative_position, depth, strong_relations):
-    pattern = Pattern(relative_position, object_address)
+def build_pattern(parse, graph, object_address, relative_position, depth, strong_relations, types):
+    pattern = Pattern(relative_position, object_address, types=types)
     visited, queue = set(), [object_address]
     distances = {k: float('inf') for k in parse.nodes.keys()}
     distances[object_address] = 0
@@ -104,7 +108,7 @@ def build_pattern(parse, graph, object_address, relative_position, depth, strong
     return pattern
 
 
-def extract_pattern(sentence, object_token_addresses, relative_position, depth=1):
+def extract_pattern(sentence, object_token_addresses, relative_position, object_entity=None, depth=1):
     if len(sentence.strip(' ')) == 0:
         return None
     object_token_addresses = map(lambda addr: addr + 1,
@@ -119,9 +123,24 @@ def extract_pattern(sentence, object_token_addresses, relative_position, depth=1
         return None
     graph = build_graph(parse)
 
-    strong_relations = ['xcmp', 'auxpass']
-    return build_pattern(parse, graph, object_address, relative_position, depth, strong_relations)
+    types = inst_types.fromEntity(object_entity)
 
+    strong_relations = ['xcmp', 'auxpass']
+
+    return build_pattern(parse, graph, object_address, relative_position, depth, strong_relations, types)
+
+def is_reasonable_relation_pattern(entity, pattern):
+    pattern_types = pattern.types.most_common()
+    #if not len(pattern_types):
+    #    return True
+    entity_types = inst_types.fromEntity(entity).most_common()
+    for etype, ecount in entity_types:
+        for ptype, pcount in pattern_types:
+            if ptype == etype:
+                #print(entity, ptype)
+                return True
+    return False
+    
 
 def test():
     sentence = 'He currently is professor at the Uppsala University.'

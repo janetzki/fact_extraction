@@ -16,11 +16,11 @@ class WikipediaConnector(object):
     def __init__(self, use_dump=False, redirect=False, redirects_path='../data/redirects_en.txt'):
         self.use_dump = use_dump
         self.elapsed_time = 0  # for performance monitoring
-        if use_dump:
-            self.redirector = False
+        if redirect and not use_dump:
+            self.redirector = redirector.Substitutor(redirects_path)
         else:
-            if redirect:   
-                self.redirector = redirector.Substitutor(redirects_path)
+            self.redirector = False  
+                
 
     def _get_wikipedia_article(self, dbpedia_resource):
         start = timer()

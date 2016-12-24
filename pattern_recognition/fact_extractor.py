@@ -54,9 +54,9 @@ class FactExtractor(object):
                     self.discovery_resources.add(subject)
                     max_results -= 1
 
-    def match_pattern_against_relation_patterns(self, pattern):
+    def match_pattern_against_relation_patterns(self, pattern, reasonable_relations):
         matching_relations = []
-        for relation, relation_pattern in self.relation_patterns.iteritems():
+        for relation, relation_pattern in reasonable_relations.iteritems():
             match_score = Pattern.match_patterns_bidirectional(relation_pattern, pattern)
             if match_score >= self.match_threshold:
                 matching_relations.append((relation, match_score))
@@ -69,10 +69,17 @@ class FactExtractor(object):
             nl_sentence = sent.as_string()
             object_addresses_of_links = sent.addresses_of_links()
             for object_link, object_addresses in object_addresses_of_links.iteritems():
+                reasonable_relations = {}
+                for relation, relation_pattern in self.relation_patterns.iteritems():
+                    if pattern_extractor.is_reasonable_relation_pattern(object_link.replace('/wiki/', ''), relation_pattern):
+                        reasonable_relations[relation] = relation_pattern
+                if not len(reasonable_relations):
+                    continue
+
                 pattern = pattern_extractor.extract_pattern(nl_sentence, object_addresses, relative_position)
                 if pattern is None:
                     continue
-                matching_relations = self.match_pattern_against_relation_patterns(pattern)
+                matching_relations = self.match_pattern_against_relation_patterns(pattern, reasonable_relations)
                 new_facts = [(rel, object_link, score, nl_sentence) for (rel, score) in matching_relations]
                 facts.extend(new_facts)
                 for fact in new_facts:

@@ -164,7 +164,9 @@ class WikiPatternExtractor(object):
                     pos_tagged_sentences = pos_tag_sents(tokenized_sentences).pop()
 
                     object_addresses = sentence.addresses_of_link(resource)
-                    pattern = pattern_extractor.extract_pattern(nl_sentence, object_addresses, relative_position)
+                    object_entity = resource.replace('/wiki/', '')
+                    pattern = pattern_extractor.extract_pattern(nl_sentence, object_addresses, relative_position, object_entity)     
+
                     if pattern is not None:
                         values['patterns'].append(pattern)
                         entry['pattern'] = pattern
@@ -245,6 +247,7 @@ class WikiPatternExtractor(object):
         print('\n\nPattern cleaning...')
         for relation, pattern in tqdm(self.relation_patterns.iteritems()):
             self.relation_patterns[relation] = Pattern.clean_pattern(pattern)
+            print(pattern.types)
         self.relation_patterns = dict(filter(lambda (rel, pat): pat is not None, self.relation_patterns.iteritems()))
 
     def save_patterns(self):

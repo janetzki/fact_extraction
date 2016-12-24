@@ -75,13 +75,14 @@ class DependencyNode(object):
 
 
 class Pattern(object):
-    def __init__(self, relative_position, root, nodes=None, covered_sentences=1):
+    def __init__(self, relative_position, root, nodes=None, covered_sentences=1, types=[]):
         self.relative_position = relative_position
         if nodes is None:
             nodes = {}
         self.nodes = nodes
         self.root = root
         self.covered_sentences = covered_sentences
+        self.types = types
 
     def __repr__(self):
         return 'Pattern()'
@@ -183,9 +184,10 @@ class Pattern(object):
         new_relative_position = (
                                     pattern1.covered_sentences * pattern1.relative_position + pattern2.covered_sentences * pattern2.relative_position) / new_covered_sentences
         # assert self.nodes[self.root].tag == pattern.nodes[pattern.root].tag
+        new_types = pattern1.types + pattern2.types
         new_nodes = {}
         Pattern.merge_nodes(pattern1.root, pattern2.root, pattern1.nodes, pattern2.nodes, new_nodes)
-        new_pattern = Pattern(new_relative_position, 0, new_nodes, new_covered_sentences)
+        new_pattern = Pattern(new_relative_position, 0, new_nodes, new_covered_sentences, new_types)
 
         if assert_valid:
             # pattern1 and pattern2 still have to be valid (protect against side effects)
@@ -250,6 +252,7 @@ class Pattern(object):
             else:
                 pattern = Pattern.clean_pattern(pattern, child_addr, least_threashold)
         node.dependencies = dict(filter(lambda (dep, addr): addr is not None, node.dependencies.iteritems()))
+
         return pattern
 
     @staticmethod
@@ -262,7 +265,7 @@ class Pattern(object):
         if weighting is None:
             weighting = 1 / float(pattern1.total_words_under_node(node1_addr))
         node1, node2 = pattern1.nodes[node1_addr], pattern2.nodes[node2_addr]
-        for dep2 in node2.dependencies.keys():
+        for dep2 in node2.dependencies.keys():            
             if dep2 in node1.dependencies.keys():
                 child1_addr, child2_addr = node1.dependencies[dep2], node2.dependencies[dep2]
                 child1, child2 = pattern1.nodes[child1_addr], pattern2.nodes[child2_addr]
@@ -277,5 +280,6 @@ class Pattern(object):
         '''
         :return:    between 0.0 and 1.0
         '''
+        #print(pattern2.nodes)
         return Pattern._match_patterns_unidirectional_from_nodes(pattern1, pattern1.root, pattern2, pattern2.root) \
                * Pattern._match_patterns_unidirectional_from_nodes(pattern2, pattern2.root, pattern1, pattern1.root)
