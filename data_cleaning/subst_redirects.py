@@ -14,7 +14,8 @@ dump_path_new = '../data/enwiki-latest-pages-articles-redirected.xml'
 limit = 1e12
 total_lines = 930000000
 REGEX = re.compile('\[\[(.+?)(\|(.+?))?\]\]')  # look for [[linked_article]] or [[linked_article|link_text]]
-REGEX_HTML = re.compile('(href=\"\/wiki\/)(.*?)(\")') # look for href="wiki/linked_article"
+REGEX_HTML = re.compile('(href=\"\/wiki\/)(.*?)(\")')  # look for href="wiki/linked_article"
+
 
 def unicode_csv_reader(utf8_data, dialect=csv.excel, **kwargs):
     csv_reader = csv.reader(utf8_data, dialect=dialect, **kwargs)
@@ -27,12 +28,12 @@ class Substitutor:
         self.redirects_path = redirects_path
         self.redirects = {}
 
-        print('Reading redirects file...')
+        tqdm.write('\n\nReading redirects file...')
         with open(redirects_path, 'r') as file:
             next(file)
 
             reader = unicode_csv_reader(file, delimiter=delimiter)
-            for name, resource in tqdm(reader, total=7340000):
+            for name, resource in tqdm(reader, total=7340000):  # TODO: replace magic number with line counter
                 if name:
                     self.redirects[name] = resource
         print('')
@@ -73,12 +74,13 @@ class Substitutor:
             return match.group(1) + self.substitute(match.group(2)) + match.group(3)
 
         return match.group(0)
-        
+
 
 if __name__ == '__main__':
     sub = Substitutor()
     line_counter = 0
 
+    tqdm.write('\n\nSubstituting links in dump...')
     with open(dump_path, 'r', encoding="utf-8") as fin, open(dump_path_new, 'w', encoding="utf-8") as fout:
         for line in tqdm(fin, total=total_lines):
             fout.write(sub.substitute_all(line))

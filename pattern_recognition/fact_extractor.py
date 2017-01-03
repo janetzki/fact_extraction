@@ -38,7 +38,7 @@ class FactExtractor(object):
             wikireader = csv.reader(f, delimiter=' ', quotechar='"')
 
             if self.randomize:
-                random_offset = randint(0, 10000)
+                random_offset = randint(0, 10000)  # TODO: get rid off magic number
                 for row in wikireader:
                     random_offset -= 1
                     if random_offset == 0:
@@ -93,7 +93,7 @@ class FactExtractor(object):
         return facts
 
     def extract_facts_from_html(self, html, resource='Default entity name'):
-        tagged_sentences = TaggedSentence.parse_html(html)
+        tagged_sentences = TaggedSentence.from_html(html)
         referenced_sentences = filter(lambda sent: sent.contains_any_link(), tagged_sentences)
         facts = self._extract_facts_from_sentences(referenced_sentences)
         facts = [(resource, rel, obj, score, nl_sentence) for (rel, obj, score, nl_sentence) in facts]
@@ -101,7 +101,7 @@ class FactExtractor(object):
 
     def extract_facts(self):
         facts = []
-        print('\n\nFact extraction...')
+        tqdm.write('\n\nFact extraction...')
         for resource in self.discovery_resources:
             print('--- ' + resource + ' ----')
             html = self.wikipedia_connector.get_wikipedia_article_html(resource)
@@ -123,11 +123,11 @@ def get_input_parameters_from_file(path):
 
 def test(fact_extractor):
     print(fact_extractor.extract_facts_from_html(
-        'He recently became a professor at the <a href="/wiki/Massachusetts_Institute_of_Technology">MIT</a>.'))
+        'He recently became a professor at the <a href="/wiki/Massachusetts_Institute_of_Technology" title="Massachusetts Institute of Technology">MIT</a>.'))
 
 
 if __name__ == '__main__':
     use_dump, randomize, limit = get_input_parameters_from_file('../config.ini')
     fact_extractor = FactExtractor(limit, use_dump=use_dump, randomize=randomize)
-    # test(fact_extractor)
+    test(fact_extractor)
     fact_extractor.extract_facts()

@@ -41,6 +41,7 @@ def extract():
 
         fout.write('"sep=' + delimiter + '"\n')
 
+        tqdm.write('\n\nType extraction...')
         for line in tqdm(fin, total=totalLines):
             name, inst_type = parseTTL(line)
 

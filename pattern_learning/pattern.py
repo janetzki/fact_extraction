@@ -60,29 +60,29 @@ class DependencyNode(object):
         return cls(tag, {word: 1})
 
     @staticmethod
-    def _merge_word_frequencies(wf1, wf2):
-        return {word: wf1.get(word, 0) + wf2.get(word, 0) for word in set(wf1) | set(wf2)}
+    def _merge_dictionaries(dict1, dict2):
+        return {word: dict1.get(word, 0) + dict2.get(word, 0) for word in set(dict1) | set(dict2)}
 
     @staticmethod
     def raw_merge(node1, node2):
         tag = node1.tag  # TODO: improve this
-        word_frequencies = DependencyNode._merge_word_frequencies(node1.word_frequencies, node2.word_frequencies)
+        word_frequencies = DependencyNode._merge_dictionaries(node1.word_frequencies, node2.word_frequencies)
         dependencies = {}
         return DependencyNode(tag, word_frequencies, dependencies)
 
     def add_word(self, word):
-        self.word_frequencies = DependencyNode._merge_word_frequencies(self.word_frequencies, {word: 1})
+        self.word_frequencies = DependencyNode._merge_dictionaries(self.word_frequencies, {word: 1})
 
 
 class Pattern(object):
-    def __init__(self, relative_position, root, nodes=None, covered_sentences=1, types=[]):
+    def __init__(self, relative_position, root, type_frequencies, nodes=None, covered_sentences=1):
         self.relative_position = relative_position
         if nodes is None:
             nodes = {}
         self.nodes = nodes
         self.root = root
         self.covered_sentences = covered_sentences
-        self.types = types
+        self.type_frequencies = type_frequencies
 
     def __repr__(self):
         return 'Pattern()'
@@ -173,13 +173,14 @@ class Pattern(object):
             pattern2.assert_is_tree()
 
         new_covered_sentences = pattern1.covered_sentences + pattern2.covered_sentences
-        new_relative_position = (
-                                    pattern1.covered_sentences * pattern1.relative_position + pattern2.covered_sentences * pattern2.relative_position) / new_covered_sentences
+        new_type_frequencies = pattern1.type_frequencies + pattern2.type_frequencies
+        new_relative_position = (pattern1.covered_sentences * pattern1.relative_position +
+                                 pattern2.covered_sentences * pattern2.relative_position) / new_covered_sentences
         # assert self.nodes[self.root].tag == pattern.nodes[pattern.root].tag
-        new_types = pattern1.types + pattern2.types
+
         new_nodes = {}
         Pattern.merge_nodes(pattern1.root, pattern2.root, pattern1.nodes, pattern2.nodes, new_nodes)
-        new_pattern = Pattern(new_relative_position, 0, new_nodes, new_covered_sentences, new_types)
+        new_pattern = Pattern(new_relative_position, 0, new_type_frequencies, new_nodes, new_covered_sentences)
 
         if assert_valid:
             # pattern1 and pattern2 still have to be valid (protect against side effects)

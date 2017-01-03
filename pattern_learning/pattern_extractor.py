@@ -55,7 +55,7 @@ class PatternExtractor(object):
 
     @staticmethod
     def _build_pattern(parse, graph, object_address, relative_position, depth, strong_relations, types):
-        new_pattern = Pattern(relative_position, object_address, types=types)
+        new_pattern = Pattern(relative_position, object_address, types)
         visited, queue = set(), [object_address]
         distances = {k: float('inf') for k in parse.nodes.keys()}
         distances[object_address] = 0
@@ -126,17 +126,17 @@ class PatternExtractor(object):
         if object_address is None:
             return None
         graph = PatternExtractor._build_graph_from_dependeny_parse(parse)
-        types = self.instance_types.from_entity(object_entity)
+        types = self.instance_types.count_types(object_entity)
 
         strong_relations = ['xcmp', 'auxpass']
         return PatternExtractor._build_pattern(parse, graph, object_address, relative_position, depth, strong_relations,
                                                types)
 
     def is_reasonable_relation_pattern(self, entity, pattern):
-        pattern_types = pattern.types.most_common()
+        pattern_types = pattern.type_frequencies.most_common()
         # if not len(pattern_types):
         #    return True
-        entity_types = self.instance_types.from_entity(entity).most_common()
+        entity_types = self.instance_types.count_types(entity).most_common()
         for etype, ecount in entity_types:
             for ptype, pcount in pattern_types:
                 if ptype == etype:

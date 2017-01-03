@@ -7,14 +7,10 @@
 
 from __future__ import division
 from termcolor import colored
-from bs4 import BeautifulSoup as bs
-from nltk.tokenize import sent_tokenize, word_tokenize
+from nltk.tokenize import word_tokenize
 from nltk.tag import pos_tag_sents
-from nltk.corpus import treebank
-from copy import deepcopy
 from ascii_graph import Pyasciigraph
 import re
-import sys
 import csv
 from random import randint
 import imp
@@ -67,7 +63,7 @@ class WikiPatternExtractor(object):
             wikireader = csv.reader(f, delimiter=' ', quotechar='"')
 
             if self.randomize:
-                random_offset = randint(0, 10000)
+                random_offset = randint(0, 10000)  # TODO: get rid off magic number
                 for row in wikireader:
                     random_offset -= 1
                     if random_offset == 0:
@@ -102,7 +98,7 @@ class WikiPatternExtractor(object):
         # parse dbpedia information
         self.dbpedia = self.parse_DBpedia_data()
 
-        print('\n\nSentence extraction...')
+        tqdm.write('\n\nSentence extraction...')
         for entity, values in tqdm(self.dbpedia.iteritems(), total=len(self.dbpedia)):
             tagged_sentences = self.wikipedia_connector.get_parsed_wikipedia_article(entity)
 
@@ -138,7 +134,7 @@ class WikiPatternExtractor(object):
         results = []
         # corpus = deepcopy(self.dbpedia)
 
-        print('\n\nPattern extraction...')
+        tqdm.write('\n\nPattern extraction...')
         for entity, relations in tqdm(self.dbpedia.iteritems(), total=len(self.dbpedia)):
             for rel_ontology, values in relations.iteritems():
                 target_resources = values['resources']
@@ -233,7 +229,7 @@ class WikiPatternExtractor(object):
             print(line)
 
     def merge_patterns(self):
-        print('\n\nPattern merging...')
+        tqdm.write('\n\nPattern merging...')
         for entity, relations in tqdm(self.dbpedia.iteritems()):
             for rel, values in relations.iteritems():
                 for pattern in values['patterns']:
@@ -244,10 +240,9 @@ class WikiPatternExtractor(object):
                         self.relation_patterns[rel] = pattern
 
     def clean_patterns(self):
-        print('\n\nPattern cleaning...')
+        tqdm.write('\n\nPattern cleaning...')
         for relation, pattern in tqdm(self.relation_patterns.iteritems()):
             self.relation_patterns[relation] = Pattern.clean_pattern(pattern)
-            print(pattern.types)
         self.relation_patterns = dict(filter(lambda (rel, pat): pat is not None, self.relation_patterns.iteritems()))
 
     def save_patterns(self):

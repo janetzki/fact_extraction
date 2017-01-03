@@ -18,7 +18,7 @@ class InstanceTypes(object):
             for name, inst_type in tqdm(reader, total=total_lines):
                 self.types.setdefault(name, []).append(inst_type)
 
-    def from_entity(self, name):
+    def count_types(self, name):
         if name in self.types:
             return Counter(self.types[name])
         else:

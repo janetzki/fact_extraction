@@ -74,7 +74,7 @@ def parseXML():
 
 
 def createTextIndex():
-    totalLines = 930000000  # rawpycount(pathInput)
+    totalLines = 930000000  # rawpycount(pathInput) # TODO: replace magic number with line counter
     with open(pathDump, 'r') as fin, open(pathIndex, 'w') as fout:
         lineCounter = 0
         characterOffset = 0
@@ -82,6 +82,7 @@ def createTextIndex():
 
         fout.write('"sep=' + delimiter + '"\n')
 
+        tqdm.write('\n\nCreating index...')
         for line in tqdm(fin, total=totalLines):
             if pageFound:
                 pageFound = False
@@ -127,7 +128,7 @@ def sortIndex():
         sortedList = sorted(indexreader, key=operator.itemgetter(0))
         fout.write('"sep=' + delimiter + '"\n')
         totalLines = rawpycount(pathIndex)
-        print "Sorting index..."
+        tqdm.write('\n\nSorting index...')
         for element in tqdm(sortedList, total=totalLines):
             fout.write(element[0] + delimiter + element[1] + '\n')
 
@@ -147,14 +148,14 @@ def createFilteredIndex():
         relationreader = csv.reader(fin_relations, delimiter=' ', quotechar='"')
         important_articles = set()
         totalLines = rawpycount(pathRelations)
-        print "Collecting important articles..."
+        tqdm.write('\n\nCollecting important articles...')
         for line in tqdm(relationreader, total=totalLines):
             important_articles.add(dbpediaURLtoResource(line[0]))
 
         indexreader = csv.reader(fin_index, delimiter=delimiter)
         totalLines = rawpycount(pathIndex)
         # fout.write('"sep=' + delimiter + '"\n')
-        print "Filtering importatnt articles..."
+        tqdm.write('\n\nFiltering importatnt articles...')
         for line in tqdm(indexreader, total=totalLines):
             if line[0] in important_articles:
                 fout.write(line[0] + delimiter + line[1] + '\n')

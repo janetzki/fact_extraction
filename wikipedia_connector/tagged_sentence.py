@@ -108,21 +108,21 @@ class TaggedSentence(object):
         return soup.find_all('p')
 
     @classmethod
-    def parse_html(cls, html):
+    def from_html(cls, html):
         soup = bs(html, 'lxml')
         paragraphs = TaggedSentence.extract_paragraphs(soup)
-        return [tagged_s for paragraph in paragraphs for tagged_s in TaggedSentence.parse_bs_tag(paragraph)]
+        return [tagged_s for paragraph in paragraphs for tagged_s in TaggedSentence.from_bs_tag(paragraph)]
 
     @classmethod
-    def parse_bs_tag(cls, bs_tag):
+    def from_bs_tag(cls, bs_tag):
         # replace links with intermediary representation
         # html = html.decode('utf-8')
         for link in bs_tag.find_all('a'):
             target = link.get('href')
-            assert(target is not None)
+            assert target is not None
             if target.startswith('#') or not link.string:
                 continue  # ignore intern links and links with no enclosed text
-            link.string = '#' + target + '#' + link.string + '#'
+            link.string = '#' + target + '#' + link.string + '# '  # space at end ensures that punctuation marks after word won't be considered as part of it
 
         # get raw_text
         text = bs_tag.get_text()
