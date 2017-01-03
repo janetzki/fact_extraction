@@ -29,5 +29,5 @@ class InstanceTypes(object):
     def fromEntities(entities):
         types = []
         for entity in entities:
-            types.extend(self.fromEntity(entity))
+            types.extend(self.from_entity(entity))
         return types

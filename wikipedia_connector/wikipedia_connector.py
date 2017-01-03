@@ -19,8 +19,7 @@ class WikipediaConnector(object):
         if redirect and not use_dump:
             self.redirector = redirector.Substitutor(redirects_path)
         else:
-            self.redirector = False  
-                
+            self.redirector = False
 
     def _get_wikipedia_article(self, dbpedia_resource):
         start = timer()

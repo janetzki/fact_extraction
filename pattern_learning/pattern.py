@@ -91,13 +91,6 @@ class Pattern(object):
         return ppretty(self, indent='    ', depth=5, width=40, seq_length=6,
                        show_protected=True, show_private=False, show_static=True,
                        show_properties=True, show_address=True)
-        '''position_string = 'Position: ' + '{:10.2f}'.format(self.relative_position)
-        nodes_string = 'Nodes: ['
-        for node in self.nodes.values():
-            nodes_string += str(node) + ', '
-        nodes_string = nodes_string[0:-2]
-        nodes_string += ']'
-        return position_string + ', ' + nodes_string'''
 
     def add_word_to_node_or_create_node(self, node_addr, word):
         if node_addr in self.nodes_keys():
@@ -137,7 +130,6 @@ class Pattern(object):
 
         diversity_scores = map(lambda x: x / num_sentences, word_counts)
         return sum(diversity_scores) / len(diversity_scores) if diversity_scores else 0.0
-
 
     @staticmethod
     def insert_nodes(root_node_addr, from_nodes, into_nodes):
@@ -265,7 +257,7 @@ class Pattern(object):
         if weighting is None:
             weighting = 1 / float(pattern1.total_words_under_node(node1_addr))
         node1, node2 = pattern1.nodes[node1_addr], pattern2.nodes[node2_addr]
-        for dep2 in node2.dependencies.keys():            
+        for dep2 in node2.dependencies.keys():
             if dep2 in node1.dependencies.keys():
                 child1_addr, child2_addr = node1.dependencies[dep2], node2.dependencies[dep2]
                 child1, child2 = pattern1.nodes[child1_addr], pattern2.nodes[child2_addr]
@@ -280,6 +272,6 @@ class Pattern(object):
         '''
         :return:    between 0.0 and 1.0
         '''
-        #print(pattern2.nodes)
+        # print(pattern2.nodes)
         return Pattern._match_patterns_unidirectional_from_nodes(pattern1, pattern1.root, pattern2, pattern2.root) \
                * Pattern._match_patterns_unidirectional_from_nodes(pattern2, pattern2.root, pattern1, pattern1.root)

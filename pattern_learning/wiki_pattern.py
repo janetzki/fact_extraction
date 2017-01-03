@@ -22,8 +22,7 @@ from tqdm import tqdm
 import pickle
 import itertools
 
-import pattern_extractor
-from pattern_extractor import Pattern
+from pattern_extractor import PatternExtractor, Pattern
 
 wikipedia_connector = imp.load_source('wikipedia_connector', '../wikipedia_connector/wikipedia_connector.py')
 from wikipedia_connector import WikipediaConnector
@@ -44,6 +43,7 @@ class WikiPatternExtractor(object):
         self.perform_tests = perform_tests
         self.write_path = write_path
         self.wikipedia_connector = WikipediaConnector(use_dump=self.use_dump, redirect=replace_redirects)
+        self.pattern_extractor = PatternExtractor()
 
     # -------------------------------------------------------------------------------------------------
     #                               Data Preprocessing
@@ -165,7 +165,8 @@ class WikiPatternExtractor(object):
 
                     object_addresses = sentence.addresses_of_link(resource)
                     object_entity = resource.replace('/wiki/', '')
-                    pattern = pattern_extractor.extract_pattern(nl_sentence, object_addresses, relative_position, object_entity)     
+                    pattern = self.pattern_extractor.extract_pattern(nl_sentence, object_addresses, relative_position,
+                                                                     object_entity)
 
                     if pattern is not None:
                         values['patterns'].append(pattern)
@@ -270,7 +271,8 @@ def get_input_parameters_from_file(path):
 
 if __name__ == '__main__':
     use_dump, randomize, perform_tests, limit, replace_redirects = get_input_parameters_from_file('../config.ini')
-    wiki = WikiPatternExtractor(limit, use_dump=use_dump, randomize=randomize, perform_tests=perform_tests, replace_redirects=replace_redirects)
+    wiki = WikiPatternExtractor(limit, use_dump=use_dump, randomize=randomize, perform_tests=perform_tests,
+                                replace_redirects=replace_redirects)
 
     # preprocess data
     wiki.discover_patterns()

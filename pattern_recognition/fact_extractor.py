@@ -1,15 +1,13 @@
 import pickle
-import sys
 import csv
 import imp
 from tqdm import tqdm
-from bs4 import BeautifulSoup as bs
 from random import randint
 from ConfigParser import SafeConfigParser
 
 pattern_extractor = imp.load_source('pattern_extractor', '../pattern_learning/pattern_extractor.py')
 wikipedia_connector = imp.load_source('wikipedia_connector', '../wikipedia_connector/wikipedia_connector.py')
-from pattern_extractor import Pattern
+from pattern_extractor import PatternExtractor, Pattern
 from wikipedia_connector import WikipediaConnector
 
 
@@ -26,6 +24,7 @@ class FactExtractor(object):
         self.discovery_resources = set()
         self.relation_patterns = {}
         self.wikipedia_connector = WikipediaConnector(self.use_dump)
+        self.pattern_extractor = PatternExtractor()
 
         self.load_patterns()
         self.load_discovery_resources()
@@ -71,12 +70,12 @@ class FactExtractor(object):
             for object_link, object_addresses in object_addresses_of_links.iteritems():
                 reasonable_relations = {}
                 for relation, relation_pattern in self.relation_patterns.iteritems():
-                    if pattern_extractor.is_reasonable_relation_pattern(object_link.replace('/wiki/', ''), relation_pattern):
+                    if self.pattern_extractor.is_reasonable_relation_pattern(object_link.replace('/wiki/', ''), relation_pattern):
                         reasonable_relations[relation] = relation_pattern
                 if not len(reasonable_relations):
                     continue
 
-                pattern = pattern_extractor.extract_pattern(nl_sentence, object_addresses, relative_position)
+                pattern = self.pattern_extractor.extract_pattern(nl_sentence, object_addresses, relative_position)
                 if pattern is None:
                     continue
                 matching_relations = self.match_pattern_against_relation_patterns(pattern, reasonable_relations)
