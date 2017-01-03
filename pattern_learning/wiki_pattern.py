@@ -119,7 +119,6 @@ class WikiPatternExtractor(object):
     #                               Statistics and Visualizations
     # ---------------------------------------------------------------------------------------------
 
-
     def print_patterns(self):
         """
         Prints each occurence of a given DBpedia fact with their corresponding and matched sentence.

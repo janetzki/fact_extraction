@@ -103,12 +103,23 @@ class TaggedSentence(object):
                 cleanInput.append(item)
         return ' '.join(cleanInput).encode('utf-8')
 
+    @staticmethod
+    def extract_paragraphs(soup):
+        return soup.find_all('p')
+
     @classmethod
-    def parse_html(cls, bs_tag):
+    def parse_html(cls, html):
+        soup = bs(html, 'lxml')
+        paragraphs = TaggedSentence.extract_paragraphs(soup)
+        return [tagged_s for paragraph in paragraphs for tagged_s in TaggedSentence.parse_bs_tag(paragraph)]
+
+    @classmethod
+    def parse_bs_tag(cls, bs_tag):
         # replace links with intermediary representation
         # html = html.decode('utf-8')
         for link in bs_tag.find_all('a'):
             target = link.get('href')
+            assert(target is not None)
             if target.startswith('#') or not link.string:
                 continue  # ignore intern links and links with no enclosed text
             link.string = '#' + target + '#' + link.string + '#'

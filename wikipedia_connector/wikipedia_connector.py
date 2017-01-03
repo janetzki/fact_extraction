@@ -21,20 +21,18 @@ class WikipediaConnector(object):
         else:
             self.redirector = False
 
-    def _get_wikipedia_article(self, dbpedia_resource):
+    def get_wikipedia_article_html(self, dbpedia_resource):
         start = timer()
         if self.use_dump:
             resource = self.normalize_uri(dbpedia_resource)
-            article = dump_extractor.get_wikipedia_html_from_dump(resource)
+            html = dump_extractor.get_wikipedia_html_from_dump(resource)
         else:
-            article = self.scrape_wikipedia_article(dbpedia_resource)
+            html = self._scrape_wikipedia_article(dbpedia_resource)
         end = timer()
         self.elapsed_time += end - start
-        soup = bs(article, 'lxml')
-        text = soup.find_all('p')
-        return text
+        return html
 
-    def scrape_wikipedia_article(self, dbpedia_resource):
+    def _scrape_wikipedia_article(self, dbpedia_resource):
         """
         Requests wikipedia resource per GET request - extracts text content
         and returns text
@@ -87,9 +85,10 @@ class WikipediaConnector(object):
                 tokens = word_tokenize(link.text)
                 return tokens
 
-    def _make_to_tagged_sentences(self, html):
-        return [tagged_s for paragraph in html for tagged_s in TaggedSentence.parse_html(paragraph)]
+    @staticmethod
+    def _make_html_to_tagged_sentences(html):
+        return [tagged_s for tagged_s in TaggedSentence.parse_html(html)]
 
     def get_parsed_wikipedia_article(self, dbpedia_resource):
-        html = self._get_wikipedia_article(dbpedia_resource)
-        return self._make_to_tagged_sentences(html)
+        html = self.get_wikipedia_article_html(dbpedia_resource)
+        return WikipediaConnector._make_html_to_tagged_sentences(html)
