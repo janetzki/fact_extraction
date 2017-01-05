@@ -12,11 +12,13 @@ from wikipedia_connector import WikipediaConnector, TaggedSentence
 
 
 class FactExtractor(object):
-    def __init__(self, limit, use_dump=False, randomize=False, match_threshold=0.005, load_path='../data/patterns.pkl',
+    def __init__(self, limit, use_dump=False, randomize=False, allow_unknown_entity_types=True, match_threshold=0.005,
+                 load_path='../data/patterns.pkl',
                  resources_path='../data/mappingbased_objects_en_filtered.csv'):
         self.limit = limit
         self.use_dump = use_dump
         self.randomize = randomize
+        self.allow_unknown_entity_types = allow_unknown_entity_types
         self.match_threshold = match_threshold
         self.load_path = load_path
         self.resources_path = resources_path
@@ -56,10 +58,21 @@ class FactExtractor(object):
     def _match_pattern_against_relation_patterns(self, pattern, reasonable_relations):
         matching_relations = []
         for relation, relation_pattern in reasonable_relations.iteritems():
-            match_score = Pattern.match_patterns_bidirectional(relation_pattern, pattern)
+            match_score = Pattern.match_patterns(relation_pattern, pattern, self.allow_unknown_entity_types)
             if match_score >= self.match_threshold:
                 matching_relations.append((relation, match_score))
         return matching_relations
+
+    def _find_reasonable_relations(self, entity):
+        reasonable_relations = {}
+        entity_types = self.pattern_extractor.get_entity_types(entity)
+        if self.allow_unknown_entity_types and len(entity_types) == 0:
+            reasonable_relations = self.relation_patterns
+        else:
+            for relation, relation_pattern in self.relation_patterns.iteritems():
+                if self.pattern_extractor.is_reasonable_relation_pattern(entity_types, relation_pattern):
+                    reasonable_relations[relation] = relation_pattern
+        return reasonable_relations
 
     def _extract_facts_from_sentence(self, sentence):
         facts = []
@@ -67,11 +80,8 @@ class FactExtractor(object):
         nl_sentence = sentence.as_string()
         object_addresses_of_links = sentence.addresses_of_links()
         for object_link, object_addresses in object_addresses_of_links.iteritems():
-            reasonable_relations = {}
             object_entity = object_link.replace('/wiki/', '')
-            for relation, relation_pattern in self.relation_patterns.iteritems():
-                if self.pattern_extractor.is_reasonable_relation_pattern(object_entity, relation_pattern):
-                    reasonable_relations[relation] = relation_pattern
+            reasonable_relations = self._find_reasonable_relations(object_entity)
             if not len(reasonable_relations):
                 continue
 
@@ -79,6 +89,7 @@ class FactExtractor(object):
                                                              object_entity)
             if pattern is None:
                 continue
+
             matching_relations = self._match_pattern_against_relation_patterns(pattern, reasonable_relations)
             new_facts = [(rel, object_link, score, nl_sentence) for (rel, score) in matching_relations]
             facts.extend(new_facts)

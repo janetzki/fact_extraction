@@ -132,9 +132,11 @@ class PatternExtractor(object):
         return PatternExtractor._build_pattern(parse, graph, object_address, relative_position, depth, strong_relations,
                                                types)
 
-    def is_reasonable_relation_pattern(self, entity, pattern):
+    def get_entity_types(self, entity):
+        return self.instance_types.count_types(entity).most_common()
+
+    def is_reasonable_relation_pattern(self, entity_types, pattern):
         pattern_types = pattern.type_frequencies.most_common()
-        entity_types = self.instance_types.count_types(entity).most_common()
         for etype, ecount in entity_types:
             for ptype, pcount in pattern_types:
                 if ptype == etype:

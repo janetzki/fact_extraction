@@ -2,8 +2,8 @@ from __future__ import division
 from enum import Enum
 from ppretty import ppretty
 from collections import Counter
+from itertools import dropwhile
 import copy
-
 
 class Direction(Enum):
     outgoing = 1
@@ -232,8 +232,8 @@ class Pattern(object):
 
     @staticmethod  # static because pattern can be deleted
     def clean_type_frequencies(pattern, least_threshold):
-        pattern.type_frequencies = Counter(filter(lambda (type, frequency): frequency >= least_threshold,
-                                               pattern.type_frequencies.iteritems()))
+        for type, frequency in dropwhile(lambda (t, f): f >= least_threshold, pattern.type_frequencies.most_common()):
+            del pattern.type_frequencies[type]
         return pattern
 
     @staticmethod  # static because pattern can be deleted
@@ -260,14 +260,29 @@ class Pattern(object):
         return pattern
 
     @staticmethod
-    def _match_patterns_unidirectional_from_nodes(pattern1, node1_addr, pattern2, node2_addr, weighting=None):
+    def _match_type_frequencies(type_frequencies1, type_frequencies2, allow_second_empty=False):
+        '''
+        calculate Jaccard index of both bags: J(A, B) = |A intersect B| / |A union B|
+        :return:    between 0.0 and 1.0
+        '''
+        if allow_second_empty and len(type_frequencies2) == 0:
+            return 1  # new objects with no type in DBpedia should also be found
+        intersection = sum((type_frequencies1 & type_frequencies2).itervalues())
+        union = sum((type_frequencies1 & type_frequencies2).itervalues())
+        return float(intersection) / union
+
+    @staticmethod
+    def _match_pattern_nodes_unidirectional(pattern1, node1_addr, pattern2, node2_addr, weighting=None):
         '''
         Calculate how much of pattern2 is inside pattern1.
         :return:    between 0.0 and 1.0
         '''
         match_score = 0
         if weighting is None:
-            weighting = 1 / float(pattern1.total_words_under_node(node1_addr))
+            words_under_node = pattern1.total_words_under_node(node1_addr)
+            if words_under_node == 0:
+                return 0
+            weighting = 1.0 / words_under_node
         node1, node2 = pattern1.nodes[node1_addr], pattern2.nodes[node2_addr]
         for dep2 in node2.dependencies.keys():
             if dep2 in node1.dependencies.keys():
@@ -275,15 +290,22 @@ class Pattern(object):
                 child1, child2 = pattern1.nodes[child1_addr], pattern2.nodes[child2_addr]
                 if any(word in child1.word_frequencies.keys() for word in child2.word_frequencies.keys()):
                     match_score += sum(child1.word_frequencies.values()) * weighting
-                    match_score += Pattern._match_patterns_unidirectional_from_nodes(pattern1, child1_addr,
-                                                                                     pattern2, child2_addr, weighting)
+                    match_score += Pattern._match_pattern_nodes_unidirectional(pattern1, child1_addr,
+                                                                               pattern2, child2_addr, weighting)
         return match_score
 
     @staticmethod
-    def match_patterns_bidirectional(pattern1, pattern2):
+    def _match_pattern_nodes_bidirectional(pattern1, pattern2):
+        return Pattern._match_pattern_nodes_unidirectional(pattern1, pattern1.root, pattern2, pattern2.root) \
+               * Pattern._match_pattern_nodes_unidirectional(pattern2, pattern2.root, pattern1, pattern1.root)
+
+    @staticmethod
+    def match_patterns(pattern1, pattern2, allow_second_empty_types=False):
         '''
         :return:    between 0.0 and 1.0
         '''
-        # print(pattern2.nodes)
-        return Pattern._match_patterns_unidirectional_from_nodes(pattern1, pattern1.root, pattern2, pattern2.root) \
-               * Pattern._match_patterns_unidirectional_from_nodes(pattern2, pattern2.root, pattern1, pattern1.root)
+        type_score = Pattern._match_type_frequencies(pattern1.type_frequencies, pattern2.type_frequencies, allow_second_empty_types)
+        if type_score == 0:
+            return 0
+        node_score = Pattern._match_pattern_nodes_bidirectional(pattern1, pattern2)
+        return type_score * node_score
