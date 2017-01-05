@@ -19,7 +19,9 @@ class InstanceTypes(object):
                 self.types.setdefault(name, []).append(inst_type)
 
     def count_types(self, name):
+        counter = Counter()
         if name in self.types:
-            return Counter(self.types[name])
-        else:
-            return Counter()
+            counter = Counter(self.types[name])
+        if len(counter) > 1:
+            assert False
+        return counter

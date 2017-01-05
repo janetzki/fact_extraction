@@ -61,29 +61,29 @@ class WikipediaConnector(object):
         return reduce(lambda acc, elem: acc[:-1] + [acc[-1] + elem] if elem == sep else acc + [elem],
                       re.split("(%s)" % re.escape(sep), s), [])
 
-    @staticmethod
-    def has_appropriate_text_length(html):
-        soup = bs(html, 'lxml')
-        length = len(soup.get_text())
-        return 0 < length < 200
-
-    def clean_tags(self, html_text):
-        # html_text = re.sub(r'<[^a].*?>', '', html_text) # Intention: Only keep <a></a> Tags. Problem: Deletes </a> tags.
-        html_text = '<p>' + html_text + '</p>'
-        return html_text
-
-    def find_tokens_in_html(self, html, resource):
-        soup = bs(html, 'lxml')
-        reference = soup.find('a', {'href': resource})
-        reference_text = reference.get_text()
-        return word_tokenize(reference_text)
-
-    def find_tokens_in_sentence(self, sentence, resource):
-        links = sentence.links
-        for link in links:
-            if link.link == resource:
-                tokens = word_tokenize(link.text)
-                return tokens
+    # @staticmethod
+    # def has_appropriate_text_length(html):
+    #     soup = bs(html, 'lxml')
+    #     length = len(soup.get_text())
+    #     return 0 < length < 200
+    #
+    # def clean_tags(self, html_text):
+    #     # html_text = re.sub(r'<[^a].*?>', '', html_text) # Intention: Only keep <a></a> Tags. Problem: Deletes </a> tags.
+    #     html_text = '<p>' + html_text + '</p>'
+    #     return html_text
+    #
+    # def find_tokens_in_html(self, html, resource):
+    #     soup = bs(html, 'lxml')
+    #     reference = soup.find('a', {'href': resource})
+    #     reference_text = reference.get_text()
+    #     return word_tokenize(reference_text)
+    #
+    # def find_tokens_in_sentence(self, sentence, resource):
+    #     links = sentence.links
+    #     for link in links:
+    #         if link.link == resource:
+    #             tokens = word_tokenize(link.text)
+    #             return tokens
 
     @staticmethod
     def _make_html_to_tagged_sentences(html):

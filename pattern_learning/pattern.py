@@ -1,6 +1,7 @@
 from __future__ import division
 from enum import Enum
 from ppretty import ppretty
+from collections import Counter
 import copy
 
 
@@ -218,7 +219,7 @@ class Pattern(object):
             total_words += self.total_words_under_node(partner)
         return total_words
 
-    @staticmethod
+    @staticmethod  # static because pattern can be deleted
     def _delete_node(pattern, node_addr):
         if node_addr == pattern.root:
             return None
@@ -229,23 +230,33 @@ class Pattern(object):
         pattern.nodes.pop(node_addr)
         return pattern
 
-    @staticmethod
-    def clean_pattern(pattern, node_addr=None, least_threashold=2):
+    @staticmethod  # static because pattern can be deleted
+    def clean_type_frequencies(pattern, least_threshold):
+        pattern.type_frequencies = Counter(filter(lambda (type, frequency): frequency >= least_threshold,
+                                               pattern.type_frequencies.iteritems()))
+        return pattern
+
+    @staticmethod  # static because pattern can be deleted
+    def clean_word_frequencies(pattern, least_threshold, node_addr=None):
         if node_addr is None:
             node_addr = pattern.root
         node = pattern.nodes[node_addr]
+        node.word_frequencies = dict(filter(lambda (word, frequency): frequency >= least_threshold,
+                                            node.word_frequencies.iteritems()))
+        if len(node.word_frequencies) == 0 and node_addr != pattern.root:
+            pattern = Pattern._delete_node(pattern, node_addr)
+        else:
+            for dep, child_addr in node.dependencies.iteritems():
+                pattern = Pattern.clean_word_frequencies(pattern, least_threshold, child_addr)
+                if child_addr not in pattern.nodes:
+                    node.dependencies[dep] = None
+            node.dependencies = dict(filter(lambda (dep, addr): addr is not None, node.dependencies.iteritems()))
+        return pattern
 
-        for dep, child_addr in node.dependencies.iteritems():
-            child = pattern.nodes[child_addr]
-            child.word_frequencies = dict(filter(lambda (word, frequency): frequency >= least_threashold,
-                                                 child.word_frequencies.iteritems()))
-            if len(child.word_frequencies) == 0:
-                pattern = Pattern._delete_node(pattern, child_addr)
-                node.dependencies[dep] = None
-            else:
-                pattern = Pattern.clean_pattern(pattern, child_addr, least_threashold)
-        node.dependencies = dict(filter(lambda (dep, addr): addr is not None, node.dependencies.iteritems()))
-
+    @staticmethod  # static because pattern can be deleted
+    def clean_pattern(pattern, least_threshold_words=2, least_threshold_types=1):
+        pattern = Pattern.clean_type_frequencies(pattern, least_threshold_types)
+        pattern = Pattern.clean_word_frequencies(pattern, least_threshold_words)
         return pattern
 
     @staticmethod

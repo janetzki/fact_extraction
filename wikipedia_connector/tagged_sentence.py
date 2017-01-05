@@ -3,7 +3,7 @@
 
 from __future__ import division
 from bs4 import BeautifulSoup as bs
-from nltk.tokenize import sent_tokenize, word_tokenize
+from nltk.tokenize import sent_tokenize
 import re
 
 import sys

@@ -12,7 +12,7 @@ from wikipedia_connector import WikipediaConnector, TaggedSentence
 
 
 class FactExtractor(object):
-    def __init__(self, limit, use_dump=False, randomize=False, match_threshold=0.05, load_path='../data/patterns.pkl',
+    def __init__(self, limit, use_dump=False, randomize=False, match_threshold=0.005, load_path='../data/patterns.pkl',
                  resources_path='../data/mappingbased_objects_en_filtered.csv'):
         self.limit = limit
         self.use_dump = use_dump
@@ -68,14 +68,15 @@ class FactExtractor(object):
         object_addresses_of_links = sentence.addresses_of_links()
         for object_link, object_addresses in object_addresses_of_links.iteritems():
             reasonable_relations = {}
+            object_entity = object_link.replace('/wiki/', '')
             for relation, relation_pattern in self.relation_patterns.iteritems():
-                if self.pattern_extractor.is_reasonable_relation_pattern(object_link.replace('/wiki/', ''),
-                                                                         relation_pattern):
+                if self.pattern_extractor.is_reasonable_relation_pattern(object_entity, relation_pattern):
                     reasonable_relations[relation] = relation_pattern
             if not len(reasonable_relations):
                 continue
 
-            pattern = self.pattern_extractor.extract_pattern(nl_sentence, object_addresses, relative_position)
+            pattern = self.pattern_extractor.extract_pattern(nl_sentence, object_addresses, relative_position,
+                                                             object_entity)
             if pattern is None:
                 continue
             matching_relations = self._match_pattern_against_relation_patterns(pattern, reasonable_relations)
@@ -123,11 +124,11 @@ def get_input_parameters_from_file(path):
 
 def test(fact_extractor):
     print(fact_extractor.extract_facts_from_html(
-        'He recently became a professor at the <a href="/wiki/Massachusetts_Institute_of_Technology" title="Massachusetts Institute of Technology">MIT</a>.'))
+        'He recently became a professor at the <a href="/wiki/Massachusetts_Institute_of_Technology">MIT</a>.'))
 
 
 if __name__ == '__main__':
     use_dump, randomize, limit = get_input_parameters_from_file('../config.ini')
     fact_extractor = FactExtractor(limit, use_dump=use_dump, randomize=randomize)
-    test(fact_extractor)
+    # test(fact_extractor)
     fact_extractor.extract_facts()

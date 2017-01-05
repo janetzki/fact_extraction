@@ -113,8 +113,8 @@ class PatternExtractor(object):
         new_pattern.assert_is_tree()
         return new_pattern
 
-    def extract_pattern(self, sentence, object_token_addresses, relative_position, object_entity=None, depth=1):
-        if len(sentence.strip(' ')) == 0:
+    def extract_pattern(self, sentence, object_token_addresses, relative_position, object_entity, depth=1):
+        if len(sentence.strip(' ')) == 0 or len(sentence) > 200:
             return None
         object_token_addresses = map(lambda addr: addr + 1,
                                      object_token_addresses)  # because TOP token will be inserted at 0
@@ -134,13 +134,10 @@ class PatternExtractor(object):
 
     def is_reasonable_relation_pattern(self, entity, pattern):
         pattern_types = pattern.type_frequencies.most_common()
-        # if not len(pattern_types):
-        #    return True
         entity_types = self.instance_types.count_types(entity).most_common()
         for etype, ecount in entity_types:
             for ptype, pcount in pattern_types:
                 if ptype == etype:
-                    # print(entity, ptype)
                     return True
         return False
 
@@ -148,7 +145,7 @@ class PatternExtractor(object):
 def test():
     pattern_extractor = PatternExtractor()
     sentence = 'He currently is professor at the Uppsala University.'
-    object_tokens = ['University']
+    object_tokens = [7]
     print(pattern_extractor.extract_pattern(sentence, object_tokens, 0.0))
 
 
