@@ -36,6 +36,9 @@ class TaggedSentence(object):
     def tokens(self):
         return self.sentence
 
+    def number_of_tokens(self):
+        return len(self.sentence)
+
     def _yield_words(self, sentence):
         # yield seperate word or full meta tagged links
         link_component = None

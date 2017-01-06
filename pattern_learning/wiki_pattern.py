@@ -105,7 +105,7 @@ class WikiPatternExtractor(object):
             # for each relationship filter sentences that contain
             # target resources of entity's relationship
             for rel, resources in values.iteritems():
-                wikipedia_target_resources = map(self.wikipedia_connector.wikipedia_uri, resources)
+                wikipedia_target_resources = map(WikipediaConnector.convert_to_wikipedia_uri, resources)
                 relevant_sentences = self.filter_relevant_sentences(tagged_sentences, wikipedia_target_resources)
                 values[rel] = {'resources': wikipedia_target_resources,
                                'sentences': relevant_sentences,
@@ -136,12 +136,13 @@ class WikiPatternExtractor(object):
 
         tqdm.write('\n\nPattern extraction...')
         for entity, relations in tqdm(self.dbpedia.iteritems(), total=len(self.dbpedia)):
+            cleaned_subject_entity_name = self.wikipedia_connector.strip_cleaned_entity_name(entity)
+            subject_entity = self.wikipedia_connector.strip_entity_name(entity)
             for rel_ontology, values in relations.iteritems():
                 target_resources = values['resources']
                 sentences = values['sentences']
-                entity = self.wikipedia_connector.normalize_uri(entity)
                 rel_ontology = rel_ontology.split('/')[-1]
-                data = [{'entity': entity, 'relation': rel_ontology, 'resource': res, 'sentence': sent}
+                data = [{'entity': cleaned_subject_entity_name, 'relation': rel_ontology, 'resource': res, 'sentence': sent}
                         for res in target_resources
                         for sent in sentences
                         if sent.contains_any_link([res]) and res != entity]
@@ -159,9 +160,9 @@ class WikiPatternExtractor(object):
                     pos_tagged_sentences = pos_tag_sents(tokenized_sentences).pop()
 
                     object_addresses = sentence.addresses_of_link(resource)
-                    object_entity = resource.replace('/wiki/', '')
+                    object_entity = WikipediaConnector.strip_entity_name(resource)
                     pattern = self.pattern_extractor.extract_pattern(nl_sentence, object_addresses, relative_position,
-                                                                     object_entity)
+                                                                     subject_entity, object_entity)
 
                     if pattern is not None:
                         values['patterns'].append(pattern)
@@ -187,7 +188,7 @@ class WikiPatternExtractor(object):
                           attrs={'concealed', 'bold'}) + colored(entry['relation'], 'white')).expandtabs(20)
             print(colored('[DBP Resource] \t', 'red',
                           attrs={'concealed', 'bold'}) + colored(
-                self.wikipedia_connector.normalize_uri(entry['resource']),
+                self.wikipedia_connector.strip_cleaned_entity_name(entry['resource']),
                 'white')).expandtabs(20)
             print(colored('[Wiki Occurence] \t',
                           'red', attrs={'concealed', 'bold'}) + entry['colored sentence']).expandtabs(20)

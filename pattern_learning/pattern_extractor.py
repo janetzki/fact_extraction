@@ -54,8 +54,9 @@ class PatternExtractor(object):
         return graph
 
     @staticmethod
-    def _build_pattern(parse, graph, object_address, relative_position, depth, strong_relations, types):
-        new_pattern = Pattern(relative_position, object_address, types)
+    def _build_pattern(parse, graph, object_address, relative_position, depth, strong_relations, subject_types,
+                       object_types):
+        new_pattern = Pattern(relative_position, object_address, subject_types, object_types)
         visited, queue = set(), [object_address]
         distances = {k: float('inf') for k in parse.nodes.keys()}
         distances[object_address] = 0
@@ -113,8 +114,9 @@ class PatternExtractor(object):
         new_pattern.assert_is_tree()
         return new_pattern
 
-    def extract_pattern(self, sentence, object_token_addresses, relative_position, object_entity, depth=1):
-        if len(sentence.strip(' ')) == 0 or len(sentence) > 200:
+    def extract_pattern(self, sentence, object_token_addresses, relative_position, subject_entity, object_entity,
+                        depth=1):
+        if len(sentence.strip(' ')) == 0:
             return None
         object_token_addresses = map(lambda addr: addr + 1,
                                      object_token_addresses)  # because TOP token will be inserted at 0
@@ -126,22 +128,15 @@ class PatternExtractor(object):
         if object_address is None:
             return None
         graph = PatternExtractor._build_graph_from_dependeny_parse(parse)
-        types = self.instance_types.count_types(object_entity)
+        subject_types = self.instance_types.count_types(subject_entity)
+        object_types = self.instance_types.count_types(object_entity)
 
         strong_relations = ['xcmp', 'auxpass']
         return PatternExtractor._build_pattern(parse, graph, object_address, relative_position, depth, strong_relations,
-                                               types)
+                                               subject_types, object_types)
 
     def get_entity_types(self, entity):
-        return self.instance_types.count_types(entity).most_common()
-
-    def is_reasonable_relation_pattern(self, entity_types, pattern):
-        pattern_types = pattern.type_frequencies.most_common()
-        for etype, ecount in entity_types:
-            for ptype, pcount in pattern_types:
-                if ptype == etype:
-                    return True
-        return False
+        return self.instance_types.count_types(entity)
 
 
 def test():
@@ -152,5 +147,4 @@ def test():
 
 
 if __name__ == '__main__':
-    # pass
     test()

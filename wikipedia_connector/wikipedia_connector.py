@@ -2,8 +2,6 @@ import imp
 import requests
 import re
 from timeit import default_timer as timer
-from bs4 import BeautifulSoup as bs
-from nltk.tokenize import sent_tokenize, word_tokenize
 
 dump_extractor = imp.load_source('dump_extractor', '../wikipedia_connector/dump_connector/dump_extractor.py')
 redirector = imp.load_source('subst_redirects', '../data_cleaning/subst_redirects.py')
@@ -24,7 +22,7 @@ class WikipediaConnector(object):
     def get_wikipedia_article_html(self, dbpedia_resource):
         start = timer()
         if self.use_dump:
-            resource = self.normalize_uri(dbpedia_resource)
+            resource = WikipediaConnector.strip_cleaned_entity_name(dbpedia_resource)
             html = dump_extractor.get_wikipedia_html_from_dump(resource)
         else:
             html = self._scrape_wikipedia_article(dbpedia_resource)
@@ -46,20 +44,28 @@ class WikipediaConnector(object):
             article = self.redirector.substitute_html(article)
         return article
 
-    def normalize_uri(self, uri):
+    @staticmethod
+    def strip_entity_name(uri):
+        return uri.split('/')[-1]
+
+    @staticmethod
+    def convert_to_wikipedia_uri(uri):
+        entity_name = WikipediaConnector.strip_entity_name(uri)
+        return '/wiki/' + entity_name
+
+    @staticmethod
+    def strip_cleaned_entity_name(uri):
         """
         http://dbpedia.org/resource/Alain_Connes -> 'Alain Connes'
         """
-        name = uri.split('/')[-1].replace('_', ' ')
-        return TaggedSentence.clean_input(name)
+        entity_name = WikipediaConnector.strip_entity_name(uri)
+        entity_name = entity_name.replace('_', ' ')
+        return TaggedSentence.clean_input(entity_name)
 
-    def wikipedia_uri(self, DBP_uri):
-        return DBP_uri.replace("http://dbpedia.org/resource/", "/wiki/")
-
-    def splitkeepsep(self, s, sep):
-        """ http://programmaticallyspeaking.com/split-on-separator-but-keep-the-separator-in-python.html """
-        return reduce(lambda acc, elem: acc[:-1] + [acc[-1] + elem] if elem == sep else acc + [elem],
-                      re.split("(%s)" % re.escape(sep), s), [])
+    # def splitkeepsep(self, s, sep):
+    #     """ http://programmaticallyspeaking.com/split-on-separator-but-keep-the-separator-in-python.html """
+    #     return reduce(lambda acc, elem: acc[:-1] + [acc[-1] + elem] if elem == sep else acc + [elem],
+    #                   re.split("(%s)" % re.escape(sep), s), [])
 
     # @staticmethod
     # def has_appropriate_text_length(html):

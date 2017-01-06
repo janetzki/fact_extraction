@@ -5,6 +5,7 @@ from collections import Counter
 from itertools import dropwhile
 import copy
 
+
 class Direction(Enum):
     outgoing = 1
     incoming = 2
@@ -76,14 +77,16 @@ class DependencyNode(object):
 
 
 class Pattern(object):
-    def __init__(self, relative_position, root, type_frequencies, nodes=None, covered_sentences=1):
+    def __init__(self, relative_position, root, subject_type_frequencies, object_type_frequencies, nodes=None,
+                 covered_sentences=1):
         self.relative_position = relative_position
         if nodes is None:
             nodes = {}
         self.nodes = nodes
         self.root = root
         self.covered_sentences = covered_sentences
-        self.type_frequencies = type_frequencies
+        self.subject_type_frequencies = subject_type_frequencies
+        self.object_type_frequencies = object_type_frequencies
 
     def __repr__(self):
         return 'Pattern()'
@@ -174,14 +177,16 @@ class Pattern(object):
             pattern2.assert_is_tree()
 
         new_covered_sentences = pattern1.covered_sentences + pattern2.covered_sentences
-        new_type_frequencies = pattern1.type_frequencies + pattern2.type_frequencies
+        new_subject_type_frequencies = pattern1.subject_type_frequencies + pattern2.subject_type_frequencies
+        new_object_type_frequencies = pattern1.object_type_frequencies + pattern2.object_type_frequencies
         new_relative_position = (pattern1.covered_sentences * pattern1.relative_position +
                                  pattern2.covered_sentences * pattern2.relative_position) / new_covered_sentences
         # assert self.nodes[self.root].tag == pattern.nodes[pattern.root].tag
 
         new_nodes = {}
         Pattern.merge_nodes(pattern1.root, pattern2.root, pattern1.nodes, pattern2.nodes, new_nodes)
-        new_pattern = Pattern(new_relative_position, 0, new_type_frequencies, new_nodes, new_covered_sentences)
+        new_pattern = Pattern(new_relative_position, 0, new_subject_type_frequencies, new_object_type_frequencies,
+                              new_nodes, new_covered_sentences)
 
         if assert_valid:
             # pattern1 and pattern2 still have to be valid (protect against side effects)
@@ -219,7 +224,7 @@ class Pattern(object):
             total_words += self.total_words_under_node(partner)
         return total_words
 
-    @staticmethod  # static because pattern can be deleted
+    @staticmethod  # static because pattern might be deleted
     def _delete_node(pattern, node_addr):
         if node_addr == pattern.root:
             return None
@@ -230,13 +235,13 @@ class Pattern(object):
         pattern.nodes.pop(node_addr)
         return pattern
 
-    @staticmethod  # static because pattern can be deleted
-    def clean_type_frequencies(pattern, least_threshold):
-        for type, frequency in dropwhile(lambda (t, f): f >= least_threshold, pattern.type_frequencies.most_common()):
-            del pattern.type_frequencies[type]
-        return pattern
+    @staticmethod  # static because pattern might be deleted
+    def clean_type_frequencies(type_counter, least_threshold):
+        for type, frequency in dropwhile(lambda (t, f): f >= least_threshold, type_counter.most_common()):
+            del type_counter[type]
+        return type_counter
 
-    @staticmethod  # static because pattern can be deleted
+    @staticmethod  # static because pattern might be deleted
     def clean_word_frequencies(pattern, least_threshold, node_addr=None):
         if node_addr is None:
             node_addr = pattern.root
@@ -253,9 +258,12 @@ class Pattern(object):
             node.dependencies = dict(filter(lambda (dep, addr): addr is not None, node.dependencies.iteritems()))
         return pattern
 
-    @staticmethod  # static because pattern can be deleted
+    @staticmethod  # static because pattern might be deleted
     def clean_pattern(pattern, least_threshold_words=2, least_threshold_types=1):
-        pattern = Pattern.clean_type_frequencies(pattern, least_threshold_types)
+        pattern.subject_type_frequencies = Pattern.clean_type_frequencies(pattern.subject_type_frequencies,
+                                                                          least_threshold_types)
+        pattern.object_type_frequencies = Pattern.clean_type_frequencies(pattern.object_type_frequencies,
+                                                                         least_threshold_types)
         pattern = Pattern.clean_word_frequencies(pattern, least_threshold_words)
         return pattern
 
@@ -268,7 +276,7 @@ class Pattern(object):
         if allow_second_empty and len(type_frequencies2) == 0:
             return 1  # new objects with no type in DBpedia should also be found
         intersection = sum((type_frequencies1 & type_frequencies2).itervalues())
-        union = sum((type_frequencies1 & type_frequencies2).itervalues())
+        union = sum((type_frequencies1 | type_frequencies2).itervalues())
         return float(intersection) / union
 
     @staticmethod
@@ -304,7 +312,13 @@ class Pattern(object):
         '''
         :return:    between 0.0 and 1.0
         '''
-        type_score = Pattern._match_type_frequencies(pattern1.type_frequencies, pattern2.type_frequencies, allow_second_empty_types)
+        subject_type_score = Pattern._match_type_frequencies(pattern1.subject_type_frequencies,
+                                                             pattern2.subject_type_frequencies,
+                                                             allow_second_empty_types)
+        object_type_score = Pattern._match_type_frequencies(pattern1.object_type_frequencies,
+                                                            pattern2.object_type_frequencies,
+                                                            allow_second_empty_types)
+        type_score = subject_type_score * object_type_score
         if type_score == 0:
             return 0
         node_score = Pattern._match_pattern_nodes_bidirectional(pattern1, pattern2)

@@ -2,17 +2,14 @@
 # -*- coding: utf-8 -*-
 
 import re
-import sys
-import os
 from tqdm import tqdm
 import csv
-import codecs
 
-delimiter = "#"
+delimiter = '#'
 dump_path = '../data/enwiki-latest-pages-articles.xml'
 dump_path_new = '../data/enwiki-latest-pages-articles-redirected.xml'
 limit = 1e12
-total_lines = 930000000
+total_lines = 930000000  # TODO: replace magic number with line counter
 REGEX = re.compile('\[\[(.+?)(\|(.+?))?\]\]')  # look for [[linked_article]] or [[linked_article|link_text]]
 REGEX_HTML = re.compile('(href=\"\/wiki\/)(.*?)(\")')  # look for href="wiki/linked_article"
 

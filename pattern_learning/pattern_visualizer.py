@@ -12,11 +12,18 @@ def dict_to_string(dictionary):
     return build_displayed_string_from_counter(reverse_counter)
 
 
-def add_node(graph, identifier, word_frequencies, type_frequencies={}, color="black", shape="ellipse"):
+def add_node(graph, identifier, word_frequencies, subject_type_frequencies={}, object_type_frequencies={},
+             color="black", shape="ellipse"):
     text = dict_to_string(word_frequencies)
-    if len(type_frequencies) > 0:
-        text += '--- Types ---\n'
-        text += dict_to_string(type_frequencies)
+
+    if len(subject_type_frequencies) > 0:
+        text += '--- Subject Types ---\n'
+        text += dict_to_string(subject_type_frequencies)
+
+    if len(object_type_frequencies) > 0:
+        text += '--- Object Types ---\n'
+        text += dict_to_string(object_type_frequencies)
+
     graph.node(str(identifier), text, color=color, shape=shape)
     return graph
 
@@ -61,8 +68,8 @@ if __name__ == '__main__':
         print(pattern.calculate_diversity_measure())
         # print root node
         root = pattern.get_node_by_id(pattern.root)
-        add_node(dot, pattern.root, root.word_frequencies, type_frequencies=pattern.type_frequencies, color="red",
-                 shape="doublecircle")
+        add_node(dot, pattern.root, root.word_frequencies, subject_type_frequencies=pattern.subject_type_frequencies,
+                 object_type_frequencies=pattern.object_type_frequencies, color="red", shape="doublecircle")
         # print all remaining nodes
         for id, node in pattern.nodes.iteritems():
             if id == pattern.root:

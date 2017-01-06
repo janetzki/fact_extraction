@@ -57,57 +57,73 @@ class FactExtractor(object):
 
     def _match_pattern_against_relation_patterns(self, pattern, reasonable_relations):
         matching_relations = []
-        for relation, relation_pattern in reasonable_relations.iteritems():
+        for relation in reasonable_relations:
+            relation_pattern = self.relation_patterns[relation]
             match_score = Pattern.match_patterns(relation_pattern, pattern, self.allow_unknown_entity_types)
             if match_score >= self.match_threshold:
                 matching_relations.append((relation, match_score))
         return matching_relations
 
-    def _find_reasonable_relations(self, entity):
-        reasonable_relations = {}
+    def _filter_reasonable_relations(self, entity, types_of_relations):
+        reasonable_relations = set()
         entity_types = self.pattern_extractor.get_entity_types(entity)
         if self.allow_unknown_entity_types and len(entity_types) == 0:
-            reasonable_relations = self.relation_patterns
+            reasonable_relations = set(types_of_relations.keys())
         else:
-            for relation, relation_pattern in self.relation_patterns.iteritems():
-                if self.pattern_extractor.is_reasonable_relation_pattern(entity_types, relation_pattern):
-                    reasonable_relations[relation] = relation_pattern
+            for relation, types in types_of_relations.iteritems():
+                if len(entity_types & types) > 0:
+                    reasonable_relations.add(relation)
         return reasonable_relations
 
-    def _extract_facts_from_sentence(self, sentence):
+    def _get_specific_type_frequencies(self, subject_or_object):
+        if subject_or_object == 'subject':
+            return {relation: pattern.subject_type_frequencies for relation, pattern in
+                    self.relation_patterns.iteritems()}
+        elif subject_or_object == 'object':
+            return {relation: pattern.object_type_frequencies for relation, pattern in
+                    self.relation_patterns.iteritems()}
+        else:
+            assert False
+
+    def _extract_facts_from_sentences(self, sentences, subject_entity):
         facts = []
-        relative_position = sentence.relative_pos
-        nl_sentence = sentence.as_string()
-        object_addresses_of_links = sentence.addresses_of_links()
-        for object_link, object_addresses in object_addresses_of_links.iteritems():
-            object_entity = object_link.replace('/wiki/', '')
-            reasonable_relations = self._find_reasonable_relations(object_entity)
-            if not len(reasonable_relations):
-                continue
+        reasonable_relations_for_subject = self._filter_reasonable_relations(subject_entity,
+                                                                             self._get_specific_type_frequencies(
+                                                                                 'subject'))
+        for sentence in tqdm(sentences, total=len(sentences)):
+            if sentence.number_of_tokens() > 100:
+                continue  # probably too long for stanford tokenizer
+            relative_position = sentence.relative_pos
+            nl_sentence = sentence.as_string()
+            object_addresses_of_links = sentence.addresses_of_links()
+            for object_link, object_addresses in object_addresses_of_links.iteritems():
+                object_entity = WikipediaConnector.strip_entity_name(object_link)
+                reasonable_relations_for_object = self._filter_reasonable_relations(object_entity,
+                                                                                    self._get_specific_type_frequencies(
+                                                                                        'object'))
 
-            pattern = self.pattern_extractor.extract_pattern(nl_sentence, object_addresses, relative_position,
-                                                             object_entity)
-            if pattern is None:
-                continue
+                reasonable_relations = reasonable_relations_for_subject & reasonable_relations_for_object
+                if not len(reasonable_relations):
+                    continue
 
-            matching_relations = self._match_pattern_against_relation_patterns(pattern, reasonable_relations)
-            new_facts = [(rel, object_link, score, nl_sentence) for (rel, score) in matching_relations]
-            facts.extend(new_facts)
-            for fact in new_facts:
-                print('')
-                print(fact)
+                pattern = self.pattern_extractor.extract_pattern(nl_sentence, object_addresses, relative_position,
+                                                                 subject_entity, object_entity)
+                if pattern is None:
+                    continue
+
+                matching_relations = self._match_pattern_against_relation_patterns(pattern, reasonable_relations)
+                new_facts = [(rel, object_link, score, nl_sentence) for (rel, score) in matching_relations]
+                facts.extend(new_facts)
+                for fact in new_facts:
+                    print('')
+                    print(fact)
         return facts
 
-    def _extract_facts_from_sentences(self, sentences):
-        facts = []
-        for sent in tqdm(sentences, total=len(sentences)):
-            facts.extend(self._extract_facts_from_sentence(sent))
-        return facts
-
-    def extract_facts_from_html(self, html, resource='Default entity name'):
+    def extract_facts_from_html(self, html, resource):
         tagged_sentences = TaggedSentence.from_html(html)
         referenced_sentences = filter(lambda sent: sent.contains_any_link(), tagged_sentences)
-        facts = self._extract_facts_from_sentences(referenced_sentences)
+        subject_entity = WikipediaConnector.strip_entity_name(resource)
+        facts = self._extract_facts_from_sentences(referenced_sentences, subject_entity)
         facts = [(resource, rel, obj, score, nl_sentence) for (rel, obj, score, nl_sentence) in facts]
         return facts
 
@@ -117,7 +133,7 @@ class FactExtractor(object):
         for resource in self.discovery_resources:
             print('--- ' + resource + ' ----')
             html = self.wikipedia_connector.get_wikipedia_article_html(resource)
-            facts.extend(self.extract_facts_from_html(html))
+            facts.extend(self.extract_facts_from_html(html, resource))
         facts.sort(key=lambda fact: fact[3], reverse=True)
         print('\n\n----- Extracted facts ------')
         for fact in facts:
@@ -135,7 +151,8 @@ def get_input_parameters_from_file(path):
 
 def test(fact_extractor):
     print(fact_extractor.extract_facts_from_html(
-        'He recently became a professor at the <a href="/wiki/Massachusetts_Institute_of_Technology">MIT</a>.'))
+        'He recently became a professor at the <a href="/wiki/Massachusetts_Institute_of_Technology">MIT</a>.'),
+          'John Doe')
 
 
 if __name__ == '__main__':
