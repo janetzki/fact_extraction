@@ -270,14 +270,21 @@ class Pattern(object):
     @staticmethod
     def _match_type_frequencies(type_frequencies1, type_frequencies2, except_second_empty=False):
         '''
-        calculate Jaccard index of both bags: J(A, B) = |A intersect B| / |A union B|
+        assume that type_frequencies2 contains at most 1 type
+        calculate which ratio this type has in type_frequencies1
         :return:    between 0.0 and 1.0
         '''
-        if except_second_empty and len(type_frequencies2) == 0:
-            return None  # new objects with no type shall not be penalized
-        intersection = sum((type_frequencies1 & type_frequencies2).itervalues())
-        union = sum((type_frequencies1 | type_frequencies2).itervalues())
-        return float(intersection) / union
+        if len(type_frequencies2) == 0:
+            if except_second_empty:
+                return None  # new objects with no type shall not be penalized
+            else:
+                return 0
+
+        assert len(type_frequencies2) == 1
+        type = type_frequencies2.keys()[0]
+        type_amount = type_frequencies1[type]
+        total = sum(type_frequencies1.values())
+        return float(type_amount) / total
 
     @staticmethod
     def _match_pattern_nodes_unidirectional(pattern1, node1_addr, pattern2, node2_addr, weighting=None):
@@ -309,6 +316,7 @@ class Pattern(object):
 
     @staticmethod
     def _weighted_arithmetic_mean(data, weights):
+        # TODO: Wold geometric mean be more appropriate?
         assert len(data) == len(weights)
 
         # filter empty values
@@ -326,7 +334,6 @@ class Pattern(object):
         for i in range(len(data)):
             mean += data[i] * weights[i]
         return mean
-
 
     @staticmethod
     def match_patterns(pattern1, pattern2, except_second_empty=False):
