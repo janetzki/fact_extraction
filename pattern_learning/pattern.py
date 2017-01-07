@@ -268,13 +268,13 @@ class Pattern(object):
         return pattern
 
     @staticmethod
-    def _match_type_frequencies(type_frequencies1, type_frequencies2, allow_second_empty=False):
+    def _match_type_frequencies(type_frequencies1, type_frequencies2, except_second_empty=False):
         '''
         calculate Jaccard index of both bags: J(A, B) = |A intersect B| / |A union B|
         :return:    between 0.0 and 1.0
         '''
-        if allow_second_empty and len(type_frequencies2) == 0:
-            return 1  # new objects with no type in DBpedia should also be found
+        if except_second_empty and len(type_frequencies2) == 0:
+            return None  # new objects with no type shall not be penalized
         intersection = sum((type_frequencies1 & type_frequencies2).itervalues())
         union = sum((type_frequencies1 | type_frequencies2).itervalues())
         return float(intersection) / union
@@ -308,18 +308,42 @@ class Pattern(object):
                * Pattern._match_pattern_nodes_unidirectional(pattern2, pattern2.root, pattern1, pattern1.root)
 
     @staticmethod
-    def match_patterns(pattern1, pattern2, allow_second_empty_types=False):
+    def _weighted_arithmetic_mean(data, weights):
+        assert len(data) == len(weights)
+
+        # filter empty values
+        weighted_data = zip(data, weights)
+        weighted_data = filter(lambda (d, w): d is not None, weighted_data)
+        data, weights = zip(*weighted_data)
+
+        # normalize weights
+        total_weight = sum(weights)
+        normalization_factor = 1 / total_weight
+        weights = map(lambda w: w * normalization_factor, weights)
+
+        # calculate mean
+        mean = 0
+        for i in range(len(data)):
+            mean += data[i] * weights[i]
+        return mean
+
+
+    @staticmethod
+    def match_patterns(pattern1, pattern2, except_second_empty=False):
         '''
         :return:    between 0.0 and 1.0
         '''
         subject_type_score = Pattern._match_type_frequencies(pattern1.subject_type_frequencies,
                                                              pattern2.subject_type_frequencies,
-                                                             allow_second_empty_types)
+                                                             except_second_empty)
+        if subject_type_score == 0:
+            return 0
         object_type_score = Pattern._match_type_frequencies(pattern1.object_type_frequencies,
                                                             pattern2.object_type_frequencies,
-                                                            allow_second_empty_types)
-        type_score = subject_type_score * object_type_score
-        if type_score == 0:
+                                                            except_second_empty)
+        if object_type_score == 0:
             return 0
         node_score = Pattern._match_pattern_nodes_bidirectional(pattern1, pattern2)
-        return type_score * node_score
+        scores = [subject_type_score, object_type_score, node_score]
+        weights = [0.25, 0.25, 0.5]
+        return Pattern._weighted_arithmetic_mean(scores, weights)

@@ -12,7 +12,7 @@ from wikipedia_connector import WikipediaConnector, TaggedSentence
 
 
 class FactExtractor(object):
-    def __init__(self, limit, use_dump=False, randomize=False, allow_unknown_entity_types=True, match_threshold=0.005,
+    def __init__(self, limit, use_dump=False, randomize=False, match_threshold=0.005, allow_unknown_entity_types=True,
                  load_path='../data/patterns.pkl',
                  resources_path='../data/mappingbased_objects_en_filtered.csv'):
         self.limit = limit
@@ -131,7 +131,7 @@ class FactExtractor(object):
         facts = []
         tqdm.write('\n\nFact extraction...')
         for resource in self.discovery_resources:
-            print('--- ' + resource + ' ----')
+            tqdm.write('\n\n--- ' + resource + ' ----')
             html = self.wikipedia_connector.get_wikipedia_article_html(resource)
             facts.extend(self.extract_facts_from_html(html, resource))
         facts.sort(key=lambda fact: fact[3], reverse=True)
@@ -146,17 +146,18 @@ def get_input_parameters_from_file(path):
     use_dump = config.getboolean('general', 'use_dump')
     randomize = config.getboolean('fact_extractor', 'randomize')
     limit = config.getint('fact_extractor', 'limit')
-    return use_dump, randomize, limit
+    match_threshold = config.getfloat('fact_extractor', 'match_threshold')
+    return use_dump, randomize, limit, match_threshold
 
 
 def test(fact_extractor):
     print(fact_extractor.extract_facts_from_html(
-        'He recently became a professor at the <a href="/wiki/Massachusetts_Institute_of_Technology">MIT</a>.'),
-          'John Doe')
+        'He recently became a professor at the <a href="/wiki/Massachusetts_Institute_of_Technology">MIT</a>.',
+          'John Doe'))
 
 
 if __name__ == '__main__':
-    use_dump, randomize, limit = get_input_parameters_from_file('../config.ini')
-    fact_extractor = FactExtractor(limit, use_dump=use_dump, randomize=randomize)
+    use_dump, randomize, limit, match_threshold = get_input_parameters_from_file('../config.ini')
+    fact_extractor = FactExtractor(limit, use_dump, randomize, match_threshold)
     # test(fact_extractor)
     fact_extractor.extract_facts()
