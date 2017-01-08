@@ -12,10 +12,10 @@ from wikipedia_connector import WikipediaConnector, TaggedSentence
 
 
 class FactExtractor(object):
-    def __init__(self, limit, use_dump=False, randomize=False, match_threshold=0.005, allow_unknown_entity_types=True,
+    def __init__(self, articles_limit, use_dump=False, randomize=False, match_threshold=0.005, allow_unknown_entity_types=True,
                  load_path='../data/patterns.pkl',
                  resources_path='../data/mappingbased_objects_en_filtered.csv'):
-        self.limit = limit
+        self.articles_limit = articles_limit
         self.use_dump = use_dump
         self.randomize = randomize
         self.allow_unknown_entity_types = allow_unknown_entity_types
@@ -46,7 +46,7 @@ class FactExtractor(object):
                     if random_offset == 0:
                         break
 
-            max_results = self.limit
+            max_results = self.articles_limit
             for row in wikireader:
                 if max_results == 0:
                     break
@@ -145,9 +145,9 @@ def get_input_parameters_from_file(path='../config.ini'):
     config.read(path)
     use_dump = config.getboolean('general', 'use_dump')
     randomize = config.getboolean('fact_extractor', 'randomize')
-    limit = config.getint('fact_extractor', 'limit')
+    articles_limit = config.getint('fact_extractor', 'articles_limit')
     match_threshold = config.getfloat('fact_extractor', 'match_threshold')
-    return use_dump, randomize, limit, match_threshold
+    return use_dump, randomize, articles_limit, match_threshold
 
 
 def test(fact_extractor):
@@ -157,7 +157,7 @@ def test(fact_extractor):
 
 
 if __name__ == '__main__':
-    use_dump, randomize, limit, match_threshold = get_input_parameters_from_file()
-    fact_extractor = FactExtractor(limit, use_dump, randomize, match_threshold)
+    use_dump, randomize, articles_limit, match_threshold = get_input_parameters_from_file()
+    fact_extractor = FactExtractor(articles_limit, use_dump, randomize, match_threshold)
     # test(fact_extractor)
     fact_extractor.extract_facts()

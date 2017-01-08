@@ -34,13 +34,14 @@ class WikiPatternExtractor(object):
         self.relationships = ['http://dbpedia.org/ontology/' + r for r in relationships if r]
         self.relation_types_limit = relation_types_limit
         self.facts_limit = facts_limit
-        self.dbpedia = {}
-        self.relation_patterns = {}
         self.randomize = randomize
         self.perform_tests = perform_tests
         self.write_path = write_path
         self.wikipedia_connector = WikipediaConnector(use_dump=self.use_dump, redirect=replace_redirects)
         self.pattern_extractor = PatternExtractor()
+        self.dbpedia = {}
+        self.relation_patterns = {}
+        self.matches = []
 
     # -------------------------------------------------------------------------------------------------
     #                               Data Preprocessing
@@ -78,14 +79,17 @@ class WikiPatternExtractor(object):
         else:
             offset_countdown = 0
 
+        tqdm.write('\n\nCollecting facts for training...')
         for subject, predicate, object in WikiPatternExtractor.parse_ttl(self.resources_path):
             if offset_countdown > 0:
                 offset_countdown -= 1
                 continue
+            if fact_counter == self.facts_limit * self.relation_types_limit:
+                break
             if len(relation_types) == self.relation_types_limit and predicate not in relation_types:
                 continue
-            if fact_counter == self.facts_limit:
-                break
+            if relation_types[predicate] == self.facts_limit:
+                continue
 
             # maintain a dict for each entity with given relations as key
             # and their target values as list
@@ -93,9 +97,11 @@ class WikiPatternExtractor(object):
             fact_counter += 1
             relation_types[predicate] += 1
 
-        tqdm.write('\n\nRelation_types:')
-        for relation_type, frequency in relation_types.most_common():
-            print('\t' + str(frequency) + ' x\t' + relation_type).expandtabs(10)
+        tqdm.write('\n\nRelation types:')
+        most_common_relation_types = relation_types.most_common()
+        for i in range(len(most_common_relation_types)):
+            relation_type, frequency = most_common_relation_types[i]
+            print('\t' + str(i + 1) + ':\t' + str(frequency) + ' x\t' + relation_type).expandtabs(10)
 
         return entities
 
@@ -134,12 +140,7 @@ class WikiPatternExtractor(object):
     #                               Statistics and Visualizations
     # ---------------------------------------------------------------------------------------------
 
-    def print_patterns(self):
-        """
-        Prints each occurence of a given DBpedia fact with their corresponding and matched sentence.
-        The matched sentence is POS tagges using maxent treebank pos tagging model.
-        Nouns, verbs and adjectives are printed in colour.
-        """
+    def extract_patterns(self):
         color_mapping = {
             'magenta': ['NN', 'NNS'],
             'green': ['NNP', 'NNPS'],
@@ -148,10 +149,6 @@ class WikiPatternExtractor(object):
         }
         # reverse color mapping
         color_mapping = {v: k for k, values in color_mapping.iteritems() for v in values}
-
-        # build table data
-        results = []
-        # corpus = deepcopy(self.dbpedia)
 
         tqdm.write('\n\nPattern extraction...')
         for entity, relations in tqdm(self.dbpedia.iteritems(), total=len(self.dbpedia)):
@@ -172,6 +169,8 @@ class WikiPatternExtractor(object):
                 # POS tag sentences
                 for entry in data:
                     sentence = entry['sentence']
+                    if sentence.number_of_tokens() > 100:
+                        continue  # probably too long for stanford tokenizer
                     resource = entry['resource']
                     nl_sentence = sentence.as_string()
                     relative_position = sentence.relative_pos
@@ -195,13 +194,20 @@ class WikiPatternExtractor(object):
                     colored_sentence = re.sub(r' (.\[\d+m),', ',', colored_sentence)  # remove space before commas
                     entry['colored sentence'] = colored_sentence
 
-                results.extend(data)
+                self.matches.extend(data)
 
         # drop duplicates
-        results.sort()
-        results = list(x for x, _ in itertools.groupby(results))
+        self.matches.sort()
+        self.matches = list(x for x, _ in itertools.groupby(self.matches))
 
-        for entry in results:
+    def print_patterns(self):
+        """
+        Prints each occurence of a given DBpedia fact with their corresponding and matched sentence.
+        The matched sentence is POS tagges using maxent treebank pos tagging model.
+        Nouns, verbs and adjectives are printed in colour.
+        """
+
+        for entry in self.matches:
             print(colored('[DBP Entitity] \t', 'red',
                           attrs={'concealed', 'bold'}) + colored(entry['entity'], 'white')).expandtabs(20)
             print(colored('[DBP Ontology] \t', 'red',
@@ -293,6 +299,7 @@ if __name__ == '__main__':
 
     # preprocess data
     wiki.discover_patterns()
+    wiki.extract_patterns()
     # print Part-of-speech tagged sentences
     wiki.print_patterns()
     wiki.merge_patterns()
