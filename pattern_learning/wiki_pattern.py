@@ -10,8 +10,8 @@ from termcolor import colored
 from nltk.tokenize import word_tokenize
 from nltk.tag import pos_tag_sents
 from ascii_graph import Pyasciigraph
+from collections import Counter
 import re
-import csv
 from random import randint
 import imp
 from tqdm import tqdm
@@ -26,13 +26,14 @@ from ConfigParser import SafeConfigParser
 
 
 class WikiPatternExtractor(object):
-    def __init__(self, limit, resources_path='../data/mappingbased_objects_en_filtered.csv',
+    def __init__(self, relation_types_limit, facts_limit, resources_path='../data/mappingbased_objects_en.ttl',
                  relationships=[], use_dump=False, randomize=False, perform_tests=False,
                  write_path='../data/patterns.pkl', replace_redirects=False):
         self.resources_path = resources_path
         self.use_dump = use_dump
         self.relationships = ['http://dbpedia.org/ontology/' + r for r in relationships if r]
-        self.limit = limit
+        self.relation_types_limit = relation_types_limit
+        self.facts_limit = facts_limit
         self.dbpedia = {}
         self.relation_patterns = {}
         self.randomize = randomize
@@ -48,6 +49,17 @@ class WikiPatternExtractor(object):
     def filter_DBpedia_data(self, relationships):
         pass  # TODO:
 
+    @staticmethod
+    def parse_ttl(path):
+        with open(path) as fin:
+            for line in fin:
+                items = re.findall(r'<([^>]+)>', line)
+                if len(items) == 0:
+                    continue
+                assert len(items) == 3  # otherwise this type of .ttl is not supported by this method
+                subject, predicate, object = items
+                yield subject, predicate, object
+
     def parse_DBpedia_data(self):
         """
         Takes all DBpedia ontology relations (subj verb target) stored in file_name
@@ -59,25 +71,32 @@ class WikiPatternExtractor(object):
                         }
         """
         entities = dict()
-        with open(self.resources_path, 'r') as f:
-            wikireader = csv.reader(f, delimiter=' ', quotechar='"')
+        relation_types = Counter()
+        fact_counter = 0
+        if self.randomize:
+            offset_countdown = randint(0, 10000)  # TODO: get rid off magic number
+        else:
+            offset_countdown = 0
 
-            if self.randomize:
-                random_offset = randint(0, 10000)  # TODO: get rid off magic number
-                for row in wikireader:
-                    random_offset -= 1
-                    if random_offset == 0:
-                        break
+        for subject, predicate, object in WikiPatternExtractor.parse_ttl(self.resources_path):
+            if offset_countdown > 0:
+                offset_countdown -= 1
+                continue
+            if len(relation_types) == self.relation_types_limit and predicate not in relation_types:
+                continue
+            if fact_counter == self.facts_limit:
+                break
 
-            max_results = self.limit
-            for row in wikireader:
-                if max_results == 0:
-                    break
-                subject, relation, value = row[0], row[1], row[2]
-                # maintain a dict for each entity with given relations as key
-                # and their target values as list
-                entities.setdefault(subject, {}).setdefault(relation, []).append(value)
-                max_results -= 1
+            # maintain a dict for each entity with given relations as key
+            # and their target values as list
+            entities.setdefault(subject, {}).setdefault(predicate, []).append(object)
+            fact_counter += 1
+            relation_types[predicate] += 1
+
+        tqdm.write('\n\nRelation_types:')
+        for relation_type, frequency in relation_types.most_common():
+            print('\t' + str(frequency) + ' x\t' + relation_type).expandtabs(10)
+
         return entities
 
     def filter_relevant_sentences(self, tagged_sentences, wikipedia_resources):
@@ -136,16 +155,17 @@ class WikiPatternExtractor(object):
 
         tqdm.write('\n\nPattern extraction...')
         for entity, relations in tqdm(self.dbpedia.iteritems(), total=len(self.dbpedia)):
-            cleaned_subject_entity_name = self.wikipedia_connector.strip_cleaned_entity_name(entity)
-            subject_entity = self.wikipedia_connector.strip_entity_name(entity)
+            cleaned_subject_entity_name = self.wikipedia_connector.strip_cleaned_name(entity)
+            subject_entity = self.wikipedia_connector.strip_name(entity)
             for rel_ontology, values in relations.iteritems():
                 target_resources = values['resources']
                 sentences = values['sentences']
                 rel_ontology = rel_ontology.split('/')[-1]
-                data = [{'entity': cleaned_subject_entity_name, 'relation': rel_ontology, 'resource': res, 'sentence': sent}
-                        for res in target_resources
-                        for sent in sentences
-                        if sent.contains_any_link([res]) and res != entity]
+                data = [
+                    {'entity': cleaned_subject_entity_name, 'relation': rel_ontology, 'resource': res, 'sentence': sent}
+                    for res in target_resources
+                    for sent in sentences
+                    if sent.contains_any_link([res]) and res != entity]
 
                 # remove needless sentence information based on relation facts
                 # data = map(self.shorten_sentence, data)
@@ -160,7 +180,7 @@ class WikiPatternExtractor(object):
                     pos_tagged_sentences = pos_tag_sents(tokenized_sentences).pop()
 
                     object_addresses = sentence.addresses_of_link(resource)
-                    object_entity = WikipediaConnector.strip_entity_name(resource)
+                    object_entity = WikipediaConnector.strip_name(resource)
                     pattern = self.pattern_extractor.extract_pattern(nl_sentence, object_addresses, relative_position,
                                                                      subject_entity, object_entity)
 
@@ -188,7 +208,7 @@ class WikiPatternExtractor(object):
                           attrs={'concealed', 'bold'}) + colored(entry['relation'], 'white')).expandtabs(20)
             print(colored('[DBP Resource] \t', 'red',
                           attrs={'concealed', 'bold'}) + colored(
-                self.wikipedia_connector.strip_cleaned_entity_name(entry['resource']),
+                self.wikipedia_connector.strip_cleaned_name(entry['resource']),
                 'white')).expandtabs(20)
             print(colored('[Wiki Occurence] \t',
                           'red', attrs={'concealed', 'bold'}) + entry['colored sentence']).expandtabs(20)
@@ -253,20 +273,22 @@ class WikiPatternExtractor(object):
             pickle.dump(output, fout, pickle.HIGHEST_PROTOCOL)
 
 
-def get_input_parameters_from_file(path):
+def get_input_parameters_from_file(path='../config.ini'):
     config = SafeConfigParser()
     config.read(path)
     use_dump = config.getboolean('general', 'use_dump')
     randomize = config.getboolean('wiki_pattern', 'randomize')
     perform_tests = config.getboolean('wiki_pattern', 'randomize')
-    limit = config.getint('wiki_pattern', 'limit')
+    relation_types_limit = config.getint('wiki_pattern', 'relation_types_limit')
+    facts_limit = config.getint('wiki_pattern', 'facts_limit')
     replace_redirects = config.getboolean('wiki_pattern', 'replace_redirects')
-    return use_dump, randomize, perform_tests, limit, replace_redirects
+    return use_dump, randomize, perform_tests, relation_types_limit, facts_limit, replace_redirects
 
 
 if __name__ == '__main__':
-    use_dump, randomize, perform_tests, limit, replace_redirects = get_input_parameters_from_file('../config.ini')
-    wiki = WikiPatternExtractor(limit, use_dump=use_dump, randomize=randomize, perform_tests=perform_tests,
+    use_dump, randomize, perform_tests, relation_types_limit, facts_limit, replace_redirects = get_input_parameters_from_file()
+    wiki = WikiPatternExtractor(relation_types_limit, facts_limit, use_dump=use_dump, randomize=randomize,
+                                perform_tests=perform_tests,
                                 replace_redirects=replace_redirects)
 
     # preprocess data

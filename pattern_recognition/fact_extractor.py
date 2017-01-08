@@ -97,7 +97,7 @@ class FactExtractor(object):
             nl_sentence = sentence.as_string()
             object_addresses_of_links = sentence.addresses_of_links()
             for object_link, object_addresses in object_addresses_of_links.iteritems():
-                object_entity = WikipediaConnector.strip_entity_name(object_link)
+                object_entity = WikipediaConnector.strip_name(object_link)
                 reasonable_relations_for_object = self._filter_reasonable_relations(object_entity,
                                                                                     self._get_specific_type_frequencies(
                                                                                         'object'))
@@ -122,7 +122,7 @@ class FactExtractor(object):
     def extract_facts_from_html(self, html, resource):
         tagged_sentences = TaggedSentence.from_html(html)
         referenced_sentences = filter(lambda sent: sent.contains_any_link(), tagged_sentences)
-        subject_entity = WikipediaConnector.strip_entity_name(resource)
+        subject_entity = WikipediaConnector.strip_name(resource)
         facts = self._extract_facts_from_sentences(referenced_sentences, subject_entity)
         facts = [(resource, rel, obj, score, nl_sentence) for (rel, obj, score, nl_sentence) in facts]
         return facts
@@ -140,7 +140,7 @@ class FactExtractor(object):
             print(fact)
 
 
-def get_input_parameters_from_file(path):
+def get_input_parameters_from_file(path='../config.ini'):
     config = SafeConfigParser()
     config.read(path)
     use_dump = config.getboolean('general', 'use_dump')
@@ -157,7 +157,7 @@ def test(fact_extractor):
 
 
 if __name__ == '__main__':
-    use_dump, randomize, limit, match_threshold = get_input_parameters_from_file('../config.ini')
+    use_dump, randomize, limit, match_threshold = get_input_parameters_from_file()
     fact_extractor = FactExtractor(limit, use_dump, randomize, match_threshold)
     # test(fact_extractor)
     fact_extractor.extract_facts()

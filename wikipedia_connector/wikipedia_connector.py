@@ -22,7 +22,7 @@ class WikipediaConnector(object):
     def get_wikipedia_article_html(self, dbpedia_resource):
         start = timer()
         if self.use_dump:
-            resource = WikipediaConnector.strip_cleaned_entity_name(dbpedia_resource)
+            resource = WikipediaConnector.strip_cleaned_name(dbpedia_resource)
             html = dump_extractor.get_wikipedia_html_from_dump(resource)
         else:
             html = self._scrape_wikipedia_article(dbpedia_resource)
@@ -45,20 +45,20 @@ class WikipediaConnector(object):
         return article
 
     @staticmethod
-    def strip_entity_name(uri):
+    def strip_name(uri):
         return uri.split('/')[-1]
 
     @staticmethod
     def convert_to_wikipedia_uri(uri):
-        entity_name = WikipediaConnector.strip_entity_name(uri)
+        entity_name = WikipediaConnector.strip_name(uri)
         return '/wiki/' + entity_name
 
     @staticmethod
-    def strip_cleaned_entity_name(uri):
+    def strip_cleaned_name(uri):
         """
         http://dbpedia.org/resource/Alain_Connes -> 'Alain Connes'
         """
-        entity_name = WikipediaConnector.strip_entity_name(uri)
+        entity_name = WikipediaConnector.strip_name(uri)
         entity_name = entity_name.replace('_', ' ')
         return TaggedSentence.clean_input(entity_name)
 
