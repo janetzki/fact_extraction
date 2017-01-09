@@ -17,6 +17,7 @@ delimiter = '#'  # '#' is never used as character in page titles
 
 
 def _make_gen(reader):
+    # http://stackoverflow.com/questions/19001402/how-to-count-the-total-number-of-lines-in-a-text-file-using-python
     b = reader(1024 * 1024)
     while b:
         yield b

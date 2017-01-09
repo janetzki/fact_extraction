@@ -54,8 +54,8 @@ class PatternExtractor(object):
         return graph
 
     @staticmethod
-    def _build_pattern(parse, graph, object_address, relative_position, depth, strong_relations, subject_types,
-                       object_types):
+    def _build_pattern(parse, graph, object_address, relative_position, depth, strong_relations, subject_types=None,
+                       object_types=None):
         new_pattern = Pattern(relative_position, object_address, subject_types, object_types)
         visited, queue = set(), [object_address]
         distances = {k: float('inf') for k in parse.nodes.keys()}
@@ -114,8 +114,8 @@ class PatternExtractor(object):
         new_pattern.assert_is_tree()
         return new_pattern
 
-    def extract_pattern(self, sentence, object_token_addresses, relative_position, subject_entity, object_entity,
-                        depth=1):
+    def extract_pattern(self, sentence, object_token_addresses, relative_position, type_extraction=False,
+                        subject_entity=None, object_entity=None, depth=1):
         if len(sentence.strip(' ')) == 0:
             return None
         object_token_addresses = map(lambda addr: addr + 1,
@@ -128,8 +128,14 @@ class PatternExtractor(object):
         if object_address is None:
             return None
         graph = PatternExtractor._build_graph_from_dependeny_parse(parse)
-        subject_types = self.instance_types.count_types(subject_entity)
-        object_types = self.instance_types.count_types(object_entity)
+
+        if type_extraction:
+            assert subject_entity is not None and object_entity is not None
+            subject_types = self.instance_types.count_types(subject_entity)
+            object_types = self.instance_types.count_types(object_entity)
+        else:
+            subject_types = None
+            object_types = None
 
         strong_relations = ['xcmp', 'auxpass']
         return PatternExtractor._build_pattern(parse, graph, object_address, relative_position, depth, strong_relations,

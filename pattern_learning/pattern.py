@@ -77,7 +77,7 @@ class DependencyNode(object):
 
 
 class Pattern(object):
-    def __init__(self, relative_position, root, subject_type_frequencies, object_type_frequencies, nodes=None,
+    def __init__(self, relative_position, root, subject_type_frequencies=None, object_type_frequencies=None, nodes=None,
                  covered_sentences=1):
         self.relative_position = relative_position
         if nodes is None:
@@ -171,14 +171,21 @@ class Pattern(object):
                 new_nodes[new_node_addr].dependencies[dep2] = future_node_addr
 
     @staticmethod
+    def _merge_type_frequencies(type_frequencies1, type_frequencies2):
+        if type_frequencies1 is not None:
+            return type_frequencies1 + type_frequencies2
+        else:
+            return type_frequencies2
+
+    @staticmethod
     def merge(pattern1, pattern2, assert_valid=False):
         if assert_valid:
             pattern1.assert_is_tree()
             pattern2.assert_is_tree()
 
         new_covered_sentences = pattern1.covered_sentences + pattern2.covered_sentences
-        new_subject_type_frequencies = pattern1.subject_type_frequencies + pattern2.subject_type_frequencies
-        new_object_type_frequencies = pattern1.object_type_frequencies + pattern2.object_type_frequencies
+        new_subject_type_frequencies = Pattern._merge_type_frequencies(pattern1.subject_type_frequencies, pattern2.subject_type_frequencies)
+        new_object_type_frequencies = Pattern._merge_type_frequencies(pattern1.object_type_frequencies, pattern2.object_type_frequencies)
         new_relative_position = (pattern1.covered_sentences * pattern1.relative_position +
                                  pattern2.covered_sentences * pattern2.relative_position) / new_covered_sentences
         # assert self.nodes[self.root].tag == pattern.nodes[pattern.root].tag
@@ -236,10 +243,12 @@ class Pattern(object):
         return pattern
 
     @staticmethod  # static because pattern might be deleted
-    def clean_type_frequencies(type_counter, least_threshold):
-        for type, frequency in dropwhile(lambda (t, f): f >= least_threshold, type_counter.most_common()):
-            del type_counter[type]
-        return type_counter
+    def clean_type_frequencies(type_frequencies, least_threshold):
+        if type_frequencies is None:
+            return None
+        for type, frequency in dropwhile(lambda (t, f): f >= least_threshold, type_frequencies.most_common()):
+            del type_frequencies[type]
+        return type_frequencies
 
     @staticmethod  # static because pattern might be deleted
     def clean_word_frequencies(pattern, least_threshold, node_addr=None):
@@ -326,7 +335,7 @@ class Pattern(object):
 
         # normalize weights
         total_weight = sum(weights)
-        normalization_factor = 1 / total_weight
+        normalization_factor = 1.0 / total_weight
         weights = map(lambda w: w * normalization_factor, weights)
 
         # calculate mean
@@ -336,21 +345,24 @@ class Pattern(object):
         return mean
 
     @staticmethod
-    def match_patterns(pattern1, pattern2, except_second_empty=False):
+    def match_patterns(pattern1, pattern2, type_matching=True, except_second_empty=False):
         '''
         :return:    between 0.0 and 1.0
         '''
-        subject_type_score = Pattern._match_type_frequencies(pattern1.subject_type_frequencies,
-                                                             pattern2.subject_type_frequencies,
-                                                             except_second_empty)
-        if subject_type_score == 0:
-            return 0
-        object_type_score = Pattern._match_type_frequencies(pattern1.object_type_frequencies,
-                                                            pattern2.object_type_frequencies,
-                                                            except_second_empty)
-        if object_type_score == 0:
-            return 0
-        node_score = Pattern._match_pattern_nodes_bidirectional(pattern1, pattern2)
-        scores = [subject_type_score, object_type_score, node_score]
-        weights = [0.25, 0.25, 0.5]
-        return Pattern._weighted_arithmetic_mean(scores, weights)
+        if type_matching:
+            subject_type_score = Pattern._match_type_frequencies(pattern1.subject_type_frequencies,
+                                                                 pattern2.subject_type_frequencies,
+                                                                 except_second_empty)
+            if subject_type_score == 0:
+                return 0
+            object_type_score = Pattern._match_type_frequencies(pattern1.object_type_frequencies,
+                                                                pattern2.object_type_frequencies,
+                                                                except_second_empty)
+            if object_type_score == 0:
+                return 0
+            node_score = Pattern._match_pattern_nodes_bidirectional(pattern1, pattern2)
+            scores = [subject_type_score, object_type_score, node_score]
+            weights = [0.25, 0.25, 0.5]
+            return Pattern._weighted_arithmetic_mean(scores, weights)
+        else:
+            return Pattern._match_pattern_nodes_bidirectional(pattern1, pattern2)

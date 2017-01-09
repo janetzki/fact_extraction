@@ -28,13 +28,14 @@ from dbpedia_dump_extractor import DBpediaDumpExtractor
 
 class WikiPatternExtractor(object):
     def __init__(self, relation_types_limit, facts_limit, resources_path='../data/mappingbased_objects_en.ttl',
-                 relationships=[], use_dump=False, randomize=False, perform_tests=False,
+                 relationships=[], use_dump=False, randomize=False, perform_tests=False, type_learning=True,
                  write_path='../data/patterns.pkl', replace_redirects=False):
         self.use_dump = use_dump
         self.relationships = ['http://dbpedia.org/ontology/' + r for r in relationships if r]
         self.relation_types_limit = relation_types_limit
         self.facts_limit = facts_limit
         self.perform_tests = perform_tests
+        self.type_learning = type_learning
         self.write_path = write_path
         self.wikipedia_connector = WikipediaConnector(use_dump=self.use_dump, redirect=replace_redirects)
         self.pattern_extractor = PatternExtractor()
@@ -157,7 +158,7 @@ class WikiPatternExtractor(object):
                     object_addresses = sentence.addresses_of_link(resource)
                     object_entity = WikipediaConnector.strip_name(resource)
                     pattern = self.pattern_extractor.extract_pattern(nl_sentence, object_addresses, relative_position,
-                                                                     subject_entity, object_entity)
+                                                                     self.type_learning, subject_entity, object_entity)
 
                     if pattern is not None:
                         values['patterns'].append(pattern)
@@ -264,14 +265,15 @@ def get_input_parameters_from_file(path='../config.ini'):
     relation_types_limit = config.getint('wiki_pattern', 'relation_types_limit')
     facts_limit = config.getint('wiki_pattern', 'facts_limit')
     replace_redirects = config.getboolean('wiki_pattern', 'replace_redirects')
-    return use_dump, randomize, perform_tests, relation_types_limit, facts_limit, replace_redirects
+    type_learning = config.getboolean('wiki_pattern', 'type_learning')
+    return use_dump, randomize, perform_tests, relation_types_limit, facts_limit, replace_redirects, type_learning
 
 
 if __name__ == '__main__':
-    use_dump, randomize, perform_tests, relation_types_limit, facts_limit, replace_redirects = get_input_parameters_from_file()
+    use_dump, randomize, perform_tests, relation_types_limit, facts_limit, replace_redirects, type_learning = get_input_parameters_from_file()
     wiki = WikiPatternExtractor(relation_types_limit, facts_limit, use_dump=use_dump, randomize=randomize,
-                                perform_tests=perform_tests,
-                                replace_redirects=replace_redirects)
+                                perform_tests=perform_tests, replace_redirects=replace_redirects,
+                                type_learning=type_learning)
 
     # preprocess data
     wiki.discover_patterns()

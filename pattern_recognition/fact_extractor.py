@@ -12,14 +12,17 @@ from wikipedia_connector import WikipediaConnector, TaggedSentence
 dbpedia_dump_extractor = imp.load_source('dbpedia_dump_extractor', '../dbpedia_connector/dbpedia_dump_extractor.py')
 from dbpedia_dump_extractor import DBpediaDumpExtractor
 
+
 class FactExtractor(object):
-    def __init__(self, articles_limit, use_dump=False, randomize=False, match_threshold=0.005, allow_unknown_entity_types=True,
+    def __init__(self, articles_limit, use_dump=False, randomize=False, match_threshold=0.005, type_matching=True,
+                 allow_unknown_entity_types=True,
                  load_path='../data/patterns.pkl',
                  resources_path='../data/mappingbased_objects_en.ttl'):
         self.articles_limit = articles_limit
         self.use_dump = use_dump
         self.allow_unknown_entity_types = allow_unknown_entity_types
         self.match_threshold = match_threshold
+        self.type_matching = type_matching
         self.load_path = load_path
         self.dbpedia_dump_extractor = DBpediaDumpExtractor(resources_path, randomize)
         self.wikipedia_connector = WikipediaConnector(self.use_dump)
@@ -50,7 +53,8 @@ class FactExtractor(object):
         matching_relations = []
         for relation in reasonable_relations:
             relation_pattern = self.relation_patterns[relation]
-            match_score = Pattern.match_patterns(relation_pattern, pattern, self.allow_unknown_entity_types)
+            match_score = Pattern.match_patterns(relation_pattern, pattern, self.type_matching,
+                                                 self.allow_unknown_entity_types)
             if match_score >= self.match_threshold:
                 matching_relations.append((relation, match_score))
         return matching_relations
@@ -62,6 +66,11 @@ class FactExtractor(object):
             reasonable_relations = set(types_of_relations.keys())
         else:
             for relation, types in types_of_relations.iteritems():
+
+                assert types is not None
+                # Otherwise types were not learned in the training step.
+                # In this case you probably have to adjust the config file and rerun the training step.
+
                 if len(entity_types & types) > 0:
                     reasonable_relations.add(relation)
         return reasonable_relations
@@ -76,11 +85,12 @@ class FactExtractor(object):
         else:
             assert False
 
-    def _extract_facts_from_sentences(self, sentences, subject_entity):
+    def _extract_facts_from_sentences(self, sentences, subject_entity=None):
         facts = []
-        reasonable_relations_for_subject = self._filter_reasonable_relations(subject_entity,
-                                                                             self._get_specific_type_frequencies(
-                                                                                 'subject'))
+        if self.type_matching:
+            reasonable_relations_for_subject = self._filter_reasonable_relations(subject_entity,
+                                                                                 self._get_specific_type_frequencies(
+                                                                                     'subject'))
         for sentence in tqdm(sentences, total=len(sentences)):
             if sentence.number_of_tokens() > 100:
                 continue  # probably too long for stanford tokenizer
@@ -88,17 +98,21 @@ class FactExtractor(object):
             nl_sentence = sentence.as_string()
             object_addresses_of_links = sentence.addresses_of_links()
             for object_link, object_addresses in object_addresses_of_links.iteritems():
-                object_entity = WikipediaConnector.strip_name(object_link)
-                reasonable_relations_for_object = self._filter_reasonable_relations(object_entity,
-                                                                                    self._get_specific_type_frequencies(
-                                                                                        'object'))
 
-                reasonable_relations = reasonable_relations_for_subject & reasonable_relations_for_object
+                object_entity = WikipediaConnector.strip_name(object_link)
+                if self.type_matching:
+                    reasonable_relations_for_object = self._filter_reasonable_relations(object_entity,
+                                                                                        self._get_specific_type_frequencies(
+                                                                                            'object'))
+                    reasonable_relations = reasonable_relations_for_subject & reasonable_relations_for_object
+                else:
+                    reasonable_relations = self.relation_patterns
+
                 if not len(reasonable_relations):
                     continue
 
                 pattern = self.pattern_extractor.extract_pattern(nl_sentence, object_addresses, relative_position,
-                                                                 subject_entity, object_entity)
+                                                                 self.type_matching, subject_entity, object_entity)
                 if pattern is None:
                     continue
 
@@ -113,7 +127,10 @@ class FactExtractor(object):
     def extract_facts_from_html(self, html, resource):
         tagged_sentences = TaggedSentence.from_html(html)
         referenced_sentences = filter(lambda sent: sent.contains_any_link(), tagged_sentences)
-        subject_entity = WikipediaConnector.strip_name(resource)
+        if self.type_matching:
+            subject_entity = WikipediaConnector.strip_name(resource)
+        else:
+            subject_entity = None
         facts = self._extract_facts_from_sentences(referenced_sentences, subject_entity)
         facts = [(resource, rel, obj, score, nl_sentence) for (rel, obj, score, nl_sentence) in facts]
         return facts
@@ -138,17 +155,18 @@ def get_input_parameters_from_file(path='../config.ini'):
     randomize = config.getboolean('fact_extractor', 'randomize')
     articles_limit = config.getint('fact_extractor', 'articles_limit')
     match_threshold = config.getfloat('fact_extractor', 'match_threshold')
-    return use_dump, randomize, articles_limit, match_threshold
+    type_matching = config.getboolean('fact_extractor', 'type_matching')
+    return use_dump, randomize, articles_limit, match_threshold, type_matching
 
 
 def test(fact_extractor):
     print(fact_extractor.extract_facts_from_html(
         'He recently became a professor at the <a href="/wiki/Massachusetts_Institute_of_Technology">MIT</a>.',
-          'John Doe'))
+        'John Doe'))
 
 
 if __name__ == '__main__':
-    use_dump, randomize, articles_limit, match_threshold = get_input_parameters_from_file()
-    fact_extractor = FactExtractor(articles_limit, use_dump, randomize, match_threshold)
+    use_dump, randomize, articles_limit, match_threshold, type_matching = get_input_parameters_from_file()
+    fact_extractor = FactExtractor(articles_limit, use_dump, randomize, match_threshold, type_matching)
     # test(fact_extractor)
     fact_extractor.extract_facts()
