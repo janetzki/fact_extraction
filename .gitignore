@@ -5,6 +5,7 @@ data/enwiki-latest-pages-articles-redirected.xml
 data/redirects_en.txt
 data/instance_types_en.ttl
 data/types_en.csv
+data/mappingbased_objects_en.ttl
 
 #config file
 config.ini

@@ -12,33 +12,33 @@ from nltk.tag import pos_tag_sents
 from ascii_graph import Pyasciigraph
 from collections import Counter
 import re
-from random import randint
 import imp
 from tqdm import tqdm
 import pickle
 import itertools
-
 from pattern_extractor import PatternExtractor, Pattern
+from ConfigParser import SafeConfigParser
 
 wikipedia_connector = imp.load_source('wikipedia_connector', '../wikipedia_connector/wikipedia_connector.py')
 from wikipedia_connector import WikipediaConnector
-from ConfigParser import SafeConfigParser
+
+dbpedia_dump_extractor = imp.load_source('dbpedia_dump_extractor', '../dbpedia_connector/dbpedia_dump_extractor.py')
+from dbpedia_dump_extractor import DBpediaDumpExtractor
 
 
 class WikiPatternExtractor(object):
     def __init__(self, relation_types_limit, facts_limit, resources_path='../data/mappingbased_objects_en.ttl',
                  relationships=[], use_dump=False, randomize=False, perform_tests=False,
                  write_path='../data/patterns.pkl', replace_redirects=False):
-        self.resources_path = resources_path
         self.use_dump = use_dump
         self.relationships = ['http://dbpedia.org/ontology/' + r for r in relationships if r]
         self.relation_types_limit = relation_types_limit
         self.facts_limit = facts_limit
-        self.randomize = randomize
         self.perform_tests = perform_tests
         self.write_path = write_path
         self.wikipedia_connector = WikipediaConnector(use_dump=self.use_dump, redirect=replace_redirects)
         self.pattern_extractor = PatternExtractor()
+        self.dbpedia_dump_extractor = DBpediaDumpExtractor(resources_path, randomize)
         self.dbpedia = {}
         self.relation_patterns = {}
         self.matches = []
@@ -46,20 +46,6 @@ class WikiPatternExtractor(object):
     # -------------------------------------------------------------------------------------------------
     #                               Data Preprocessing
     # -------------------------------------------------------------------------------------------------
-
-    def filter_DBpedia_data(self, relationships):
-        pass  # TODO:
-
-    @staticmethod
-    def parse_ttl(path):
-        with open(path) as fin:
-            for line in fin:
-                items = re.findall(r'<([^>]+)>', line)
-                if len(items) == 0:
-                    continue
-                assert len(items) == 3  # otherwise this type of .ttl is not supported by this method
-                subject, predicate, object = items
-                yield subject, predicate, object
 
     def parse_DBpedia_data(self):
         """
@@ -74,16 +60,9 @@ class WikiPatternExtractor(object):
         entities = dict()
         relation_types = Counter()
         fact_counter = 0
-        if self.randomize:
-            offset_countdown = randint(0, 10000)  # TODO: get rid off magic number
-        else:
-            offset_countdown = 0
 
         tqdm.write('\n\nCollecting facts for training...')
-        for subject, predicate, object in WikiPatternExtractor.parse_ttl(self.resources_path):
-            if offset_countdown > 0:
-                offset_countdown -= 1
-                continue
+        for subject, predicate, object in self.dbpedia_dump_extractor.yield_entries():
             if fact_counter == self.facts_limit * self.relation_types_limit:
                 break
             if len(relation_types) == self.relation_types_limit and predicate not in relation_types:
@@ -117,9 +96,6 @@ class WikiPatternExtractor(object):
         3. Fetch relevant Wikipedia articles and filter relevant sentences out of html text (for link search)
         4. Data is stored in self.dbpedia
         """
-        # filter dbpedia dataset for relevant relationships - still TODO
-        self.filter_DBpedia_data(relationships)
-
         # parse dbpedia information
         self.dbpedia = self.parse_DBpedia_data()
 

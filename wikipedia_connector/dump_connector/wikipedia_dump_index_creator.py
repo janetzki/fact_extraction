@@ -11,7 +11,7 @@ pathDump = 'D:\\Data\\large\\enwiki-latest-pages-articles.xml'
 pathIndex = 'D:\\Data\\large\\character_index.csv'
 pathIndexSorted = 'D:\\Data\\large\\character_index_sorted.csv'
 pathIndexFiltered = 'D:\\Data\\large\\character_index_filtered.csv'
-pathRelations = currentPath + '..\\ttl parser\\mappingbased_objects_en_extracted.csv'
+pathRelations = currentPath + '..\\ttl parser\\mappingbased_objects_en_extracted.csv'  # TODO: change to mappingbased_objects_en.tll and adjust code
 limit = 1e12
 delimiter = '#'  # '#' is never used as character in page titles
 

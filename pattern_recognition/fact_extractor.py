@@ -1,32 +1,32 @@
 import pickle
-import csv
 import imp
 from tqdm import tqdm
-from random import randint
 from ConfigParser import SafeConfigParser
 
 pattern_extractor = imp.load_source('pattern_extractor', '../pattern_learning/pattern_extractor.py')
-wikipedia_connector = imp.load_source('wikipedia_connector', '../wikipedia_connector/wikipedia_connector.py')
 from pattern_extractor import PatternExtractor, Pattern
+
+wikipedia_connector = imp.load_source('wikipedia_connector', '../wikipedia_connector/wikipedia_connector.py')
 from wikipedia_connector import WikipediaConnector, TaggedSentence
 
+dbpedia_dump_extractor = imp.load_source('dbpedia_dump_extractor', '../dbpedia_connector/dbpedia_dump_extractor.py')
+from dbpedia_dump_extractor import DBpediaDumpExtractor
 
 class FactExtractor(object):
     def __init__(self, articles_limit, use_dump=False, randomize=False, match_threshold=0.005, allow_unknown_entity_types=True,
                  load_path='../data/patterns.pkl',
-                 resources_path='../data/mappingbased_objects_en_filtered.csv'):
+                 resources_path='../data/mappingbased_objects_en.ttl'):
         self.articles_limit = articles_limit
         self.use_dump = use_dump
-        self.randomize = randomize
         self.allow_unknown_entity_types = allow_unknown_entity_types
         self.match_threshold = match_threshold
         self.load_path = load_path
-        self.resources_path = resources_path
+        self.dbpedia_dump_extractor = DBpediaDumpExtractor(resources_path, randomize)
+        self.wikipedia_connector = WikipediaConnector(self.use_dump)
+        self.pattern_extractor = PatternExtractor()
         self.training_resources = set()
         self.discovery_resources = set()
         self.relation_patterns = {}
-        self.wikipedia_connector = WikipediaConnector(self.use_dump)
-        self.pattern_extractor = PatternExtractor()
 
         self._load_patterns()
         self._load_discovery_resources()
@@ -36,24 +36,15 @@ class FactExtractor(object):
             self.training_resources, self.relation_patterns = pickle.load(fin)
 
     def _load_discovery_resources(self):
-        with open(self.resources_path, 'r') as f:
-            wikireader = csv.reader(f, delimiter=' ', quotechar='"')
+        article_counter = 0
 
-            if self.randomize:
-                random_offset = randint(0, 10000)  # TODO: get rid off magic number
-                for row in wikireader:
-                    random_offset -= 1
-                    if random_offset == 0:
-                        break
-
-            max_results = self.articles_limit
-            for row in wikireader:
-                if max_results == 0:
-                    break
-                subject = row[0]
-                if subject not in self.training_resources and subject not in self.discovery_resources:
-                    self.discovery_resources.add(subject)
-                    max_results -= 1
+        tqdm.write('\n\nCollecting entities for fact extraction...')
+        for subject, predicate, object in self.dbpedia_dump_extractor.yield_entries():
+            if article_counter == self.articles_limit:
+                break
+            if subject not in self.training_resources and subject not in self.discovery_resources:
+                self.discovery_resources.add(subject)
+                article_counter += 1
 
     def _match_pattern_against_relation_patterns(self, pattern, reasonable_relations):
         matching_relations = []

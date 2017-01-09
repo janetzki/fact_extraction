@@ -3,7 +3,7 @@ import requests
 import re
 from timeit import default_timer as timer
 
-dump_extractor = imp.load_source('dump_extractor', '../wikipedia_connector/dump_connector/dump_extractor.py')
+dump_extractor = imp.load_source('dump_extractor', '../wikipedia_connector/dump_connector/wikipedia_dump_extractor.py')
 redirector = imp.load_source('subst_redirects', '../data_cleaning/subst_redirects.py')
 tagged_sentence = imp.load_source('tagged_sentence', '../wikipedia_connector/tagged_sentence.py')
 
