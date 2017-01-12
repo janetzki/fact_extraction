@@ -1,7 +1,9 @@
 import pickle
 import imp
 from tqdm import tqdm
-from ConfigParser import SafeConfigParser
+
+config_initializer = imp.load_source('config_initializer', '../config_initializer/config_initializer.py')
+from config_initializer import ConfigInitializer
 
 pattern_extractor = imp.load_source('pattern_extractor', '../pattern_learning/pattern_extractor.py')
 from pattern_extractor import PatternExtractor, Pattern
@@ -13,7 +15,7 @@ dbpedia_dump_extractor = imp.load_source('dbpedia_dump_extractor', '../dbpedia_c
 from dbpedia_dump_extractor import DBpediaDumpExtractor
 
 
-class FactExtractor(object):
+class FactExtractor(ConfigInitializer):
     def __init__(self, articles_limit, use_dump=False, randomize=False, match_threshold=0.005, type_matching=True,
                  allow_unknown_entity_types=True,
                  load_path='../data/patterns.pkl',
@@ -33,6 +35,16 @@ class FactExtractor(object):
 
         self._load_patterns()
         self._load_discovery_resources()
+
+    @classmethod
+    def from_config_file(cls, path='../config.ini'):
+        config_parser = cls.get_config_parser(path)
+        use_dump = config_parser.getboolean('general', 'use_dump')
+        randomize = config_parser.getboolean('fact_extractor', 'randomize')
+        articles_limit = config_parser.getint('fact_extractor', 'articles_limit')
+        match_threshold = config_parser.getfloat('fact_extractor', 'match_threshold')
+        type_matching = config_parser.getboolean('fact_extractor', 'type_matching')
+        return cls(articles_limit, use_dump, randomize, match_threshold, type_matching)
 
     def _load_patterns(self):
         with open(self.load_path, 'rb') as fin:
@@ -151,11 +163,7 @@ class FactExtractor(object):
 def get_input_parameters_from_file(path='../config.ini'):
     config = SafeConfigParser()
     config.read(path)
-    use_dump = config.getboolean('general', 'use_dump')
-    randomize = config.getboolean('fact_extractor', 'randomize')
-    articles_limit = config.getint('fact_extractor', 'articles_limit')
-    match_threshold = config.getfloat('fact_extractor', 'match_threshold')
-    type_matching = config.getboolean('fact_extractor', 'type_matching')
+
     return use_dump, randomize, articles_limit, match_threshold, type_matching
 
 
@@ -166,7 +174,6 @@ def test(fact_extractor):
 
 
 if __name__ == '__main__':
-    use_dump, randomize, articles_limit, match_threshold, type_matching = get_input_parameters_from_file()
-    fact_extractor = FactExtractor(articles_limit, use_dump, randomize, match_threshold, type_matching)
+    fact_extractor = FactExtractor.from_config_file()
     # test(fact_extractor)
     fact_extractor.extract_facts()

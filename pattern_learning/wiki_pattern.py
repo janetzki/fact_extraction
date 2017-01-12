@@ -17,7 +17,9 @@ from tqdm import tqdm
 import pickle
 import itertools
 from pattern_extractor import PatternExtractor, Pattern
-from ConfigParser import SafeConfigParser
+
+config_initializer = imp.load_source('config_initializer', '../config_initializer/config_initializer.py')
+from config_initializer import ConfigInitializer
 
 wikipedia_connector = imp.load_source('wikipedia_connector', '../wikipedia_connector/wikipedia_connector.py')
 from wikipedia_connector import WikipediaConnector
@@ -26,7 +28,7 @@ dbpedia_dump_extractor = imp.load_source('dbpedia_dump_extractor', '../dbpedia_c
 from dbpedia_dump_extractor import DBpediaDumpExtractor
 
 
-class WikiPatternExtractor(object):
+class WikiPatternExtractor(ConfigInitializer):
     def __init__(self, relation_types_limit, facts_limit, resources_path='../data/mappingbased_objects_en.ttl',
                  relationships=[], use_dump=False, randomize=False, perform_tests=False, type_learning=True,
                  write_path='../data/patterns.pkl', replace_redirects=False):
@@ -43,6 +45,19 @@ class WikiPatternExtractor(object):
         self.dbpedia = {}
         self.relation_patterns = {}
         self.matches = []
+
+    @classmethod
+    def from_config_file(cls, path='../config.ini'):
+        config_parser = cls.get_config_parser(path)
+        use_dump = config_parser.getboolean('general', 'use_dump')
+        randomize = config_parser.getboolean('wiki_pattern', 'randomize')
+        perform_tests = config_parser.getboolean('wiki_pattern', 'randomize')
+        relation_types_limit = config_parser.getint('wiki_pattern', 'relation_types_limit')
+        facts_limit = config_parser.getint('wiki_pattern', 'facts_limit')
+        replace_redirects = config_parser.getboolean('wiki_pattern', 'replace_redirects')
+        type_learning = config_parser.getboolean('wiki_pattern', 'type_learning')
+        return cls(relation_types_limit, facts_limit, use_dump=use_dump, randomize=randomize,
+                   perform_tests=perform_tests, replace_redirects=replace_redirects, type_learning=type_learning)
 
     # -------------------------------------------------------------------------------------------------
     #                               Data Preprocessing
@@ -256,33 +271,18 @@ class WikiPatternExtractor(object):
             pickle.dump(output, fout, pickle.HIGHEST_PROTOCOL)
 
 
-def get_input_parameters_from_file(path='../config.ini'):
-    config = SafeConfigParser()
-    config.read(path)
-    use_dump = config.getboolean('general', 'use_dump')
-    randomize = config.getboolean('wiki_pattern', 'randomize')
-    perform_tests = config.getboolean('wiki_pattern', 'randomize')
-    relation_types_limit = config.getint('wiki_pattern', 'relation_types_limit')
-    facts_limit = config.getint('wiki_pattern', 'facts_limit')
-    replace_redirects = config.getboolean('wiki_pattern', 'replace_redirects')
-    type_learning = config.getboolean('wiki_pattern', 'type_learning')
-    return use_dump, randomize, perform_tests, relation_types_limit, facts_limit, replace_redirects, type_learning
-
-
 if __name__ == '__main__':
-    use_dump, randomize, perform_tests, relation_types_limit, facts_limit, replace_redirects, type_learning = get_input_parameters_from_file()
-    wiki = WikiPatternExtractor(relation_types_limit, facts_limit, use_dump=use_dump, randomize=randomize,
-                                perform_tests=perform_tests, replace_redirects=replace_redirects,
-                                type_learning=type_learning)
+    wiki_pattern_extractor = WikiPatternExtractor.from_config_file()
 
     # preprocess data
-    wiki.discover_patterns()
-    wiki.extract_patterns()
+    wiki_pattern_extractor.discover_patterns()
+    wiki_pattern_extractor.extract_patterns()
+
     # print Part-of-speech tagged sentences
-    wiki.print_patterns()
-    wiki.merge_patterns()
-    wiki.clean_patterns()
-    wiki.save_patterns()
+    wiki_pattern_extractor.print_patterns()
+    wiki_pattern_extractor.merge_patterns()
+    wiki_pattern_extractor.clean_patterns()
+    wiki_pattern_extractor.save_patterns()
 
     # calculate occured facts coverage
-    wiki.calculate_text_coverage()
+    wiki_pattern_extractor.calculate_text_coverage()
