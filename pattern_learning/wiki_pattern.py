@@ -74,26 +74,26 @@ class WikiPatternExtractor(ConfigInitializer):
                         }
         """
         entities = dict()
-        relation_types = Counter()
+        relation_types_counter = Counter()
         fact_counter = 0
 
         tqdm.write('\n\nCollecting facts for training...')
         for subject, predicate, object in self.dbpedia_dump_extractor.yield_entries():
             if fact_counter == self.facts_limit * self.relation_types_limit:
                 break
-            if len(relation_types) == self.relation_types_limit and predicate not in relation_types:
+            if len(relation_types_counter) == self.relation_types_limit and predicate not in relation_types_counter:
                 continue
-            if relation_types[predicate] == self.facts_limit:
+            if relation_types_counter[predicate] == self.facts_limit:
                 continue
 
             # maintain a dict for each entity with given relations as key
             # and their target values as list
             entities.setdefault(subject, {}).setdefault(predicate, []).append(object)
+            relation_types_counter[predicate] += 1
             fact_counter += 1
-            relation_types[predicate] += 1
 
         tqdm.write('\n\nRelation types:')
-        most_common_relation_types = relation_types.most_common()
+        most_common_relation_types = relation_types_counter.most_common()
         for i in range(len(most_common_relation_types)):
             relation_type, frequency = most_common_relation_types[i]
             print('\t' + str(i + 1) + ':\t' + str(frequency) + ' x\t' + relation_type).expandtabs(10)

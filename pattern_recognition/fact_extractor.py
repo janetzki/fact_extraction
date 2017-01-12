@@ -17,21 +17,23 @@ from dbpedia_dump_extractor import DBpediaDumpExtractor
 
 class FactExtractor(ConfigInitializer):
     def __init__(self, articles_limit, use_dump=False, randomize=False, match_threshold=0.005, type_matching=True,
-                 allow_unknown_entity_types=True,
-                 load_path='../data/patterns.pkl',
+                 allow_unknown_entity_types=True, print_interim_results=True,
+                 pattern_path='../data/patterns.pkl',
                  resources_path='../data/mappingbased_objects_en.ttl'):
         self.articles_limit = articles_limit
         self.use_dump = use_dump
         self.allow_unknown_entity_types = allow_unknown_entity_types
         self.match_threshold = match_threshold
         self.type_matching = type_matching
-        self.load_path = load_path
+        self.pattern_path = pattern_path
         self.dbpedia_dump_extractor = DBpediaDumpExtractor(resources_path, randomize)
         self.wikipedia_connector = WikipediaConnector(self.use_dump)
         self.pattern_extractor = PatternExtractor()
+        self.print_interim_results = print_interim_results
         self.training_resources = set()
         self.discovery_resources = set()
         self.relation_patterns = {}
+        self.extracted_facts = []
 
         self._load_patterns()
         self._load_discovery_resources()
@@ -47,7 +49,7 @@ class FactExtractor(ConfigInitializer):
         return cls(articles_limit, use_dump, randomize, match_threshold, type_matching)
 
     def _load_patterns(self):
-        with open(self.load_path, 'rb') as fin:
+        with open(self.pattern_path, 'rb') as fin:
             self.training_resources, self.relation_patterns = pickle.load(fin)
 
     def _load_discovery_resources(self):
@@ -131,9 +133,11 @@ class FactExtractor(ConfigInitializer):
                 matching_relations = self._match_pattern_against_relation_patterns(pattern, reasonable_relations)
                 new_facts = [(rel, object_link, score, nl_sentence) for (rel, score) in matching_relations]
                 facts.extend(new_facts)
-                for fact in new_facts:
-                    print('')
-                    print(fact)
+
+                if self.print_interim_results:
+                    for fact in new_facts:
+                        print('')
+                        print(fact)
         return facts
 
     def extract_facts_from_html(self, html, resource):
@@ -147,21 +151,28 @@ class FactExtractor(ConfigInitializer):
         facts = [(resource, rel, obj, score, nl_sentence) for (rel, obj, score, nl_sentence) in facts]
         return facts
 
+    def extract_facts_from_resource(self, resource):
+        tqdm.write('\n\n--- ' + resource + ' ----')
+        html = self.wikipedia_connector.get_wikipedia_article_html(resource)
+        return self.extract_facts_from_html(html, resource)
+
     def extract_facts(self):
-        facts = []
         tqdm.write('\n\nFact extraction...')
         for resource in self.discovery_resources:
-            tqdm.write('\n\n--- ' + resource + ' ----')
-            html = self.wikipedia_connector.get_wikipedia_article_html(resource)
-            facts.extend(self.extract_facts_from_html(html, resource))
-        facts.sort(key=lambda fact: fact[3], reverse=True)
+            self.extracted_facts.extend(self.extract_facts_from_resource(resource))
+        self.extracted_facts.sort(key=lambda fact: fact[3], reverse=True)
+
+    def print_extracted_facts(self):
         print('\n\n----- Extracted facts ------')
-        for fact in facts:
+        for fact in self.extracted_facts:
             print(fact)
 
     @property
-    def get_training_resources:
-        return self.get_training_resources
+    def training_relations(self):
+        return self.relation_patterns.keys()
+
+    def set_print_interim_results(self, boolean):
+        self.print_interim_results = boolean
 
 
 def test(fact_extractor):
@@ -174,3 +185,4 @@ if __name__ == '__main__':
     fact_extractor = FactExtractor.from_config_file()
     # test(fact_extractor)
     fact_extractor.extract_facts()
+    fact_extractor.print_extracted_facts()
