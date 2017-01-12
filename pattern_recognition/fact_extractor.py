@@ -159,12 +159,9 @@ class FactExtractor(ConfigInitializer):
         for fact in facts:
             print(fact)
 
-
-def get_input_parameters_from_file(path='../config.ini'):
-    config = SafeConfigParser()
-    config.read(path)
-
-    return use_dump, randomize, articles_limit, match_threshold, type_matching
+    @property
+    def get_training_resources:
+        return self.get_training_resources
 
 
 def test(fact_extractor):
