@@ -79,7 +79,10 @@ class PatternTester(ConfigInitializer):
 
     @staticmethod
     def calculate_f_measure(precision, recall):
-        return 2 * (precision * recall) / (precision + recall)
+        numerator = 2 * (precision * recall)
+        if numerator == 0:
+            return 0
+        return numerator / (precision + recall)
 
     def print_results(self):
         for relation in self.fact_extractor.training_relations:
@@ -89,7 +92,8 @@ class PatternTester(ConfigInitializer):
             precision = right / (right + wrong)
             recall = right / total
             f_measure = PatternTester.calculate_f_measure(precision, recall)
-            print(relation + ' ' + total + ' ' + right + ' ' + wrong + ' ' + precision + ' ' + recall + ' ' + f_measure)
+            print(relation + ' ' + str(total) + ' ' + str(right) + ' ' + str(wrong) + ' '
+                  + str(precision) + ' ' + str(recall) + ' ' + str(f_measure))
 
 
 if __name__ == '__main__':

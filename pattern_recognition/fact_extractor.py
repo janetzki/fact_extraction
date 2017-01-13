@@ -14,6 +14,8 @@ from wikipedia_connector import WikipediaConnector, TaggedSentence
 dbpedia_dump_extractor = imp.load_source('dbpedia_dump_extractor', '../dbpedia_connector/dbpedia_dump_extractor.py')
 from dbpedia_dump_extractor import DBpediaDumpExtractor
 
+uri_rewriting = imp.load_source('uri_rewriting', '../helper_functions/uri_rewriting.py')
+
 
 class FactExtractor(ConfigInitializer):
     def __init__(self, articles_limit, use_dump=False, randomize=False, match_threshold=0.005, type_matching=True,
@@ -113,7 +115,7 @@ class FactExtractor(ConfigInitializer):
             object_addresses_of_links = sentence.addresses_of_links()
             for object_link, object_addresses in object_addresses_of_links.iteritems():
 
-                object_entity = WikipediaConnector.strip_name(object_link)
+                object_entity = uri_rewriting.strip_name(object_link)
                 if self.type_matching:
                     reasonable_relations_for_object = self._filter_reasonable_relations(object_entity,
                                                                                         self._get_specific_type_frequencies(
@@ -144,7 +146,7 @@ class FactExtractor(ConfigInitializer):
         tagged_sentences = TaggedSentence.from_html(html)
         referenced_sentences = filter(lambda sent: sent.contains_any_link(), tagged_sentences)
         if self.type_matching:
-            subject_entity = WikipediaConnector.strip_name(resource)
+            subject_entity = uri_rewriting.strip_name(resource)
         else:
             subject_entity = None
         facts = self._extract_facts_from_sentences(referenced_sentences, subject_entity)
@@ -152,7 +154,8 @@ class FactExtractor(ConfigInitializer):
         return facts
 
     def extract_facts_from_resource(self, resource):
-        tqdm.write('\n\n--- ' + resource + ' ----')
+        wikipedia_resource = uri_rewriting.convert_to_wikipedia_uri(resource)
+        tqdm.write('\n\n--- ' + wikipedia_resource + ' ----')
         html = self.wikipedia_connector.get_wikipedia_article_html(resource)
         return self.extract_facts_from_html(html, resource)
 

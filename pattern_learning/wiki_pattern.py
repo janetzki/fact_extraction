@@ -27,6 +27,8 @@ from wikipedia_connector import WikipediaConnector
 dbpedia_dump_extractor = imp.load_source('dbpedia_dump_extractor', '../dbpedia_connector/dbpedia_dump_extractor.py')
 from dbpedia_dump_extractor import DBpediaDumpExtractor
 
+uri_rewriting = imp.load_source('uri_rewriting', '../helper_functions/uri_rewriting.py')
+
 
 class WikiPatternExtractor(ConfigInitializer):
     def __init__(self, relation_types_limit, facts_limit, resources_path='../data/mappingbased_objects_en.ttl',
@@ -122,7 +124,7 @@ class WikiPatternExtractor(ConfigInitializer):
             # for each relationship filter sentences that contain
             # target resources of entity's relationship
             for rel, resources in values.iteritems():
-                wikipedia_target_resources = map(WikipediaConnector.convert_to_wikipedia_uri, resources)
+                wikipedia_target_resources = map(uri_rewriting.convert_to_internal_wikipedia_link, resources)
                 relevant_sentences = self.filter_relevant_sentences(tagged_sentences, wikipedia_target_resources)
                 values[rel] = {'resources': wikipedia_target_resources,
                                'sentences': relevant_sentences,
@@ -144,8 +146,8 @@ class WikiPatternExtractor(ConfigInitializer):
 
         tqdm.write('\n\nPattern extraction...')
         for entity, relations in tqdm(self.dbpedia.iteritems(), total=len(self.dbpedia)):
-            cleaned_subject_entity_name = self.wikipedia_connector.strip_cleaned_name(entity)
-            subject_entity = self.wikipedia_connector.strip_name(entity)
+            cleaned_subject_entity_name = uri_rewriting.strip_cleaned_name(entity)
+            subject_entity = uri_rewriting.strip_name(entity)
             for rel_ontology, values in relations.iteritems():
                 target_resources = values['resources']
                 sentences = values['sentences']
@@ -171,7 +173,7 @@ class WikiPatternExtractor(ConfigInitializer):
                     pos_tagged_sentences = pos_tag_sents(tokenized_sentences).pop()
 
                     object_addresses = sentence.addresses_of_link(resource)
-                    object_entity = WikipediaConnector.strip_name(resource)
+                    object_entity = uri_rewriting.strip_name(resource)
                     pattern = self.pattern_extractor.extract_pattern(nl_sentence, object_addresses, relative_position,
                                                                      self.type_learning, subject_entity, object_entity)
 
@@ -205,9 +207,8 @@ class WikiPatternExtractor(ConfigInitializer):
             print(colored('[DBP Ontology] \t', 'red',
                           attrs={'concealed', 'bold'}) + colored(entry['relation'], 'white')).expandtabs(20)
             print(colored('[DBP Resource] \t', 'red',
-                          attrs={'concealed', 'bold'}) + colored(
-                self.wikipedia_connector.strip_cleaned_name(entry['resource']),
-                'white')).expandtabs(20)
+                          attrs={'concealed', 'bold'}) + colored(uri_rewriting.strip_cleaned_name(entry['resource']),
+                                                                 'white')).expandtabs(20)
             print(colored('[Wiki Occurence] \t',
                           'red', attrs={'concealed', 'bold'}) + entry['colored sentence']).expandtabs(20)
             print('')

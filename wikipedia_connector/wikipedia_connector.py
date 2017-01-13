@@ -3,11 +3,12 @@ import requests
 import re
 from timeit import default_timer as timer
 
+tagged_sentence = imp.load_source('tagged_sentence', '../wikipedia_connector/tagged_sentence.py')
+from tagged_sentence import TaggedSentence
+
 dump_extractor = imp.load_source('dump_extractor', '../wikipedia_connector/dump_connector/wikipedia_dump_extractor.py')
 redirector = imp.load_source('subst_redirects', '../data_cleaning/subst_redirects.py')
-tagged_sentence = imp.load_source('tagged_sentence', '../wikipedia_connector/tagged_sentence.py')
-
-from tagged_sentence import TaggedSentence
+uri_rewriting = imp.load_source('uri_rewriting', '../helper_functions/uri_rewriting.py')
 
 
 class WikipediaConnector(object):
@@ -22,7 +23,7 @@ class WikipediaConnector(object):
     def get_wikipedia_article_html(self, dbpedia_resource):
         start = timer()
         if self.use_dump:
-            resource = WikipediaConnector.strip_cleaned_name(dbpedia_resource)
+            resource = uri_rewriting.strip_cleaned_name(dbpedia_resource)
             html = dump_extractor.get_wikipedia_html_from_dump(resource)
         else:
             html = self._scrape_wikipedia_article(dbpedia_resource)
@@ -43,24 +44,6 @@ class WikipediaConnector(object):
         if self.redirector:
             article = self.redirector.substitute_html(article)
         return article
-
-    @staticmethod
-    def strip_name(uri):
-        return uri.split('/')[-1]
-
-    @staticmethod
-    def convert_to_wikipedia_uri(uri):
-        entity_name = WikipediaConnector.strip_name(uri)
-        return '/wiki/' + entity_name
-
-    @staticmethod
-    def strip_cleaned_name(uri):
-        """
-        http://dbpedia.org/resource/Alain_Connes -> 'Alain Connes'
-        """
-        entity_name = WikipediaConnector.strip_name(uri)
-        entity_name = entity_name.replace('_', ' ')
-        return TaggedSentence.clean_input(entity_name)
 
     # def splitkeepsep(self, s, sep):
     #     """ http://programmaticallyspeaking.com/split-on-separator-but-keep-the-separator-in-python.html """

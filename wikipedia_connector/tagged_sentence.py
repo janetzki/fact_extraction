@@ -4,19 +4,20 @@
 from __future__ import division
 from bs4 import BeautifulSoup as bs
 from nltk.tokenize import sent_tokenize
-import re
-
 import sys
+import imp
 
 reload(sys)
 sys.setdefaultencoding('utf-8')
+
+uri_rewriting = imp.load_source('uri_rewriting', '../helper_functions/uri_rewriting.py')
 
 
 class TaggedSentence(object):
     def __init__(self, sentence, relative_position):
         self.sentence = []
 
-        for word in self._yield_words(TaggedSentence.clean_input(sentence)):
+        for word in self._yield_words(uri_rewriting.clean_input(sentence)):
             if word.strip(',').startswith('#') and word.strip(',').endswith('#'):
                 link, text = word.split('#')[1], word.split('#')[2]
                 self.sentence.append(TaggedToken(text, target_url=link))
@@ -85,28 +86,6 @@ class TaggedSentence(object):
         return False
 
     @staticmethod
-    def clean_input(input):
-        """
-        Sanitize text - remove multiple new lines and spaces - get rid of non ascii chars
-        and citations - strip words from punctuation signs - returns sanitized string
-        """
-        input = re.sub('\n+', " ", input)
-        input = re.sub(' +', " ", input)
-
-        # get rid of non-ascii characters
-        input = re.sub(r'[^\x00-\x7f]', r'', input)
-
-        # get rid of citations
-        input = re.sub(r'\[\d+\]', r'', input)
-        cleanInput = []
-        input = input.split(' ')
-        for item in input:
-            # item = item.strip('?!;,')
-            if len(item) > 1 or (item.lower() == 'a' or item == 'I'):
-                cleanInput.append(item)
-        return ' '.join(cleanInput).encode('utf-8')
-
-    @staticmethod
     def extract_paragraphs(soup):
         return soup.find_all('p')
 
@@ -122,8 +101,10 @@ class TaggedSentence(object):
         # html = html.decode('utf-8')
         for link in bs_tag.find_all('a'):
             target = link.get('href')
+            if target is None:
+                pass
             assert target is not None
-            if target.startswith('#') or not link.string:
+            if target.startswith('#') or not link.string:  # cite_notes start with '#'
                 continue  # ignore intern links and links with no enclosed text
             link.string = '#' + target + '#' + link.string + '# '  # space at end ensures that punctuation marks after word won't be considered as part of it
 
