@@ -4,6 +4,7 @@ from ppretty import ppretty
 from collections import Counter
 from itertools import dropwhile
 import copy
+import math
 
 
 class Direction(Enum):
@@ -231,6 +232,14 @@ class Pattern(object):
             total_words += self.total_words_under_node(partner)
         return total_words
 
+    def total_words_under_node_with_max_freq(self, node_addr, max_freq):
+        node = self.nodes[node_addr]
+
+        total_words = sum(filter(lambda x: x < max_freq, node.word_frequencies.itervalues()))
+        for partner in node.dependencies.values():
+            total_words += self.total_words_under_node_with_max_freq(partner, max_freq)
+        return total_words
+
     @staticmethod  # static because pattern might be deleted
     def _delete_node(pattern, node_addr):
         if node_addr == pattern.root:
@@ -246,9 +255,12 @@ class Pattern(object):
     def clean_type_frequencies(type_frequencies, least_threshold):
         if type_frequencies is None:
             return None
+        if least_threshold < 1 and len(type_frequencies.most_common(1)) > 0:
+            least_threshold = type_frequencies.most_common(1)[0][1] * least_threshold
         for type, frequency in dropwhile(lambda (t, f): f >= least_threshold, type_frequencies.most_common()):
             del type_frequencies[type]
         return type_frequencies
+
 
     @staticmethod  # static because pattern might be deleted
     def clean_word_frequencies(pattern, least_threshold, node_addr=None):
@@ -270,10 +282,20 @@ class Pattern(object):
     @staticmethod  # static because pattern might be deleted
     def clean_pattern(pattern, least_threshold_words=2, least_threshold_types=1):
         pattern.subject_type_frequencies = Pattern.clean_type_frequencies(pattern.subject_type_frequencies,
-                                                                          least_threshold_types)
+                                                                      least_threshold_types)
         pattern.object_type_frequencies = Pattern.clean_type_frequencies(pattern.object_type_frequencies,
-                                                                         least_threshold_types)
-        pattern = Pattern.clean_word_frequencies(pattern, least_threshold_words)
+                                                                     least_threshold_types)
+        
+        if least_threshold_words < 1:
+            lower_bound = pattern.total_words_under_node(pattern.root) * least_threshold_words
+            least_threshold_words = 2
+            while lower_bound <= (pattern.total_words_under_node(pattern.root) -
+                                  pattern.total_words_under_node_with_max_freq(pattern.root, least_threshold_words)):
+                pattern = Pattern.clean_word_frequencies(pattern, least_threshold_words)
+                least_threshold_words += 1 
+        else:
+            pattern = Pattern.clean_word_frequencies(pattern, least_threshold_words)
+
         return pattern
 
     @staticmethod

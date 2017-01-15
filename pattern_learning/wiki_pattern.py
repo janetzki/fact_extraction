@@ -33,13 +33,16 @@ uri_rewriting = imp.load_source('uri_rewriting', '../helper_functions/uri_rewrit
 class WikiPatternExtractor(ConfigInitializer):
     def __init__(self, relation_types_limit, facts_limit, resources_path='../data/mappingbased_objects_en.ttl',
                  relationships=[], use_dump=False, randomize=False, perform_tests=False, type_learning=True,
-                 write_path='../data/patterns.pkl', replace_redirects=False):
+                 write_path='../data/patterns.pkl', replace_redirects=False,
+                 least_threshold_types=1, least_threshold_words=2):
         self.use_dump = use_dump
         self.relationships = ['http://dbpedia.org/ontology/' + r for r in relationships if r]
         self.relation_types_limit = relation_types_limit
         self.facts_limit = facts_limit
         self.perform_tests = perform_tests
         self.type_learning = type_learning
+        self.least_threshold_types = least_threshold_types
+        self.least_threshold_words = least_threshold_words
         self.write_path = write_path
         self.wikipedia_connector = WikipediaConnector(use_dump=self.use_dump, redirect=replace_redirects)
         self.pattern_extractor = PatternExtractor()
@@ -58,8 +61,11 @@ class WikiPatternExtractor(ConfigInitializer):
         facts_limit = config_parser.getint('wiki_pattern', 'facts_limit')
         replace_redirects = config_parser.getboolean('wiki_pattern', 'replace_redirects')
         type_learning = config_parser.getboolean('wiki_pattern', 'type_learning')
+        least_threshold_types = config_parser.getfloat('wiki_pattern', 'least_threshold_types')
+        least_threshold_words = config_parser.getfloat('wiki_pattern', 'least_threshold_words')
         return cls(relation_types_limit, facts_limit, use_dump=use_dump, randomize=randomize,
-                   perform_tests=perform_tests, replace_redirects=replace_redirects, type_learning=type_learning)
+                   perform_tests=perform_tests, replace_redirects=replace_redirects, type_learning=type_learning, 
+                   least_threshold_types=least_threshold_types, least_threshold_words=least_threshold_words)
 
     # -------------------------------------------------------------------------------------------------
     #                               Data Preprocessing
@@ -262,7 +268,9 @@ class WikiPatternExtractor(ConfigInitializer):
     def clean_patterns(self):
         tqdm.write('\n\nPattern cleaning...')
         for relation, pattern in tqdm(self.relation_patterns.iteritems()):
-            self.relation_patterns[relation] = Pattern.clean_pattern(pattern)
+            self.relation_patterns[relation] = Pattern.clean_pattern(pattern, 
+            														self.least_threshold_words, 
+            														self.least_threshold_types)
         self.relation_patterns = dict(filter(lambda (rel, pat): pat is not None, self.relation_patterns.iteritems()))
 
     def save_patterns(self):
