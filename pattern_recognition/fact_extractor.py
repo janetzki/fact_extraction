@@ -38,6 +38,7 @@ class FactExtractor(ConfigInitializer):
         self.extracted_facts = []
 
         self._load_patterns()
+        self._make_pattern_types_transitive()
         self._load_discovery_resources()
 
     @classmethod
@@ -53,6 +54,13 @@ class FactExtractor(ConfigInitializer):
     def _load_patterns(self):
         with open(self.pattern_path, 'rb') as fin:
             self.training_resources, self.relation_patterns = pickle.load(fin)
+
+    def _make_pattern_types_transitive(self):
+        for relation, pattern in self.relation_patterns.iteritems():
+            pattern.subject_type_frequencies = self.pattern_extractor.get_transitive_types(pattern.subject_type_frequencies)
+            pattern.object_type_frequencies = self.pattern_extractor.get_transitive_types(pattern.object_type_frequencies)
+            print pattern.subject_type_frequencies
+            print pattern.object_type_frequencies
 
     def _load_discovery_resources(self):
         article_counter = 0
@@ -82,7 +90,6 @@ class FactExtractor(ConfigInitializer):
             reasonable_relations = set(types_of_relations.keys())
         else:
             for relation, types in types_of_relations.iteritems():
-
                 assert types is not None
                 # Otherwise types were not learned in the training step.
                 # In this case you probably have to adjust the config file and rerun the training step.

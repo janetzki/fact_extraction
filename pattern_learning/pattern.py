@@ -256,7 +256,7 @@ class Pattern(object):
         if type_frequencies is None:
             return None
         if least_threshold < 1 and len(type_frequencies.most_common(1)) > 0:
-            least_threshold = type_frequencies.most_common(1)[0][1] * least_threshold
+            least_threshold = type_frequencies.most_common()[0][1] * least_threshold
         for type, frequency in dropwhile(lambda (t, f): f >= least_threshold, type_frequencies.most_common()):
             del type_frequencies[type]
         return type_frequencies

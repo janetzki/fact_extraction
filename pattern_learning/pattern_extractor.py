@@ -144,6 +144,9 @@ class PatternExtractor(object):
     def get_entity_types(self, entity):
         return self.instance_types.count_types(entity)
 
+    def get_transitive_types(self, types):
+        return self.instance_types.get_transitive_types(types)
+
 
 def test():
     pattern_extractor = PatternExtractor()
