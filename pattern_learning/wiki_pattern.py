@@ -64,7 +64,7 @@ class WikiPatternExtractor(ConfigInitializer):
         least_threshold_types = config_parser.getfloat('wiki_pattern', 'least_threshold_types')
         least_threshold_words = config_parser.getfloat('wiki_pattern', 'least_threshold_words')
         return cls(relation_types_limit, facts_limit, use_dump=use_dump, randomize=randomize,
-                   perform_tests=perform_tests, replace_redirects=replace_redirects, type_learning=type_learning, 
+                   perform_tests=perform_tests, replace_redirects=replace_redirects, type_learning=type_learning,
                    least_threshold_types=least_threshold_types, least_threshold_words=least_threshold_words)
 
     # -------------------------------------------------------------------------------------------------
@@ -125,15 +125,14 @@ class WikiPatternExtractor(ConfigInitializer):
 
         tqdm.write('\n\nSentence extraction...')
         for entity, values in tqdm(self.dbpedia.iteritems(), total=len(self.dbpedia)):
-            tagged_sentences = self.wikipedia_connector.get_parsed_wikipedia_article(entity)
-
             # for each relationship filter sentences that contain
             # target resources of entity's relationship
             for rel, resources in values.iteritems():
                 wikipedia_target_resources = map(uri_rewriting.convert_to_internal_wikipedia_link, resources)
-                relevant_sentences = self.filter_relevant_sentences(tagged_sentences, wikipedia_target_resources)
+                # retrieve tokenized wikipedia sentences that include dbpedia resources that we are lookig for
+                tagged_sentences = self.wikipedia_connector.get_filtered_wikipedia_article(entity, wikipedia_target_resources)
                 values[rel] = {'resources': wikipedia_target_resources,
-                               'sentences': relevant_sentences,
+                               'sentences': tagged_sentences,
                                'patterns': []}
 
     # ---------------------------------------------------------------------------------------------
@@ -192,7 +191,7 @@ class WikiPatternExtractor(ConfigInitializer):
                                         for word, pos in pos_tagged_sentences]
                     colored_sentence = ' '.join(colored_sentence)
                     colored_sentence = re.sub(r' (.\[\d+m),', ',', colored_sentence)  # remove space before commas
-                    entry['colored sentence'] = colored_sentence
+                    entry['colored_sentence'] = colored_sentence
 
                 self.matches.extend(data)
 
@@ -208,6 +207,8 @@ class WikiPatternExtractor(ConfigInitializer):
         """
 
         for entry in self.matches:
+            if not entry.get('colored_sentence', None):
+                continue
             print(colored('[DBP Entitity] \t', 'red',
                           attrs={'concealed', 'bold'}) + colored(entry['entity'], 'white')).expandtabs(20)
             print(colored('[DBP Ontology] \t', 'red',
@@ -216,7 +217,7 @@ class WikiPatternExtractor(ConfigInitializer):
                           attrs={'concealed', 'bold'}) + colored(uri_rewriting.strip_cleaned_name(entry['resource']),
                                                                  'white')).expandtabs(20)
             print(colored('[Wiki Occurence] \t',
-                          'red', attrs={'concealed', 'bold'}) + entry['colored sentence']).expandtabs(20)
+                          'red', attrs={'concealed', 'bold'}) + entry['colored_sentence']).expandtabs(20)
             print('')
 
         print('[POS KEY]\t'
@@ -268,8 +269,8 @@ class WikiPatternExtractor(ConfigInitializer):
     def clean_patterns(self):
         tqdm.write('\n\nPattern cleaning...')
         for relation, pattern in tqdm(self.relation_patterns.iteritems()):
-            self.relation_patterns[relation] = Pattern.clean_pattern(pattern, 
-            														self.least_threshold_words, 
+            self.relation_patterns[relation] = Pattern.clean_pattern(pattern,
+            														self.least_threshold_words,
             														self.least_threshold_types)
         self.relation_patterns = dict(filter(lambda (rel, pat): pat is not None, self.relation_patterns.iteritems()))
 

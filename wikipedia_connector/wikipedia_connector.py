@@ -75,9 +75,9 @@ class WikipediaConnector(object):
     #             return tokens
 
     @staticmethod
-    def _make_html_to_tagged_sentences(html):
-        return [tagged_s for tagged_s in TaggedSentence.from_html(html)]
+    def _make_html_to_tagged_sentences(html, wikipedia_resources):
+        return [tagged_s for tagged_s in TaggedSentence.from_html(html, wikipedia_resources)]
 
-    def get_parsed_wikipedia_article(self, dbpedia_resource):
+    def get_filtered_wikipedia_article(self, dbpedia_resource, sought_wiki_resources):
         html = self.get_wikipedia_article_html(dbpedia_resource)
-        return WikipediaConnector._make_html_to_tagged_sentences(html)
+        return WikipediaConnector._make_html_to_tagged_sentences(html, sought_wiki_resources)

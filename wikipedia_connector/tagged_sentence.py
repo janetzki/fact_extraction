@@ -3,26 +3,36 @@
 
 from __future__ import division
 from bs4 import BeautifulSoup as bs
-from nltk.tokenize import sent_tokenize
+from nltk.tokenize import StanfordTokenizer
+import os
+path_to_jar = os.path.join('..', 'stanford-corenlp-full-2016-10-31', 'stanford-corenlp-3.7.0.jar')
+import re
 import sys
 import imp
 
 reload(sys)
 sys.setdefaultencoding('utf-8')
+tokenizer = StanfordTokenizer(path_to_jar=path_to_jar)
+
 
 uri_rewriting = imp.load_source('uri_rewriting', '../helper_functions/uri_rewriting.py')
 
 
 class TaggedSentence(object):
-    def __init__(self, sentence, relative_position):
+    def __init__(self, sentence, links, relative_position):
         self.sentence = []
+        sentence = self.__cleanInput(sentence)
+        link_words = map(lambda x: x[1], links)
+        tokens = tokenizer.tokenize(sentence)
+        tagged = []
+        for token in tokens:
+            if token in link_words:
+                for link in links:
+                    if token in link[1]:
+                        self.sentence.append(TaggedToken(token, target_url=link[0]))
+            else:
+                self.sentence.append(TaggedToken(token))
 
-        for word in self._yield_words(uri_rewriting.clean_input(sentence)):
-            if word.strip(',').startswith('#') and word.strip(',').endswith('#'):
-                link, text = word.split('#')[1], word.split('#')[2]
-                self.sentence.append(TaggedToken(text, target_url=link))
-                continue
-            self.sentence.append(TaggedToken(word))
 
         # self.sentence = sentence  # provisional - TODO: replace with token and tag list
         self.relative_position = relative_position  # zero based counting
@@ -39,22 +49,6 @@ class TaggedSentence(object):
 
     def number_of_tokens(self):
         return len(self.sentence)
-
-    def _yield_words(self, sentence):
-        # yield seperate word or full meta tagged links
-        link_component = None
-        for word in sentence.split(' '):
-            if word.strip(',').startswith('#') and not word.strip(',').endswith('#'):
-                link_component = word
-                continue
-            if link_component:
-                if word.endswith('#'):
-                    word = link_component + ' ' + word
-                    link_component = None
-                else:
-                    link_component += word
-                    continue
-            yield word
 
     def as_string(self):
         return self.__str__()
@@ -90,30 +84,31 @@ class TaggedSentence(object):
         return soup.find_all('p')
 
     @classmethod
-    def from_html(cls, html):
+    def from_html(cls, html, sought_dbpedia_resources):
         soup = bs(html, 'lxml')
         paragraphs = TaggedSentence.extract_paragraphs(soup)
-        return [tagged_s for paragraph in paragraphs for tagged_s in TaggedSentence.from_bs_tag(paragraph)]
+        return [tagged_s for paragraph in paragraphs
+                         for tagged_s in TaggedSentence.from_bs_tag(paragraph, sought_dbpedia_resources)]
 
     @classmethod
-    def from_bs_tag(cls, bs_tag):
-        # replace links with intermediary representation
+    def from_bs_tag(cls, bs_tag, sought_wiki_resources):
         # html = html.decode('utf-8')
+        found_resources = []
         for link in bs_tag.find_all('a'):
-            target = link.get('href')
-            if target is None:
-                pass
-            assert target is not None
-            if target.startswith('#') or not link.string:  # cite_notes start with '#'
-                continue  # ignore intern links and links with no enclosed text
-            link.string = '#' + target + '#' + link.string + '# '  # space at end ensures that punctuation marks after word won't be considered as part of it
+            if link.get('href') in sought_wiki_resources:
+                found_resources.append((link.get('href'), link.get_text()))
 
         # get raw_text
         text = bs_tag.get_text()
+        # split text by ". ", "! " or "? " and keep them in each item
+        # https://stackoverflow.com/questions/14622835/split-string-on-or-keeping-the-punctuation-mark
+        filtered_sentences = filter(lambda s: TaggedSentence.contains_a_link(s, found_resources),
+                                    re.split('(?<=[.!?]) +',text))
+        if not filtered_sentences:
+            return []
         # split sentences
-        sentences = sent_tokenize(text)
-        count = sentences.__len__()
-        return [TaggedSentence(sent, i / count) for i, sent in enumerate(sentences)]
+        count = filtered_sentences.__len__()
+        return [TaggedSentence(sent, found_resources, i / count) for i, sent in enumerate(filtered_sentences)]
 
     def contained_links(self):
         links = set()
@@ -121,6 +116,14 @@ class TaggedSentence(object):
             if token.is_link():
                 links.add(token.link)
         return links
+
+    @staticmethod
+    def contains_a_link(sentence, links):
+        link_words = [words for words in map(lambda l: l[1], links)]
+        for link in link_words:
+            if link in sentence:
+                return True
+        return False
 
     def addresses_of_links(self):
         links = self.contained_links()
@@ -136,6 +139,26 @@ class TaggedSentence(object):
         assert link in addresses_of_all_contained_links
         return addresses_of_all_contained_links[link]
 
+    def __cleanInput(self, input):
+        """
+        Sanitize text - remove multiple new lines and spaces - get rid of non ascii chars
+        and citations - strip words from punctuation signs - returns sanitized string
+        """
+        input = re.sub('\n+', " ", input)
+        input = re.sub(' +', " ", input)
+
+        # get rid of non-ascii characters
+        input = re.sub(r'[^\x00-\x7f]', r'', input)
+
+        # get rid of citations
+        input = re.sub(r'\[\d+\]', r'', input)
+        cleanInput = []
+        input = input.split(' ')
+        for item in input:
+            # item = item.strip('?!;,')
+            if len(item) > 1 or (item.lower() == 'a' or item == 'I'):
+                cleanInput.append(item)
+        return ' '.join(cleanInput).encode('utf-8')
 
 class TaggedToken(object):
     def __init__(self, token, target_url=None):
