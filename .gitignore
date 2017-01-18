@@ -7,6 +7,11 @@ data/instance_types_en.ttl
 data/types_en.csv
 data/mappingbased_objects_en.ttl
 
+# volatile data
+data/patterns.pkl
+data/character_index.csv
+data/character_index_filtered.csv
+
 #config file
 config.ini
 
