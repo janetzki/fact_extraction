@@ -1,7 +1,9 @@
 from tqdm import tqdm
 import re
-import sys, os, csv
-import codecs
+import os
+import imp
+
+line_counting = imp.load_source('line_counting', '../helper_functions/line_counting.py')
 
 currentPath = os.path.dirname(os.path.abspath(__file__)) + '/'
 redirects_path = '../data/dbpedia_2016-04.nt'
@@ -9,22 +11,10 @@ output_path = '../data/types_inheritance_en.csv'
 delimiter = '#'  # '#' is never used as character in page titles
 totalLines = 0
 limit = 1e10
-REGEX = re.compile("<http://dbpedia.org/ontology/(.*)> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <http://dbpedia.org/ontology/(.*)> \.")
-
-
-def _make_gen(reader):
-    b = reader(1024 * 1024)
-    while b:
-        yield b
-        b = reader(1024 * 1024)
-
-
-def rawpycount(filename):
-    # http://stackoverflow.com/questions/19001402/how-to-count-the-total-number-of-lines-in-a-text-file-using-python
-    print "Counting Lines..."
-    f = open(filename, 'rb')
-    f_gen = _make_gen(f.read)
-    return sum(buf.count(b'\n') for buf in f_gen)
+REGEX = re.compile(
+    "<http://dbpedia.org/ontology/(.*)> " +
+    "<http://www.w3.org/2000/01/rdf-schema#subClassOf> " +
+    "<http://dbpedia.org/ontology/(.*)> \.")
 
 
 def parseTTL(input):
@@ -56,6 +46,5 @@ def extract():
 
 
 if __name__ == '__main__':
-    totalLines = rawpycount(redirects_path)
-
+    totalLines = line_counting.count_lines(redirects_path)
     extract()

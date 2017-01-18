@@ -185,8 +185,10 @@ class Pattern(object):
             pattern2.assert_is_tree()
 
         new_covered_sentences = pattern1.covered_sentences + pattern2.covered_sentences
-        new_subject_type_frequencies = Pattern._merge_type_frequencies(pattern1.subject_type_frequencies, pattern2.subject_type_frequencies)
-        new_object_type_frequencies = Pattern._merge_type_frequencies(pattern1.object_type_frequencies, pattern2.object_type_frequencies)
+        new_subject_type_frequencies = Pattern._merge_type_frequencies(pattern1.subject_type_frequencies,
+                                                                       pattern2.subject_type_frequencies)
+        new_object_type_frequencies = Pattern._merge_type_frequencies(pattern1.object_type_frequencies,
+                                                                      pattern2.object_type_frequencies)
         new_relative_position = (pattern1.covered_sentences * pattern1.relative_position +
                                  pattern2.covered_sentences * pattern2.relative_position) / new_covered_sentences
         # assert self.nodes[self.root].tag == pattern.nodes[pattern.root].tag
@@ -261,7 +263,6 @@ class Pattern(object):
             del type_frequencies[type]
         return type_frequencies
 
-
     @staticmethod  # static because pattern might be deleted
     def clean_word_frequencies(pattern, least_threshold, node_addr=None):
         if node_addr is None:
@@ -282,17 +283,18 @@ class Pattern(object):
     @staticmethod  # static because pattern might be deleted
     def clean_pattern(pattern, least_threshold_words=2, least_threshold_types=1):
         pattern.subject_type_frequencies = Pattern.clean_type_frequencies(pattern.subject_type_frequencies,
-                                                                      least_threshold_types)
+                                                                          least_threshold_types)
         pattern.object_type_frequencies = Pattern.clean_type_frequencies(pattern.object_type_frequencies,
-                                                                     least_threshold_types)
-        
+                                                                         least_threshold_types)
+
         if least_threshold_words < 1:
             lower_bound = pattern.total_words_under_node(pattern.root) * least_threshold_words
             least_threshold_words = 2
             while lower_bound <= (pattern.total_words_under_node(pattern.root) -
-                                  pattern.total_words_under_node_with_max_freq(pattern.root, least_threshold_words)):
+                                      pattern.total_words_under_node_with_max_freq(pattern.root,
+                                                                                   least_threshold_words)):
                 pattern = Pattern.clean_word_frequencies(pattern, least_threshold_words)
-                least_threshold_words += 1 
+                least_threshold_words += 1
         else:
             pattern = Pattern.clean_word_frequencies(pattern, least_threshold_words)
 

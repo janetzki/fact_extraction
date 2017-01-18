@@ -5,18 +5,17 @@ from bs4 import BeautifulSoup as bs
 
 class WikipediaDumpExtractor(object):
     def __init__(self, dump_path='../data/enwiki-latest-pages-articles-redirected.xml',
-                 index_path='../data/index-r.csv'):
+                 index_path='../data/index_sorted.csv'):
         self.dump_path = dump_path
         self.index_path = index_path
 
     def _get_dump_offset_via_index(self, title):
         with open(self.index_path, 'r') as fin:
-            indexreader = csv.reader(fin, delimiter='#')
-            for line in indexreader:
-                if line[0] == title:
-                    fin.close()
-                    return int(line[1])
-            fin.close()
+            index_reader = csv.reader(fin, delimiter='#')
+            for line in index_reader:
+                subject, character_offset = line[0], int(line[1])
+                if subject == title:
+                    return character_offset
         return None
 
     def _extract_wikipedia_page_via_offset(self, offset):

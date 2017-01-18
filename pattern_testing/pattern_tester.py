@@ -78,22 +78,34 @@ class PatternTester(ConfigInitializer):
                     self.wrong_facts_counter[predicate] += 1
 
     @staticmethod
-    def calculate_f_measure(precision, recall):
+    def _calculate_f_measure(precision, recall):
+        if precision is None or recall is None or precision + recall == 0:
+            return None
         numerator = 2 * (precision * recall)
-        if numerator == 0:
-            return 0
         return numerator / (precision + recall)
+
+    @staticmethod
+    def _soft_division(dividend, divisor):
+        try:
+            return dividend / float(divisor)
+        except ZeroDivisionError:
+            return None
+
+    @staticmethod
+    def _calculate_precision_recall_and_f_measure(total, right, wrong):
+        precision = PatternTester._soft_division(right, right + wrong)
+        recall = PatternTester._soft_division(right, total)
+        f_measure = PatternTester._calculate_f_measure(precision, recall)
+        return precision, recall, f_measure
 
     def print_results(self):
         for relation in self.fact_extractor.training_relations:
             total = self.facts_limit
             right = self.right_facts_counter[relation]
             wrong = self.wrong_facts_counter[relation]
-            precision = right / (right + wrong)
-            recall = right / total
-            f_measure = PatternTester.calculate_f_measure(precision, recall)
-            print(relation + ' ' + str(total) + ' ' + str(right) + ' ' + str(wrong) + ' '
-                  + str(precision) + ' ' + str(recall) + ' ' + str(f_measure))
+            precision, recall, f_measure = PatternTester._calculate_precision_recall_and_f_measure(total, right, wrong)
+            print(relation + ' Known facts:' + str(total) + ' Right:' + str(right) + ' Wrong:' + str(wrong)
+                  + ' Precision:' + str(precision) + ' Recall:' + str(recall) + ' F-Measure:' + str(f_measure))
 
 
 if __name__ == '__main__':

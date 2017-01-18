@@ -1,8 +1,8 @@
 #!../venv/bin/python
 # -*- coding: utf-8 -*-
 
-import re
 from tqdm import tqdm
+import re
 import csv
 
 delimiter = '#'
@@ -85,5 +85,3 @@ if __name__ == '__main__':
             line_counter += 1
             if line_counter == limit:
                 break
-        fin.close()
-        fout.close()

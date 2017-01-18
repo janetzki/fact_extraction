@@ -1,6 +1,7 @@
 from tqdm import tqdm
 import re
-import sys, os, csv
+import os
+import csv
 import codecs
 
 currentPath = os.path.dirname(os.path.abspath(__file__)) + '/'

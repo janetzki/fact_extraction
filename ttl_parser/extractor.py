@@ -1,8 +1,7 @@
-import sys
-import re
-from collections import namedtuple
-from itertools import takewhile
 import os
+import imp
+
+line_counting = imp.load_source('line_counting', '../helper_functions/line_counting.py')
 
 mainPath = os.path.dirname(os.path.abspath(__file__)) + '/../data/'
 pathObjects = mainPath + 'mappingbased_objects_en.ttl'
@@ -12,13 +11,8 @@ savePathLiterals = mainPath + 'mappingbased_literals_en_filtered.csv'
 maxLines = 0  # 0 means parse all lines
 
 
-def main(argv):
-    relationships = ['almaMater', 'knownFor', 'occupation', 'award']
-    print(filterTTL(relationships, pathObjects, savePathObjects))
-
-
 def filterTTL(relationships, path, saveInto):
-    lines = rawpycount(path)
+    lines = line_counting.count_lines(path)
     relations = map(lambda s: '/' + s + '>', relationships)
 
     with open(path, 'r', encoding="utf8") as file:
@@ -48,19 +42,6 @@ def filterTTL(relationships, path, saveInto):
         return counter
 
 
-def _make_gen(reader):
-    b = reader(1024 * 1024)
-    while b:
-        yield b
-        b = reader(1024 * 1024)
-
-
-def rawpycount(filename):
-    # http://stackoverflow.com/questions/19001402/how-to-count-the-total-number-of-lines-in-a-text-file-using-python
-    f = open(filename, 'rb')
-    f_gen = _make_gen(f.raw.read)
-    return sum(buf.count(b'\n') for buf in f_gen)
-
-
 if __name__ == "__main__":
-    main(sys.argv)
+    relationships = ['almaMater', 'knownFor', 'occupation', 'award']
+    print(filterTTL(relationships, pathObjects, savePathObjects))

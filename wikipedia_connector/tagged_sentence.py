@@ -101,8 +101,6 @@ class TaggedSentence(object):
         # html = html.decode('utf-8')
         for link in bs_tag.find_all('a'):
             target = link.get('href')
-            if target is None:
-                pass
             assert target is not None
             if target.startswith('#') or not link.string:  # cite_notes start with '#'
                 continue  # ignore intern links and links with no enclosed text

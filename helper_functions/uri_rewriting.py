@@ -32,10 +32,10 @@ def clean_input(input):
     input = re.sub('\n+', " ", input)
     input = re.sub(' +', " ", input)
 
-    # get rid of non-ascii characters
+    # get rid off non-ascii characters
     input = re.sub(r'[^\x00-\x7f]', r'', input)
 
-    # get rid of citations
+    # get rid off citations
     input = re.sub(r'\[\d+\]', r'', input)
     cleanInput = []
     input = input.split(' ')
