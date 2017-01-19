@@ -130,7 +130,8 @@ class WikiPatternExtractor(ConfigInitializer):
             for rel, resources in values.iteritems():
                 wikipedia_target_resources = map(uri_rewriting.convert_to_internal_wikipedia_link, resources)
                 # retrieve tokenized wikipedia sentences that include dbpedia resources that we are lookig for
-                tagged_sentences = self.wikipedia_connector.get_filtered_wikipedia_article(entity, wikipedia_target_resources)
+                tagged_sentences = self.wikipedia_connector.get_filtered_wikipedia_article(entity,
+                                                                                           wikipedia_target_resources)
                 values[rel] = {'resources': wikipedia_target_resources,
                                'sentences': tagged_sentences,
                                'patterns': []}
@@ -270,8 +271,8 @@ class WikiPatternExtractor(ConfigInitializer):
         tqdm.write('\n\nPattern cleaning...')
         for relation, pattern in tqdm(self.relation_patterns.iteritems()):
             self.relation_patterns[relation] = Pattern.clean_pattern(pattern,
-            														self.least_threshold_words,
-            														self.least_threshold_types)
+                                                                     self.least_threshold_words,
+                                                                     self.least_threshold_types)
         self.relation_patterns = dict(filter(lambda (rel, pat): pat is not None, self.relation_patterns.iteritems()))
 
     def save_patterns(self):

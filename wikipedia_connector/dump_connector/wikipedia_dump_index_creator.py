@@ -20,18 +20,18 @@ class WikipediaDumpIndexCreator(object):
         with open(source, 'r') as fin, open(destination, 'w') as fout:
             total_lines = line_counting.count_lines(source)  # 930,460,404
             character_offset = 0
-            page_found = False
+            page_found_offset = None
 
             tqdm.write('\n\nCreating index...')
-            fout.write('"sep=' + self.delimiter + '"\n')
             for line in tqdm(fin, total=total_lines):
-                if page_found:
-                    page_found = False
-                    title = line[1:-9]
-                    fout.write(title + self.delimiter + str(character_offset) + '\n')
-                if line[0:8] == "  <page>":
-                    page_found = True
+                if page_found_offset is not None:
+                    title = line[11:-9]
+                    fout.write(title + self.delimiter + str(page_found_offset) + '\n')
+                    page_found_offset = None
+                if line[0:8] == '  <page>':
+                    page_found_offset = character_offset
                 character_offset += len(line)
+                character_offset += 1  # hotfix for issue #62, TODO: improve this
 
     def _create_filtered_index(self, source='../../data/character_index.csv',
                                destination='../../data/character_index_filtered.csv'):
@@ -46,7 +46,6 @@ class WikipediaDumpIndexCreator(object):
             total_lines_index = line_counting.count_lines(source)
             tqdm.write('\n\nFiltering important articles...')
             index_reader = csv.reader(fin_index, delimiter=self.delimiter)
-            fout.write('"sep=' + self.delimiter + '"\n')
             for line in tqdm(index_reader, total=total_lines_index):
                 subject, character_offset = line[0], line[1]
                 if subject in important_articles:
@@ -61,15 +60,25 @@ class WikipediaDumpIndexCreator(object):
             tqdm.write('\n\nSorting index...')
             index_reader = csv.reader(fin, delimiter=self.delimiter)
             sorted_list = sorted(index_reader, key=operator.itemgetter(0))
-            fout.write('"sep=' + self.delimiter + '"\n')
             for element in tqdm(sorted_list, total=total_lines):
                 subject, character_offset = element[0], element[1]
                 fout.write(subject + self.delimiter + character_offset + '\n')
+
+    def _is_index_consistent_with_dump(self, index_path, dump_path):
+        tqdm.write('\n\nChecking wheter index is consistend with dump or not...')
+        with open(index_path, 'r') as index_file, open(dump_path, 'r') as dump_file:
+            index_reader = csv.reader(index_file, delimiter=self.delimiter)
+            for line in index_reader:
+                subject, character_offset = line[0], int(line[1])
+                dump_file.seek(character_offset)
+                page_begin = dump_file.readline()
+                assert page_begin == '  <page>\n'  # otherwise the character index does not match the dump
 
     def create_index(self):
         self._create_text_index()
         self._create_filtered_index()
         self._create_sorted_index()
+        # self._is_index_consistent_with_dump('../../data/character_index_sorted.csv', '../../data/enwiki-latest-pages-articles-redirected.xml')
 
 
 if __name__ == '__main__':

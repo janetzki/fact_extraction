@@ -77,7 +77,6 @@ def filterTextIndex():
         print("Cornelia_de_Lange_syndrome".encode('utf-8') in important_articles)
         print(str("Stiles'_Tapaculo") in important_articles)
         indexreader = csv.reader(fin_index, delimiter=delimiter)
-        # fout.write('"sep=' + delimiter + '"\n')
         tqdm.write("\n\nFiltering important articles...")
         for line in tqdm(indexreader, total=7400000):  # TODO: replace magic number with line counter
             # print(line[0])

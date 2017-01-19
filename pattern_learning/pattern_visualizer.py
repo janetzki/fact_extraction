@@ -11,11 +11,13 @@ def dict_to_string(dictionary):
         reverse_counter.setdefault(v, []).append(k)
     return build_displayed_string_from_counter(reverse_counter)
 
+
 def counter_to_string(title, type_frequencies=None):
     if type_frequencies is not None and len(type_frequencies) > 0:
         return '--- ' + title + ' ---\n' + dict_to_string(type_frequencies)
     else:
         return ''
+
 
 def add_node(graph, identifier, word_frequencies, subject_type_frequencies=None, object_type_frequencies=None,
              color="black", shape="ellipse"):
@@ -67,7 +69,7 @@ if __name__ == '__main__':
         print(pattern.calculate_diversity_measure())
         # print root node
         root = pattern.get_node_by_id(pattern.root)
-        add_node(dot, pattern.root, root.word_frequencies, subject_type_frequencies=pattern .subject_type_frequencies,
+        add_node(dot, pattern.root, root.word_frequencies, subject_type_frequencies=pattern.subject_type_frequencies,
                  object_type_frequencies=pattern.object_type_frequencies, color="red", shape="doublecircle")
         # print all remaining nodes
         for id, node in pattern.nodes.iteritems():

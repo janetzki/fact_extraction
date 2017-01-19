@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup as bs
 
 class WikipediaDumpExtractor(object):
     def __init__(self, dump_path='../data/enwiki-latest-pages-articles-redirected.xml',
-                 index_path='../data/index_sorted.csv'):
+                 index_path='../data/character_index_sorted.csv'):
         self.dump_path = dump_path
         self.index_path = index_path
 
@@ -16,17 +16,20 @@ class WikipediaDumpExtractor(object):
                 subject, character_offset = line[0], int(line[1])
                 if subject == title:
                     return character_offset
+
         return None
 
     def _extract_wikipedia_page_via_offset(self, offset):
         with open(self.dump_path, 'r') as fin:
             fin.seek(offset)
-            text = "  <page>\n"
+            page = ''
             for line in fin:
-                text += line
-                if line[0:9] == "  </page>":
+                if len(page) == 0:
+                    assert line == '  <page>\n'  # otherwise the character index does not match the dump
+                page += line
+                if line[0:9] == '  </page>':
                     break
-            return text
+            return page
 
     @staticmethod
     def _extract_wikipedia_text_from_page(page):

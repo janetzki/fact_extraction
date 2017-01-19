@@ -115,7 +115,7 @@ class PatternExtractor(object):
         return new_pattern
 
     def extract_pattern(self, sentence, object_token_addresses, relative_position, type_extraction=False,
-                        subject_entity=None, object_entity=None, depth=1):
+                        subject_entity=None, object_entity=None, depth=2):
         if len(sentence.strip(' ')) == 0:
             return None
         object_token_addresses = map(lambda addr: addr + 1,
@@ -125,8 +125,8 @@ class PatternExtractor(object):
         parse = result.next()
 
         object_address = PatternExtractor._find_main_address(parse, object_token_addresses)
-        if object_address is None:
-            return None
+        assert object_address is not None  # otherwise the word tokenization is (still) inconsistent (Issue #37)
+
         graph = PatternExtractor._build_graph_from_dependeny_parse(parse)
 
         if type_extraction:

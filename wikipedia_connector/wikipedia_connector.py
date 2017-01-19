@@ -7,14 +7,21 @@ tagged_sentence = imp.load_source('tagged_sentence', '../wikipedia_connector/tag
 from tagged_sentence import TaggedSentence
 
 dump_extractor = imp.load_source('dump_extractor', '../wikipedia_connector/dump_connector/wikipedia_dump_extractor.py')
+from dump_extractor import WikipediaDumpExtractor
+
 redirector = imp.load_source('subst_redirects', '../data_cleaning/subst_redirects.py')
 uri_rewriting = imp.load_source('uri_rewriting', '../helper_functions/uri_rewriting.py')
 
 
 class WikipediaConnector(object):
     def __init__(self, use_dump=False, redirect=False, redirects_path='../data/redirects_en.txt'):
-        self.use_dump = use_dump
         self.elapsed_time = 0  # for performance monitoring
+
+        if use_dump:
+            self.wikipedia_dump_extractor = WikipediaDumpExtractor()
+        else:
+            self.wikipedia_dump_extractor = None
+
         if redirect and not use_dump:
             self.redirector = redirector.Substitutor(redirects_path)
         else:
@@ -22,9 +29,9 @@ class WikipediaConnector(object):
 
     def get_wikipedia_article_html(self, dbpedia_resource):
         start = timer()
-        if self.use_dump:
+        if self.wikipedia_dump_extractor is not None:
             resource = uri_rewriting.strip_cleaned_name(dbpedia_resource)
-            html = dump_extractor.get_wikipedia_html_from_dump(resource)
+            html = self.wikipedia_dump_extractor.get_wikipedia_html_from_dump(resource)
         else:
             html = self._scrape_wikipedia_article(dbpedia_resource)
         end = timer()
