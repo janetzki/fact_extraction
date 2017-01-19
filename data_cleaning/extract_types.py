@@ -14,7 +14,7 @@ limit = 1e10
 REGEX = re.compile("<http://dbpedia.org/resource/(.*)> <.*> <http://dbpedia.org/ontology/(.*)> \.")
 
 
-def parseTTL(input):
+def parste_ttl(input):
     match = REGEX.match(input)
     if match:
         return match.group(1), match.group(2)
@@ -24,19 +24,19 @@ def parseTTL(input):
 
 def extract():
     with open(redirects_path, 'r') as fin, open(output_path, 'w') as fout:
-        lineCounter = 0
+        line_counter = 0
 
         fout.write('"sep=' + delimiter + '"\n')
 
         tqdm.write('\n\nType extraction...')
         for line in tqdm(fin, total=totalLines):
-            name, inst_type = parseTTL(line)
+            name, inst_type = parste_ttl(line)
 
             if name and name.find("__") == -1:
                 fout.write(name + delimiter + inst_type + '\n')
 
-            lineCounter += 1
-            if lineCounter == limit:
+            line_counter += 1
+            if line_counter == limit:
                 break
         fin.close()
         fout.close()

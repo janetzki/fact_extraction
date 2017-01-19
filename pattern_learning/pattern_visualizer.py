@@ -41,7 +41,7 @@ def add_edge(graph, first_node, second_node, direction, label=""):
 
 def build_displayed_string_from_counter(reverse_counter):
     res = ''
-    reversed_keys = sorted(reverse_counter.keys(), reverse=True)
+    reversed_keys = sorted(reverse_counter.keys(    ), reverse=True)
     for k in reversed_keys:
         v = reverse_counter[k]
         if None in v:

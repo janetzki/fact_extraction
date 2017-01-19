@@ -17,7 +17,8 @@ class WikipediaDumpIndexCreator(object):
 
     def _create_text_index(self, source='../../data/enwiki-latest-pages-articles-redirected.xml',
                            destination='../../data/character_index.csv'):
-        with open(source, 'r') as fin, open(destination, 'w') as fout:
+        with open(source, 'rb') as fin, open(destination, 'w') as fout:
+            # binary mode in 'rb' solves the character amount problem with '\n' vs. '\r\n'
             total_lines = line_counting.count_lines(source)  # 930,460,404
             character_offset = 0
             page_found_offset = None
@@ -31,7 +32,6 @@ class WikipediaDumpIndexCreator(object):
                 if line[0:8] == '  <page>':
                     page_found_offset = character_offset
                 character_offset += len(line)
-                character_offset += 1  # hotfix for issue #62, TODO: improve this
 
     def _create_filtered_index(self, source='../../data/character_index.csv',
                                destination='../../data/character_index_filtered.csv'):

@@ -17,7 +17,7 @@ REGEX = re.compile(
     "<http://dbpedia.org/ontology/(.*)> \.")
 
 
-def parseTTL(input):
+def parse_ttl(input):
     match = REGEX.match(input)
     if match:
         return match.group(1), match.group(2)
@@ -27,19 +27,19 @@ def parseTTL(input):
 
 def extract():
     with open(redirects_path, 'r') as fin, open(output_path, 'w') as fout:
-        lineCounter = 0
+        line_counter = 0
 
         fout.write('"sep=' + delimiter + '"\n')
 
         tqdm.write('\n\nType extraction...')
         for line in tqdm(fin, total=totalLines):
-            subclass, parentclass = parseTTL(line)
+            subclass, parentclass = parse_ttl(line)
 
             if subclass and subclass.find("__") == -1:
                 fout.write(subclass + delimiter + parentclass + '\n')
 
-            lineCounter += 1
-            if lineCounter == limit:
+            line_counter += 1
+            if line_counter == limit:
                 break
         fin.close()
         fout.close()

@@ -15,7 +15,7 @@ limit = 1e12
 REGEX = re.compile("<http://dbpedia.org/resource/(.*)> <.*> <http://dbpedia.org/resource/(.*)>.")
 
 
-def dbpediaURLtoResource(url):
+def dbpedia_url_to_resource(url):
     # "http://dbpedia.org/resource/Allan_Dwan" --> "Allan Dwan"
     resource = url[28:]
     return resource
@@ -27,7 +27,7 @@ def unicode_csv_reader(utf8_data, dialect=csv.excel, **kwargs):
         yield [unicode(cell, 'utf-8') for cell in row]
 
 
-def parseTTL(input):
+def parse_ttl(input):
     match = REGEX.match(input)
     if match:
         return match.group(1), match.group(2)
@@ -35,50 +35,48 @@ def parseTTL(input):
         return False, False
 
 
-def createTextIndex():
+def create_text_index():
     with open(redirects_path, 'r', encoding="UTF-8") as fin, open(index_path, 'w', encoding="UTF-8") as fout:
-        lineCounter = 0
-        characterOffset = 0
+        line_counter = 0
+        character_offset = 0
 
         fout.write('"sep=' + delimiter + '"\n')
 
         for line in tqdm(fin, total=totalLines):
-            name, ressource = parseTTL(line)
+            name, resource = parse_ttl(line)
 
             if name:
-                fout.write(name + delimiter + ressource + '\n')
+                fout.write(name + delimiter + resource + '\n')
 
-            characterOffset += len(line)
-            lineCounter += 1
-            if lineCounter == limit:
+            character_offset += len(line)
+            line_counter += 1
+            if line_counter == limit:
                 break
-        fin.close()
-        fout.close()
 
 
-def filterTextIndex():
+def filter_text_index():
     with open(index_path, 'r') as fin_index, \
             open(relations_path, 'r') as fin_relations, \
             codecs.open(index_filtered_path, 'w', encoding="utf8") as fout:
 
-        relationreader = csv.reader(fin_relations, delimiter=' ', quotechar='"')
+        relation_reader = csv.reader(fin_relations, delimiter=' ', quotechar='"')
         important_articles = set()
 
         tqdm.write("\n\nCollecting important articles...")
-        for line in tqdm(relationreader, total=500000):  # TODO: replace magic number with line counter
+        for line in tqdm(relation_reader, total=500000):  # TODO: replace magic number with line counter
             # if "Cornelia" in dbpediaURLtoResource(line[2]):
             #	print("ja")
 
-            important_articles.add(dbpediaURLtoResource(line[2]))
+            important_articles.add(dbpedia_url_to_resource(line[2]))
 
         print(len(important_articles))
         # for a in important_articles:
         # print(a)
         print("Cornelia_de_Lange_syndrome".encode('utf-8') in important_articles)
         print(str("Stiles'_Tapaculo") in important_articles)
-        indexreader = csv.reader(fin_index, delimiter=delimiter)
+        index_reader = csv.reader(fin_index, delimiter=delimiter)
         tqdm.write("\n\nFiltering important articles...")
-        for line in tqdm(indexreader, total=7400000):  # TODO: replace magic number with line counter
+        for line in tqdm(index_reader, total=7400000):  # TODO: replace magic number with line counter
             # print(line[0])
             if line[0] in important_articles:
                 fout.write(line[0] + delimiter + line[1] + '\n')

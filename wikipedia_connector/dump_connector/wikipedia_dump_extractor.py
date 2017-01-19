@@ -1,23 +1,27 @@
 import re
 import csv
+import imp
 from bs4 import BeautifulSoup as bs
+from tqdm import tqdm
+
+line_counting = imp.load_source('line_counting', '../helper_functions/line_counting.py')
 
 
 class WikipediaDumpExtractor(object):
     def __init__(self, dump_path='../data/enwiki-latest-pages-articles-redirected.xml',
                  index_path='../data/character_index_sorted.csv'):
         self.dump_path = dump_path
-        self.index_path = index_path
+        self.character_index = {}
+        self.delimiter = '#'
+        self._load_character_index(index_path)
 
-    def _get_dump_offset_via_index(self, title):
-        with open(self.index_path, 'r') as fin:
-            index_reader = csv.reader(fin, delimiter='#')
-            for line in index_reader:
-                subject, character_offset = line[0], int(line[1])
-                if subject == title:
-                    return character_offset
-
-        return None
+    def _load_character_index(self, types_path):
+        total_lines = line_counting.count_lines(types_path)
+        print('\n\nReading character index file...')
+        with open(types_path, 'r') as fin:
+            reader = csv.reader(fin, delimiter=self.delimiter)
+            for subject, character_offset in tqdm(reader, total=total_lines):
+                self.character_index[subject] = int(character_offset)
 
     def _extract_wikipedia_page_via_offset(self, offset):
         with open(self.dump_path, 'r') as fin:
@@ -79,7 +83,7 @@ class WikipediaDumpExtractor(object):
         return html_text
 
     def get_wikipedia_html_from_dump(self, resource):
-        offset = self._get_dump_offset_via_index(resource)
+        offset = self.character_index.setdefault(resource, None)
         if offset is None:
             return ''  # no article found, resource probably contains non-ASCII character TODO: Heed this case.
         page = self._extract_wikipedia_page_via_offset(offset)
