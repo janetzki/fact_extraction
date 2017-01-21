@@ -4,19 +4,14 @@ import urllib.parse
 import xml.etree.ElementTree as ET
 import sys
 import codecs
-import re
 from termcolor import colored
-
-# consoleRed = '\x1b[6;30;41m'
-# consoleGreen = '\x1b[6;30;42m'
-# consoleNormal = '\x1b[0m'
 
 if __name__ == "__main__":
     sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
 
     fileName = '../ttl parser/mappingbased_objects_en_extracted.csv'
     articles = {}
-    if (len(sys.argv) != 3):
+    if len(sys.argv) != 3:
         print("usage:   python wikiCrawler.py [property] [maxResults]")
         print("example: python wikiCrawler.py almaMater 100")
         exit()
@@ -56,9 +51,9 @@ with open(fileName, 'r', encoding='utf-8-sig') as csvfile:
         value = row[2]
         print(colored(subject + ' ' + relation + ' ' + value, 'blue'))
 
-        if (maxResults == 0):
+        if maxResults == 0:
             break
-        if (relation.find(property) == -1):
+        if relation.find(property) == -1:
             continue
         if subject in articles:
             content = articles[subject]
@@ -88,9 +83,10 @@ with open(fileName, 'r', encoding='utf-8-sig') as csvfile:
         for sentence in sentences:
             # print(sentence)
             for search in searchStr:
-                if (sentence == search): continue
+                if sentence == search:
+                    continue
                 pos = sentence.find(search)
-                if (pos > -1):
+                if pos > -1:
                     last = len(search) + pos
                     print(sentence[:pos], end='')
                     print(colored(search, 'green'), end='')

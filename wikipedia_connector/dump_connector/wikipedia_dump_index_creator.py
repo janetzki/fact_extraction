@@ -17,9 +17,9 @@ class WikipediaDumpIndexCreator(object):
 
     def _create_text_index(self, source='../../data/enwiki-latest-pages-articles-redirected.xml',
                            destination='../../data/character_index.csv'):
-        with open(source, 'rb') as fin, open(destination, 'w') as fout:
-            # binary mode in 'rb' solves the character amount problem with '\n' vs. '\r\n'
-            total_lines = line_counting.count_lines(source)  # 930,460,404
+        with open(source, 'rb') as fin, open(destination, 'wb') as fout:
+            # binary mode 'b' enables consistent character offset and UTF-8 parsing
+            total_lines = line_counting.count_lines(source)  # 930460404
             character_offset = 0
             page_found_offset = None
 
@@ -27,6 +27,7 @@ class WikipediaDumpIndexCreator(object):
             for line in tqdm(fin, total=total_lines):
                 if page_found_offset is not None:
                     title = line[11:-9]
+                    assert self.delimiter not in title
                     fout.write(title + self.delimiter + str(page_found_offset) + '\n')
                     page_found_offset = None
                 if line[0:8] == '  <page>':
@@ -35,7 +36,7 @@ class WikipediaDumpIndexCreator(object):
 
     def _create_filtered_index(self, source='../../data/character_index.csv',
                                destination='../../data/character_index_filtered.csv'):
-        with open(source, 'r') as fin_index, open(destination, 'w') as fout:
+        with open(source, 'rb') as fin_index, open(destination, 'wb') as fout:
             total_lines_relations = line_counting.count_lines(self.path_relations)
             tqdm.write('\n\nCollecting important articles...')
             important_articles = set()
@@ -54,7 +55,7 @@ class WikipediaDumpIndexCreator(object):
     def _create_sorted_index(self, source='../../data/character_index_filtered.csv',
                              destination='../../data/character_index_sorted.csv'):
         """ for index lookup in O(log i) instead of O(i) with i as the size of the index """
-        with open(source, 'r') as fin, open(destination, 'w') as fout:
+        with open(source, 'rb') as fin, open(destination, 'wb') as fout:
             total_lines = line_counting.count_lines(source)
 
             tqdm.write('\n\nSorting index...')
@@ -65,8 +66,8 @@ class WikipediaDumpIndexCreator(object):
                 fout.write(subject + self.delimiter + character_offset + '\n')
 
     def _is_index_consistent_with_dump(self, index_path, dump_path):
-        tqdm.write('\n\nChecking wheter index is consistend with dump or not...')
-        with open(index_path, 'r') as index_file, open(dump_path, 'r') as dump_file:
+        tqdm.write('\n\nChecking whether index is consistent with dump or not...')
+        with open(index_path, 'rb') as index_file, open(dump_path, 'rb') as dump_file:
             index_reader = csv.reader(index_file, delimiter=self.delimiter)
             for line in index_reader:
                 subject, character_offset = line[0], int(line[1])

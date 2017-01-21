@@ -8,7 +8,7 @@ from tagged_sentence import TaggedSentence
 dump_extractor = imp.load_source('dump_extractor', '../wikipedia_connector/dump_connector/wikipedia_dump_extractor.py')
 from dump_extractor import WikipediaDumpExtractor
 
-redirector = imp.load_source('subst_redirects', '../data_cleaning/subst_redirects.py')
+redirector = imp.load_source('subst_redirects', '../data_cleaning/substitute_redirects.py')
 uri_rewriting = imp.load_source('uri_rewriting', '../helper_functions/uri_rewriting.py')
 
 

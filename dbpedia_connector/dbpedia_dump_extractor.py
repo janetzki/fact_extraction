@@ -13,7 +13,7 @@ class DBpediaDumpExtractor(object):
         else:
             offset_countdown = 0
 
-        with open(self.ttl_path) as fin:
+        with open(self.ttl_path, 'rb') as fin:
             for line in fin:
                 if offset_countdown > 0:
                     offset_countdown -= 1

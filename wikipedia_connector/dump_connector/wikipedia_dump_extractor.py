@@ -85,7 +85,7 @@ class WikipediaDumpExtractor(object):
     def get_wikipedia_html_from_dump(self, resource):
         offset = self.character_index.setdefault(resource, None)
         if offset is None:
-            return ''  # no article found, resource probably contains non-ASCII character TODO: Heed this case.
+            return ''  # probably because of Issue #64 (https://github.com/jjanetzki/fact_extraction/issues/64)
         page = self._extract_wikipedia_page_via_offset(offset)
         text = WikipediaDumpExtractor._extract_wikipedia_text_from_page(page)
         html_text = WikipediaDumpExtractor._make_wikipedia_text_to_html(text)

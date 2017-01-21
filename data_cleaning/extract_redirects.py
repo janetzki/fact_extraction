@@ -5,9 +5,9 @@ import csv
 import codecs
 
 currentPath = os.path.dirname(os.path.abspath(__file__)) + '/'
-redirects_path = '/media/sf_project/data/redirects_en.ttl'
-index_path = '/media/sf_project/data/redirects_en.txt'
-index_filtered_path = '/media/sf_project/data/redirects.csv'
+redirects_path = '../data/redirects_en.ttl'
+index_path = '../data/redirects_en.txt'
+index_filtered_path = '../data/redirects.csv'
 relations_path = currentPath + '../data/mappingbased_objects_en_extracted.csv'
 delimiter = '#'  # '#' is never used as character in page titles
 totalLines = 7339092  # TODO: replace magic number with line counter
@@ -36,11 +36,9 @@ def parse_ttl(input):
 
 
 def create_text_index():
-    with open(redirects_path, 'r', encoding="UTF-8") as fin, open(index_path, 'w', encoding="UTF-8") as fout:
+    with open(redirects_path, 'r', encoding="utf8") as fin, open(index_path, 'w', encoding="utf8") as fout:
         line_counter = 0
         character_offset = 0
-
-        fout.write('"sep=' + delimiter + '"\n')
 
         for line in tqdm(fin, total=totalLines):
             name, resource = parse_ttl(line)
