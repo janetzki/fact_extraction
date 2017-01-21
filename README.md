@@ -8,7 +8,9 @@ Pattern exploring using already available DBpedia information in corresponding W
     - `$ virtualenv venv -p python2`
 2. Activate virtual envirionment
     - `$ source venv/bin/activate`
-3. Install requirements
+3. Upgrade pip
+    - `$ pip install -U pip`
+4. Install requirements
     - `$ pip install -r requirements.txt`
-4. Run wiki_pattern.py
+5. Run wiki_pattern.py
     - `$ python wiki_pattern.py`
