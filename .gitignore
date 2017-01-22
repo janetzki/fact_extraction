@@ -1,16 +1,8 @@
-# large data
-stanford-corenlp-full-2016-10-31/
-data/enwiki-latest-pages-articles.xml
-data/enwiki-latest-pages-articles-redirected.xml
-data/redirects_en.txt
-data/instance_types_en.ttl
-data/types_en.csv
-data/mappingbased_objects_en.ttl
+# code should not depend on data
+data/
 
-# volatile data
-data/patterns.pkl
-data/character_index.csv
-data/character_index_filtered.csv
+# stanford CoreNLP
+stanford-corenlp-full-2016-10-31/
 
 # config file
 config.ini

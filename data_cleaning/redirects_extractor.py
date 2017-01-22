@@ -7,7 +7,7 @@ from ttl_parser import TTLParser
 
 line_counting = imp.load_source('line_counting', '../helper_functions/line_counting.py')
 
-
+# TODO: use TTLCleaner instead to avoid code duplication
 class RedirectsExtractor(object):
     def __init__(self, path_redirects='../data/redirects_en.ttl',
                  path_relations='../data/mappingbased_objects_en.ttl',
@@ -38,7 +38,7 @@ class RedirectsExtractor(object):
             ttl_parser = TTLParser(self.path_relations)
             for subject, predicate, redirect in tqdm(ttl_parser.yield_cleaned_entry_names,
                                                    total=total_lines_relations):
-                # TODO: assert predicate == ''
+                # TODO: assert predicate == '...'
                 important_articles.add(redirect)
 
             total_lines_index = line_counting.count_lines(self.path_extracted_redirects)

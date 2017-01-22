@@ -14,7 +14,7 @@ sys.setdefaultencoding('utf-8')
 class TaggedSentence(object):
     def __init__(self, sentence, links, relative_position):
         self.sentence = []
-        sentence = self.__cleanInput(sentence)
+        sentence = TaggedSentence.__clean_input(sentence)
         link_words = map(lambda x: x[1], links)
         tokenizer = StanfordTokenizer(path_to_jar='../stanford-corenlp-full-2016-10-31/stanford-corenlp-3.7.0.jar')
         tokens = tokenizer.tokenize(sentence)
@@ -132,22 +132,23 @@ class TaggedSentence(object):
         assert link in addresses_of_all_contained_links
         return addresses_of_all_contained_links[link]
 
-    def __cleanInput(self, input):
+    @staticmethod
+    def __clean_input(string):
         """
         Sanitize text - remove multiple new lines and spaces - get rid off non ascii chars
         and citations - strip words from punctuation signs - returns sanitized string
         """
-        input = re.sub('\n+', " ", input)
-        input = re.sub(' +', " ", input)
+        string = re.sub('\n+', " ", string)
+        string = re.sub(' +', " ", string)
 
         # get rid off non-ascii characters
-        input = re.sub(r'[^\x00-\x7f]', r'', input)
+        string = re.sub(r'[^\x00-\x7f]', r'', string)
 
         # get rid off citations
-        input = re.sub(r'\[\d+\]', r'', input)
+        string = re.sub(r'\[\d+\]', r'', string)
         clean_input = []
-        input = input.split(' ')
-        for item in input:
+        string = string.split(' ')
+        for item in string:
             # item = item.strip('?!;,')
             if len(item) > 1 or (item.lower() == 'a' or item == 'I'):
                 clean_input.append(item)

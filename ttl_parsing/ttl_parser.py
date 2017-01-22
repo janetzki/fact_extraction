@@ -2,6 +2,7 @@ import re
 import imp
 from random import randint
 
+line_counting = imp.load_source('line_counting', '../helper_functions/line_counting.py')
 uri_rewriting = imp.load_source('uri_rewriting', '../helper_functions/uri_rewriting.py')
 
 
@@ -23,7 +24,8 @@ class TTLParser(object):
 
     def yield_entries_and_length(self):
         if self.randomize:
-            offset_countdown = randint(0, 10000)  # TODO: get rid off magic number
+            total_lines = line_counting.count_lines(self.ttl_path)
+            offset_countdown = randint(0, total_lines / 2)  # start in the first half to provide enough results
         else:
             offset_countdown = 0
 
