@@ -21,7 +21,7 @@ class RedirectsExtractor(object):
 
     def _extract_all_redirects(self):
         with open(self.path_extracted_redirects, 'wb') as fout:
-            total_lines_relations = line_counting.count_lines(self.path_relations)
+            total_lines_relations = line_counting.cached_counter.count_lines(self.path_relations)
             ttl_parser = TTLParser(self.path_redirects)
 
             tqdm.write('\n\nExtracting redirects to: ' + self.path_extracted_redirects)
@@ -32,7 +32,7 @@ class RedirectsExtractor(object):
 
     def _filter_redirects(self):
         with open(self.path_extracted_redirects, 'rb') as fin_index, open(self.path_filtered_redirects, 'wb') as fout:
-            total_lines_relations = line_counting.count_lines(self.path_relations)
+            total_lines_relations = line_counting.cached_counter.count_lines(self.path_relations)
             tqdm.write('\n\nCollecting important entities...')
             important_articles = set()
             ttl_parser = TTLParser(self.path_relations)
@@ -41,7 +41,7 @@ class RedirectsExtractor(object):
                 # TODO: assert predicate == '...'
                 important_articles.add(redirect)
 
-            total_lines_index = line_counting.count_lines(self.path_extracted_redirects)
+            total_lines_index = line_counting.cached_counter.count_lines(self.path_extracted_redirects)
             index_reader = csv.reader(fin_index, delimiter=self.delimiter)
             tqdm.write("\n\nFiltering important entities...")
             for line in tqdm(index_reader, total=total_lines_index):

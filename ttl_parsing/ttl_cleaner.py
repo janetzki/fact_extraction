@@ -17,7 +17,7 @@ class TTLCleaner(object):
         self.delimiter = '#'
 
     def clean_ttl(self):
-        total_lines = line_counting.count_lines(self.path_ttl)
+        total_lines = line_counting.cached_counter.count_lines(self.path_ttl)
         with open(self.path_cleaned_ttl, 'wb') as fout:
             ttl_parser = TTLParser(self.path_ttl)
             tqdm.write('\n\nType extraction...')
@@ -29,6 +29,7 @@ class TTLCleaner(object):
 
                 if subject.find('__') == -1:
                     subject = uri_rewriting.strip_cleaned_name(subject)
+                    type = type.replace("owl#", "owl")
                     type = uri_rewriting.strip_cleaned_name(type)
                     assert self.delimiter not in subject and self.delimiter not in type
                     fout.write(subject + self.delimiter + type + '\n')
@@ -44,5 +45,5 @@ if __name__ == '__main__':
     path_types_inheritance = '../data/dbpedia_2016-04.nt'
     path_types_inheritance_cleaned = '../data/types_inheritance_en.csv'
     inheritance_relation = 'http://www.w3.org/2000/01/rdf-schema#subClassOf'
-    inheritance_cleaner = TTLCleaner(path_types_inheritance, path_types_cleaned, [inheritance_relation], False)
+    inheritance_cleaner = TTLCleaner(path_types_inheritance, path_types_inheritance_cleaned, [inheritance_relation], False)
     inheritance_cleaner.clean_ttl()

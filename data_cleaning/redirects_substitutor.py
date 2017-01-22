@@ -27,7 +27,7 @@ class RedirectsSubstitutor:
         self._load_redirects(path_redirects)
 
     def _load_redirects(self, redirects_path):
-        total_lines = line_counting.count_lines(redirects_path)
+        total_lines = line_counting.cached_counter.count_lines(redirects_path)
         tqdm.write('\n\nReading redirects file...')
         with open(redirects_path, 'rb') as fin:
             reader = csv.reader(fin, delimiter=self.delimiter)
@@ -62,20 +62,20 @@ class RedirectsSubstitutor:
         regex_wikimarkup = re.compile('\[\[(.+?)(\|(.+?))?\]\]')
         return regex_wikimarkup.sub(self._substitute_match, string)
 
-    # TODO: Is this code necessary?
-    # def _substitute_html(self, string):
-    #     # look for href="wiki/linked_article"
-    #     regex_html = re.compile('(href=\"\/wiki\/)(.*?)(\")')
-    #     return regex_html.sub(self._substitute_match_html, string)
-    #
-    # def _substitute_match_html(self, match):
-    #     if match.group(3) is not None:
-    #         return match.group(1) + self._substitute(match.group(2)) + match.group(3)
-    #
-    #     return match.group(0)
+ 
+    def substitute_html(self, string):
+        # look for href="wiki/linked_article"
+        regex_html = re.compile('(href=\"\/wiki\/)(.*?)(\")')
+        return regex_html.sub(self._substitute_match_html, string)
+    
+    def _substitute_match_html(self, match):
+        if match.group(3) is not None:
+            return match.group(1) + self._substitute(match.group(2)) + match.group(3)
+    
+        return match.group(0)
 
     def substitute_redirects(self):
-        total_lines = line_counting.count_lines(self.path_dump)
+        total_lines = line_counting.cached_counter.count_lines(self.path_dump)
         tqdm.write('\n\nSubstituting links in dump...')
         with open(self.path_dump, 'rb') as fin, open(self.path_substituted_dump, 'wb') as fout:
             # binary mode 'b' enables UTF-8 parsing and prevents Windows from using '\r\n' as line separator

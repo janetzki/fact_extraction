@@ -22,7 +22,7 @@ class WikipediaConnector(object):
             self.wikipedia_dump_extractor = None
 
         if redirect and not use_dump:
-            self.redirector = redirector.Substitutor(redirects_path)
+            self.redirector = redirector.RedirectsSubstitutor(redirects_path)
         else:
             self.redirector = False
 

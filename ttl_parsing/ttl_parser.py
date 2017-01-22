@@ -24,7 +24,7 @@ class TTLParser(object):
 
     def yield_entries_and_length(self):
         if self.randomize:
-            total_lines = line_counting.count_lines(self.ttl_path)
+            total_lines = line_counting.cached_counter.count_lines(self.ttl_path)
             offset_countdown = randint(0, total_lines / 2)  # start in the first half to provide enough results
         else:
             offset_countdown = 0
@@ -36,9 +36,9 @@ class TTLParser(object):
                     continue
 
                 items = re.findall(r'<([^>]+)>', line)
-                if len(items) == 0:
+                if not len(items) == 3:
                     continue
-                assert len(items) == 3  # otherwise this type of .ttl is not supported by this method
+                #assert len(items) == 3  # otherwise this type of .ttl is not supported by this method
                 subject, predicate, object = items
                 length = len(line)
                 yield subject, predicate, object, length  # length is for character index creation

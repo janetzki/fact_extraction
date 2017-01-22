@@ -15,14 +15,14 @@ class EntityTypes(object):
         self._load_types(types_path, type_inheritance_path)
 
     def _load_types(self, types_path, type_inheritance_path):
-        total_lines = line_counting.count_lines(types_path)
+        total_lines = line_counting.cached_counter.count_lines(types_path)
         print('\n\nReading types file...')
         with open(types_path, 'rb') as fin:
             reader = csv.reader(fin, delimiter=self.delimiter)
             for name, inst_type in tqdm(reader, total=total_lines):
                 self.types.setdefault(name, []).append(inst_type)
 
-        total_lines = line_counting.count_lines(type_inheritance_path)
+        total_lines = line_counting.cached_counter.count_lines(type_inheritance_path)
         print('\n\nReading type inheritance file...')
         with open(type_inheritance_path, 'rb') as fin:
             reader = csv.reader(fin, delimiter=self.delimiter)

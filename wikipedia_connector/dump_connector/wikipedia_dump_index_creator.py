@@ -18,7 +18,7 @@ class WikipediaDumpIndexCreator(object):
                            destination='../../data/character_index.csv'):
         with open(source, 'rb') as fin, open(destination, 'wb') as fout:
             # binary mode 'b' enables consistent character offset and UTF-8 parsing
-            total_lines = line_counting.count_lines(source)  # 930460404
+            total_lines = line_counting.cached_counter.count_lines(source)  # 930460404
             character_offset = 0
             page_found_offset = None
 
@@ -36,14 +36,14 @@ class WikipediaDumpIndexCreator(object):
     def _create_filtered_index(self, source='../../data/character_index.csv',
                                destination='../../data/character_index_filtered.csv'):
         with open(source, 'rb') as fin_index, open(destination, 'wb') as fout:
-            total_lines_relations = line_counting.count_lines(self.path_relations)
+            total_lines_relations = line_counting.cached_counter.count_lines(self.path_relations)
             tqdm.write('\n\nCollecting important entities...')
             important_articles = set()
             ttl_parser = TTLParser(self.path_relations)
             for subject, predicate, object in tqdm(ttl_parser.yield_cleaned_entry_names(), total=total_lines_relations):
                 important_articles.add(subject)
 
-            total_lines_index = line_counting.count_lines(source)
+            total_lines_index = line_counting.cached_counter.count_lines(source)
             tqdm.write('\n\nFiltering important entities...')
             index_reader = csv.reader(fin_index, delimiter=self.delimiter)
             for line in tqdm(index_reader, total=total_lines_index):
@@ -55,7 +55,7 @@ class WikipediaDumpIndexCreator(object):
                              destination='../../data/character_index_sorted.csv'):
         """ for index lookup in O(log i) instead of O(i) with i as the size of the index """
         with open(source, 'rb') as fin, open(destination, 'wb') as fout:
-            total_lines = line_counting.count_lines(source)
+            total_lines = line_counting.cached_counter.count_lines(source)
 
             tqdm.write('\n\nSorting index...')
             index_reader = csv.reader(fin, delimiter=self.delimiter)

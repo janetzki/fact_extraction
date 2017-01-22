@@ -16,7 +16,7 @@ class WikipediaDumpExtractor(object):
         self._load_character_index(index_path)
 
     def _load_character_index(self, types_path):
-        total_lines = line_counting.count_lines(types_path)
+        total_lines = line_counting.cached_counter.count_lines(types_path)
         print('\n\nReading character index file...')
         with open(types_path, 'r') as fin:
             reader = csv.reader(fin, delimiter=self.delimiter)
