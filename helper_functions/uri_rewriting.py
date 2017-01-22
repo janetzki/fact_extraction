@@ -1,6 +1,3 @@
-import re
-
-
 def strip_name(uri):
     return uri.split('/')[-1]
 
@@ -23,25 +20,3 @@ def strip_cleaned_name(uri):
     entity_name = entity_name.replace('_', ' ')
     # return clean_input(entity_name)
     return entity_name
-
-
-# def clean_input(input):
-#     """
-#     Sanitize text - remove multiple new lines and spaces - get rid of non ascii chars
-#     and citations - strip words from punctuation signs - returns sanitized string
-#     """
-#     input = re.sub('\n+', " ", input)
-#     input = re.sub(' +', " ", input)
-#
-#     # get rid off non-ascii characters
-#     input = re.sub(r'[^\x00-\x7f]', r'', input)
-#
-#     # get rid off citations
-#     input = re.sub(r'\[\d+\]', r'', input)
-#     cleanInput = []
-#     input = input.split(' ')
-#     for item in input:
-#         # item = item.strip('?!;,')
-#         if len(item) > 1 or (item.lower() == 'a' or item == 'I'):
-#             cleanInput.append(item)
-#     return ' '.join(cleanInput).encode('utf-8')

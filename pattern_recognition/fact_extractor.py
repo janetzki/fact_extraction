@@ -11,8 +11,8 @@ from pattern_extractor import PatternExtractor, Pattern
 wikipedia_connector = imp.load_source('wikipedia_connector', '../wikipedia_connector/wikipedia_connector.py')
 from wikipedia_connector import WikipediaConnector, TaggedSentence
 
-dbpedia_dump_extractor = imp.load_source('dbpedia_dump_extractor', '../dbpedia_connector/dbpedia_dump_extractor.py')
-from dbpedia_dump_extractor import DBpediaDumpExtractor
+ttl_parser = imp.load_source('ttl_parser', '../ttl_parsing/ttl_parser.py')
+from ttl_parser import TTLParser
 
 uri_rewriting = imp.load_source('uri_rewriting', '../helper_functions/uri_rewriting.py')
 
@@ -28,7 +28,7 @@ class FactExtractor(ConfigInitializer):
         self.match_threshold = match_threshold
         self.type_matching = type_matching
         self.pattern_path = pattern_path
-        self.dbpedia_dump_extractor = DBpediaDumpExtractor(resources_path, randomize)
+        self.ttl_parser = TTLParser(resources_path, randomize)
         self.wikipedia_connector = WikipediaConnector(self.use_dump)
         self.pattern_extractor = PatternExtractor()
         self.print_interim_results = print_interim_results
@@ -66,7 +66,7 @@ class FactExtractor(ConfigInitializer):
         article_counter = 0
 
         tqdm.write('\n\nCollecting entities for fact extraction...')
-        for subject, predicate, object in self.dbpedia_dump_extractor.yield_entries():
+        for subject, predicate, object in self.ttl_parser.yield_entries():
             if article_counter == self.articles_limit:
                 break
             if subject not in self.training_resources and subject not in self.discovery_resources:

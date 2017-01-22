@@ -1,6 +1,3 @@
-#!../venv/bin/python
-# -*- coding: utf-8 -*-
-
 from __future__ import division
 from bs4 import BeautifulSoup as bs
 from nltk.tokenize import StanfordTokenizer
@@ -8,10 +5,10 @@ import re
 import sys
 import imp
 
+uri_rewriting = imp.load_source('uri_rewriting', '../helper_functions/uri_rewriting.py')
+
 reload(sys)
 sys.setdefaultencoding('utf-8')
-
-uri_rewriting = imp.load_source('uri_rewriting', '../helper_functions/uri_rewriting.py')
 
 
 class TaggedSentence(object):
@@ -48,9 +45,9 @@ class TaggedSentence(object):
     def as_string(self):
         return self.__str__()
 
-    @property
-    def link_positions(self):
-        return [(token, position) for token in enumerate(self.sentence) if token.is_link()]
+    # @property
+    # def link_positions(self):
+    #     return [(token, position) for token in enumerate(self.sentence) if token.is_link()]
 
     @property
     def links(self):
@@ -137,16 +134,16 @@ class TaggedSentence(object):
 
     def __cleanInput(self, input):
         """
-        Sanitize text - remove multiple new lines and spaces - get rid of non ascii chars
+        Sanitize text - remove multiple new lines and spaces - get rid off non ascii chars
         and citations - strip words from punctuation signs - returns sanitized string
         """
         input = re.sub('\n+', " ", input)
         input = re.sub(' +', " ", input)
 
-        # get rid of non-ascii characters
+        # get rid off non-ascii characters
         input = re.sub(r'[^\x00-\x7f]', r'', input)
 
-        # get rid of citations
+        # get rid off citations
         input = re.sub(r'\[\d+\]', r'', input)
         clean_input = []
         input = input.split(' ')

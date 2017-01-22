@@ -11,4 +11,6 @@ def count_lines(path):
     print('Counting lines of file: "' + path + '" ...')
     file = open(path, 'rb')
     f_gen = _make_gen(file.read)
-    return sum(buf.count(b'\n') for buf in f_gen)
+    lines = sum(buf.count(b'\n') for buf in f_gen)
+    print(str(lines) + ' lines')
+    return lines

@@ -24,13 +24,13 @@ from config_initializer import ConfigInitializer
 wikipedia_connector = imp.load_source('wikipedia_connector', '../wikipedia_connector/wikipedia_connector.py')
 from wikipedia_connector import WikipediaConnector
 
-dbpedia_dump_extractor = imp.load_source('dbpedia_dump_extractor', '../dbpedia_connector/dbpedia_dump_extractor.py')
-from dbpedia_dump_extractor import DBpediaDumpExtractor
+ttl_parser = imp.load_source('ttl_parser', '../ttl_parsing/ttl_parser.py')
+from ttl_parser import TTLParser
 
 uri_rewriting = imp.load_source('uri_rewriting', '../helper_functions/uri_rewriting.py')
 
 
-class WikiPatternExtractor(ConfigInitializer):
+class WikipediaPatternExtractor(ConfigInitializer):
     def __init__(self, relation_types_limit, facts_limit, resources_path='../data/mappingbased_objects_en.ttl',
                  relationships=[], use_dump=False, randomize=False, perform_tests=False, type_learning=True,
                  write_path='../data/patterns.pkl', replace_redirects=False,
@@ -46,7 +46,7 @@ class WikiPatternExtractor(ConfigInitializer):
         self.write_path = write_path
         self.wikipedia_connector = WikipediaConnector(use_dump=self.use_dump, redirect=replace_redirects)
         self.pattern_extractor = PatternExtractor()
-        self.dbpedia_dump_extractor = DBpediaDumpExtractor(resources_path, randomize)
+        self.ttl_parser = TTLParser(resources_path, randomize)
         self.dbpedia = {}
         self.relation_patterns = {}
         self.matches = []
@@ -86,7 +86,7 @@ class WikiPatternExtractor(ConfigInitializer):
         fact_counter = 0
 
         tqdm.write('\n\nCollecting facts for training...')
-        for subject, predicate, object in self.dbpedia_dump_extractor.yield_entries():
+        for subject, predicate, object in self.ttl_parser.yield_entries():
             if fact_counter == self.facts_limit * self.relation_types_limit:
                 break
             if len(relation_types_counter) == self.relation_types_limit and predicate not in relation_types_counter:
@@ -283,7 +283,7 @@ class WikiPatternExtractor(ConfigInitializer):
 
 
 if __name__ == '__main__':
-    wiki_pattern_extractor = WikiPatternExtractor.from_config_file()
+    wiki_pattern_extractor = WikipediaPatternExtractor.from_config_file()
 
     # preprocess data
     wiki_pattern_extractor.discover_patterns()

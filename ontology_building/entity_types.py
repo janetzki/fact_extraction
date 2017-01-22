@@ -6,8 +6,9 @@ import imp
 line_counting = imp.load_source('line_counting', '../helper_functions/line_counting.py')
 
 
-class InstanceTypes(object):
-    def __init__(self, types_path='../data/types_en.csv', type_inheritance_path='../data/types_inheritance_en.csv'):
+class EntityTypes(object):
+    def __init__(self, types_path='../data/types_en.csv',
+                 type_inheritance_path='../data/types_inheritance_en.csv'):
         self.types = {}
         self.parent_types = {}
         self.delimiter = '#'
@@ -16,16 +17,14 @@ class InstanceTypes(object):
     def _load_types(self, types_path, type_inheritance_path):
         total_lines = line_counting.count_lines(types_path)
         print('\n\nReading types file...')
-        with open(types_path, 'r') as fin:
-            next(fin)
+        with open(types_path, 'rb') as fin:
             reader = csv.reader(fin, delimiter=self.delimiter)
             for name, inst_type in tqdm(reader, total=total_lines):
                 self.types.setdefault(name, []).append(inst_type)
 
         total_lines = line_counting.count_lines(type_inheritance_path)
         print('\n\nReading type inheritance file...')
-        with open(type_inheritance_path, 'r') as fin:
-            next(fin)
+        with open(type_inheritance_path, 'rb') as fin:
             reader = csv.reader(fin, delimiter=self.delimiter)
             for inst_type, parent_type in tqdm(reader, total=total_lines):
                 self.parent_types[inst_type] = parent_type

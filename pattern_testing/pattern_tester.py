@@ -8,16 +8,15 @@ from config_initializer import ConfigInitializer
 fact_extractor = imp.load_source('fact_extractor', '../pattern_recognition/fact_extractor.py')
 from fact_extractor import FactExtractor
 
-dbpedia_dump_extractor = imp.load_source('dbpedia_dump_extractor', '../dbpedia_connector/dbpedia_dump_extractor.py')
-from dbpedia_dump_extractor import DBpediaDumpExtractor
-
+ttl_parser = imp.load_source('ttl_parser', '../ttl_parsing/ttl_parser.py')
+from ttl_parser import TTLParser
 
 class PatternTester(ConfigInitializer):
     def __init__(self, facts_limit, randomize=False, fact_extractor=None,
                  resources_path='../data/mappingbased_objects_en.ttl'):
         self.facts_limit = facts_limit
         self.randomize = randomize
-        self.dbpedia_dump_extractor = DBpediaDumpExtractor(resources_path, randomize)
+        self.ttl_parser = TTLParser(resources_path, randomize)
         self.results = {}
 
         # count right and wrong facts for each relation
@@ -46,7 +45,7 @@ class PatternTester(ConfigInitializer):
         fact_counter = 0
 
         tqdm.write('\n\nCollecting facts for testing...')
-        for subject, predicate, object in self.dbpedia_dump_extractor.yield_entries():
+        for subject, predicate, object in self.ttl_parser.yield_entries():
             if fact_counter == self.facts_limit * len(training_relations):
                 break
             if subject in training_resources:

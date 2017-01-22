@@ -4,7 +4,7 @@
 virtualenv ../venv -p python2
 
 # Activate virtual envirionment
-source ../venv/bin/activate
+./start_virtualenv.sh
 
 # Upgrade pip (may solve problems in the next step)
 pip install -U pip

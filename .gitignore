@@ -12,7 +12,7 @@ data/patterns.pkl
 data/character_index.csv
 data/character_index_filtered.csv
 
-#config file
+# config file
 config.ini
 
 # IDE files
@@ -24,3 +24,6 @@ config.ini
 # rendered patterns
 *.svg
 **/visualizations/
+
+# virtual environment
+venv/

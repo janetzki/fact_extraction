@@ -1,9 +1,10 @@
 import imp
 import os
+
 from nltk.parse.stanford import StanfordDependencyParser
 
-entity_types = imp.load_source('entity_types', '../pattern_learning/entity_types.py')
-from entity_types import InstanceTypes
+entity_types = imp.load_source('entity_types', '../ontology_building/entity_types.py')
+from entity_types import EntityTypes
 
 pattern = imp.load_source('pattern', '../pattern_learning/pattern.py')
 from pattern import Pattern, DependencyKey
@@ -15,7 +16,7 @@ path_to_models_jar = os.path.join('..', 'stanford-corenlp-full-2016-10-31', 'sta
 class PatternExtractor(object):
     def __init__(self, path_to_jar=path_to_jar, path_to_models_jar=path_to_models_jar):
         self.parser = StanfordDependencyParser(path_to_jar=path_to_jar, path_to_models_jar=path_to_models_jar)
-        self.instance_types = InstanceTypes()
+        self.instance_types = EntityTypes()
 
     @staticmethod
     def _find_main_address(parse, object_token_addresses):
