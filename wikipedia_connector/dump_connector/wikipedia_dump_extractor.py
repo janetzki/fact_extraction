@@ -18,13 +18,13 @@ class WikipediaDumpExtractor(object):
     def _load_character_index(self, types_path):
         total_lines = line_counting.cached_counter.count_lines(types_path)
         print('\n\nReading character index file...')
-        with open(types_path, 'r') as fin:
+        with open(types_path, 'rb') as fin:
             reader = csv.reader(fin, delimiter=self.delimiter)
             for subject, character_offset in tqdm(reader, total=total_lines):
                 self.character_index[subject] = int(character_offset)
 
     def _extract_wikipedia_page_via_offset(self, offset):
-        with open(self.dump_path, 'r') as fin:
+        with open(self.dump_path, 'rb') as fin:
             fin.seek(offset)
             page = ''
             for line in fin:
@@ -84,6 +84,7 @@ class WikipediaDumpExtractor(object):
 
     def get_wikipedia_html_from_dump(self, resource):
         offset = self.character_index.setdefault(resource, None)
+        assert offset is not None
         if offset is None:
             return ''  # probably because of Issue #64 (https://github.com/jjanetzki/fact_extraction/issues/64)
         page = self._extract_wikipedia_page_via_offset(offset)

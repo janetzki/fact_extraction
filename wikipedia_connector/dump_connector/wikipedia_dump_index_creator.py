@@ -3,7 +3,7 @@ import operator
 import imp
 from tqdm import tqdm
 
-ttl_parser = imp.load_source('ttl_parser', '../ttl_parsing/ttl_parser.py')
+ttl_parser = imp.load_source('ttl_parser', '../../ttl_parsing/ttl_parser.py')
 from ttl_parser import TTLParser
 
 line_counting = imp.load_source('line_counting', '../../helper_functions/line_counting.py')
@@ -47,7 +47,7 @@ class WikipediaDumpIndexCreator(object):
             tqdm.write('\n\nFiltering important entities...')
             index_reader = csv.reader(fin_index, delimiter=self.delimiter)
             for line in tqdm(index_reader, total=total_lines_index):
-                subject, character_offset = line[0], line[1]
+                subject, character_offset = line
                 if subject in important_articles:
                     fout.write(subject + self.delimiter + character_offset + '\n')
 

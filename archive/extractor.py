@@ -12,7 +12,7 @@ maxLines = 0  # 0 means parse all lines
 
 
 def filterTTL(relationships, path, saveInto):
-    lines = line_counting.count_lines(path)
+    lines = line_counting.cached_counter.count_lines(path)
     relations = map(lambda s: '/' + s + '>', relationships)
 
     with open(path, 'r', encoding="utf8") as file:

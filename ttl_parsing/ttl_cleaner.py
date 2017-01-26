@@ -35,15 +35,32 @@ class TTLCleaner(object):
                     fout.write(subject + self.delimiter + type + '\n')
 
 
-if __name__ == '__main__':
+def clean_instance_types():
     path_types = '../data/instance_types_en.ttl'
     path_types_cleaned = '../data/types_en.csv'
     type_relation = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type'
     type_cleaner = TTLCleaner(path_types, path_types_cleaned, [type_relation], True)
     type_cleaner.clean_ttl()
 
+
+def clean_instance_types_inheritance():
     path_types_inheritance = '../data/dbpedia_2016-04.nt'
     path_types_inheritance_cleaned = '../data/types_inheritance_en.csv'
     inheritance_relation = 'http://www.w3.org/2000/01/rdf-schema#subClassOf'
-    inheritance_cleaner = TTLCleaner(path_types_inheritance, path_types_inheritance_cleaned, [inheritance_relation], False)
+    inheritance_cleaner = TTLCleaner(path_types_inheritance, path_types_inheritance_cleaned, [inheritance_relation],
+                                     False)
     inheritance_cleaner.clean_ttl()
+
+
+def clean_redirects():
+    path_redirects = '../data/redirects_en.ttl'
+    path_redirects_cleaned = '../data/redirects_en.csv'
+    redirect_relation = 'http://dbpedia.org/ontology/wikiPageRedirects'
+    type_cleaner = TTLCleaner(path_redirects, path_redirects_cleaned, [redirect_relation], True)
+    type_cleaner.clean_ttl()
+
+
+if __name__ == '__main__':
+    clean_instance_types()
+    clean_instance_types_inheritance()
+    clean_redirects()

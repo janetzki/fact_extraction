@@ -62,16 +62,15 @@ class RedirectsSubstitutor:
         regex_wikimarkup = re.compile('\[\[(.+?)(\|(.+?))?\]\]')
         return regex_wikimarkup.sub(self._substitute_match, string)
 
- 
     def substitute_html(self, string):
         # look for href="wiki/linked_article"
         regex_html = re.compile('(href=\"\/wiki\/)(.*?)(\")')
         return regex_html.sub(self._substitute_match_html, string)
-    
+
     def _substitute_match_html(self, match):
         if match.group(3) is not None:
             return match.group(1) + self._substitute(match.group(2)) + match.group(3)
-    
+
         return match.group(0)
 
     def substitute_redirects(self):

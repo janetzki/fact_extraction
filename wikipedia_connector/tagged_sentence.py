@@ -129,6 +129,9 @@ class TaggedSentence(object):
 
     def addresses_of_link(self, link):
         addresses_of_all_contained_links = self.addresses_of_links()
+        if link not in addresses_of_all_contained_links:
+            print('Link: ' + str(link))
+            print('All links: ' + str(addresses_of_all_contained_links))
         assert link in addresses_of_all_contained_links
         return addresses_of_all_contained_links[link]
 

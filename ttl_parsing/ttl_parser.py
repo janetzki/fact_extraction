@@ -35,10 +35,11 @@ class TTLParser(object):
                     offset_countdown -= 1
                     continue
 
+                # TODO: discard double underscores
                 items = re.findall(r'<([^>]+)>', line)
                 if not len(items) == 3:
                     continue
-                #assert len(items) == 3  # otherwise this type of .ttl is not supported by this method
+                # assert len(items) == 3  # otherwise this type of .ttl is not supported by this method
                 subject, predicate, object = items
                 length = len(line)
                 yield subject, predicate, object, length  # length is for character index creation
