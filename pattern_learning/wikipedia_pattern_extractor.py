@@ -1,10 +1,3 @@
-#!../venv/bin/python
-# -*- coding: utf-8 -*-
-
-# -------------------------------------------------------------------------------------------------
-#                               Imports
-# -------------------------------------------------------------------------------------------------
-
 from __future__ import division
 from termcolor import colored
 from nltk.tokenize import word_tokenize

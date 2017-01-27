@@ -57,6 +57,18 @@ class RedirectsSubstitutor:
         subst += "]]"
         return subst
 
+    @staticmethod
+    def _is_wikimarkup_consistent(text):
+        escape_code_left = r'&lt;nowiki&gt;'
+        escape_code_right = r'&lt;/nowiki&gt;'
+        escaped_bracket_opening = escape_code_left + '[' + escape_code_right
+        escaped_bracket_closing = escape_code_left + ']' + escape_code_right
+        escaped_opening = text.count(escaped_bracket_opening)
+        escaped_closing = text.count(escaped_bracket_closing)
+        if text.count('[') - escaped_opening != text.count(']') - escaped_closing:
+            return False
+        return True
+
     def _substitute_all(self, string):
         # look for [[linked_article]] or [[linked_article|link_text]]
         regex_wikimarkup = re.compile('\[\[(.+?)(\|(.+?))?\]\]')
@@ -73,13 +85,29 @@ class RedirectsSubstitutor:
 
         return match.group(0)
 
-    def substitute_redirects(self):
-        total_lines = line_counting.cached_counter.count_lines(self.path_dump)
-        tqdm.write('\n\nSubstituting links in dump...')
-        with open(self.path_dump, 'rb') as fin, open(self.path_substituted_dump, 'wb') as fout:
+    def _yield_paragraphs(self):
+        # brackets may not get closed inside a line but inside a paragraph
+        with open(self.path_dump, 'rb') as fin:
             # binary mode 'b' enables UTF-8 parsing and prevents Windows from using '\r\n' as line separator
-            for line in tqdm(fin, total=total_lines):
-                fout.write(sub._substitute_all(line))
+            paragraph = ''
+            for line in tqdm(fin):
+                paragraph += line
+                if line == '\n':
+                    yield paragraph
+                    paragraph = ''
+            yield paragraph
+
+    def substitute_redirects(self):
+        # total_lines = line_counting.cached_counter.count_lines(self.path_dump)
+        tqdm.write('\n\nSubstituting links in dump...')
+        with open(self.path_substituted_dump, 'wb') as fout:
+            for paragrapsh in self._yield_paragraphs():
+                if not RedirectsSubstitutor._is_wikimarkup_consistent(paragrapsh):
+                    pass
+                # assert RedirectsSubstitutor._is_wikimarkup_consistent(line)
+                substituted_paragraph = sub._substitute_all(paragrapsh)
+                # assert RedirectsSubstitutor._is_wikimarkup_consistent(substituted_line)
+                fout.write(substituted_paragraph)
 
 
 if __name__ == '__main__':

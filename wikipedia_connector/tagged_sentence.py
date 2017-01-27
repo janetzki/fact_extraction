@@ -138,8 +138,8 @@ class TaggedSentence(object):
     @staticmethod
     def __clean_input(string):
         """
-        Sanitize text - remove multiple new lines and spaces - get rid off non ascii chars
-        and citations - strip words from punctuation signs - returns sanitized string
+        Sanitize text - remove multiple new lines and spaces - get rid off non ascii chars -
+        strip words from punctuation signs - returns sanitized string
         """
         string = re.sub('\n+', " ", string)
         string = re.sub(' +', " ", string)
@@ -147,7 +147,6 @@ class TaggedSentence(object):
         # get rid off non-ascii characters
         string = re.sub(r'[^\x00-\x7f]', r'', string)
 
-        # get rid off citations
         string = re.sub(r'\[\d+\]', r'', string)
         clean_input = []
         string = string.split(' ')

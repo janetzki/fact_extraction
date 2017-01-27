@@ -5,7 +5,7 @@ from timeit import default_timer as timer
 tagged_sentence = imp.load_source('tagged_sentence', '../wikipedia_connector/tagged_sentence.py')
 from tagged_sentence import TaggedSentence
 
-dump_extractor = imp.load_source('dump_extractor', '../wikipedia_connector/dump_connector/wikipedia_dump_extractor.py')
+dump_extractor = imp.load_source('dump_extractor', '../wikipedia_connector/wikipedia_dump_extractor.py')
 from dump_extractor import WikipediaDumpExtractor
 
 redirector = imp.load_source('subst_redirects', '../data_cleaning/redirects_substitutor.py')

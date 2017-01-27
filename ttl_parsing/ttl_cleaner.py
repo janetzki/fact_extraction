@@ -27,12 +27,11 @@ class TTLCleaner(object):
                 elif predicate not in self.filter_relations:
                     continue
 
-                if subject.find('__') == -1:
-                    subject = uri_rewriting.strip_cleaned_name(subject)
-                    type = type.replace("owl#", "owl")
-                    type = uri_rewriting.strip_cleaned_name(type)
-                    assert self.delimiter not in subject and self.delimiter not in type
-                    fout.write(subject + self.delimiter + type + '\n')
+                subject = uri_rewriting.strip_cleaned_name(subject)
+                type = type.replace("owl#", "owl")
+                type = uri_rewriting.strip_cleaned_name(type)
+                assert self.delimiter not in subject and self.delimiter not in type
+                fout.write(subject + self.delimiter + type + '\n')
 
 
 def clean_instance_types():

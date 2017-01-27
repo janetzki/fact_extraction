@@ -70,11 +70,22 @@ class WikipediaDumpExtractor(object):
         html_text = WikipediaDumpExtractor._strip_outer_brackets(text)
 
         # remove all headlines
-        html_text = re.sub(r'(=+).*?(\1)', '', html_text)
+        html_text = re.sub(r'^(=+).*?(\1)$', '', html_text)
         html_text = re.sub(r"'''.*?'''", '', html_text)
 
-        html_text = re.sub(r'\[\[Category:.*\]\]', '', html_text)
-        html_text = re.sub(r'\[http://.*?\]', '', html_text)  # drop hyperlinks
+        # drop possibly nested file and image links
+        no_bracket = r'[^\[\]]'
+        no_brackets = no_bracket + r'*'
+        single_brackets = r'(\[' + no_brackets + r'\])'
+        double_brackets = r'(\[\[' + no_brackets + r'\]\])'
+        single_or_double_brackets = r'((' + single_brackets + r'|' + double_brackets + r')' + no_brackets + r')'
+        embedded_brackets = no_brackets + single_or_double_brackets + r'*' + no_brackets
+        html_text = re.sub(r'\[\[((File)|(Image)):' + embedded_brackets + r'\]\]', '', html_text)
+
+        # drop possibly nested external links
+        html_text = re.sub(r'\[https?://' + no_bracket + embedded_brackets + '\]', '', html_text)
+
+        html_text = re.sub(r'\[\[Category:' + no_brackets + r'\]\]', '', html_text)
         html_text = re.sub(r'\* ?', '', html_text)
 
         # insert HTML links
@@ -82,12 +93,38 @@ class WikipediaDumpExtractor(object):
         html_text = re.sub(rx_references, WikipediaDumpExtractor._replace_links, html_text)
         return html_text
 
+    @staticmethod
+    def _is_wikimarkup_consistent(text):
+        if text.count('[') != text.count(']'):
+            return False
+        if text.count('{') != text.count('}'):
+            return False
+        return True
+
     def get_wikipedia_html_from_dump(self, resource):
+        corrupted_articles = ['Doctor Who', 'Amsterdam']
+        if resource in corrupted_articles:
+            return ''
         offset = self.character_index.setdefault(resource, None)
-        assert offset is not None
+        # assert offset is not None
         if offset is None:
             return ''  # probably because of Issue #64 (https://github.com/jjanetzki/fact_extraction/issues/64)
         page = self._extract_wikipedia_page_via_offset(offset)
         text = WikipediaDumpExtractor._extract_wikipedia_text_from_page(page)
+        if not WikipediaDumpExtractor._is_wikimarkup_consistent(text):
+            pass
         html_text = WikipediaDumpExtractor._make_wikipedia_text_to_html(text)
+        if '==' in html_text or '{' in html_text or '}' in html_text or '[' in html_text or ']' in html_text:
+            pass
         return html_text
+
+
+def test_html_conversion():
+    input = '[[File:ThreeMenWalkingII.JPG|thumb|''Three Men Walking II'', 1949, painted bronze sculpture [[Metropolitan Museum of Art]]. "The surfaces of Three Men Walking (II), 1949, typify his technique."<ref name="Metropolitan Museum of Art">[http://www.metmuseum.org/Collections/search-the-collections/489978?rpp=20&pg=1&ao=on&ft=alberto+giacometti&pos=6 Metropolitan Museum of Art]</ref>]]'
+    assert WikipediaDumpExtractor._is_wikimarkup_consistent(input)
+    output = WikipediaDumpExtractor._make_wikipedia_text_to_html(input)
+    assert output == ''
+
+
+if __name__ == '__main__':
+    test_html_conversion()

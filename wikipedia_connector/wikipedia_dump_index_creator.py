@@ -1,22 +1,24 @@
 import csv
 import operator
 import imp
+import io
 from tqdm import tqdm
+from bs4 import BeautifulSoup as bs
 
-ttl_parser = imp.load_source('ttl_parser', '../../ttl_parsing/ttl_parser.py')
+ttl_parser = imp.load_source('ttl_parser', '../ttl_parsing/ttl_parser.py')
 from ttl_parser import TTLParser
 
-line_counting = imp.load_source('line_counting', '../../helper_functions/line_counting.py')
+line_counting = imp.load_source('line_counting', '../helper_functions/line_counting.py')
 
 
 class WikipediaDumpIndexCreator(object):
-    def __init__(self, path_relations='../../data/mappingbased_objects_en.ttl'):
+    def __init__(self, path_relations='../data/mappingbased_objects_en.ttl'):
         self.path_relations = path_relations
         self.delimiter = '#'  # '#' is never used as character in page titles
 
-    def _create_full_index(self, source='../../data/enwiki-latest-pages-articles-redirected.xml',
-                           destination='../../data/character_index.csv'):
-        with open(source, 'rb') as fin, open(destination, 'wb') as fout:
+    def _create_full_index(self, source='../data/enwiki-latest-pages-articles-redirected.xml',
+                           destination='../data/character_index.csv'):
+        with open(source, 'rb') as fin, io.open(destination, 'w', encoding='utf8') as fout:
             # binary mode 'b' enables consistent character offset and UTF-8 parsing
             total_lines = line_counting.cached_counter.count_lines(source)  # 930460404
             character_offset = 0
@@ -26,6 +28,8 @@ class WikipediaDumpIndexCreator(object):
             for line in tqdm(fin, total=total_lines):
                 if page_found_offset is not None:
                     title = line[11:-9]
+                    soup = bs(title, 'lxml')
+                    title = soup.getText()  # parse escaped HTML characters, e.g., '&amp;' -> '&'
                     assert self.delimiter not in title
                     fout.write(title + self.delimiter + str(page_found_offset) + '\n')
                     page_found_offset = None
@@ -33,9 +37,9 @@ class WikipediaDumpIndexCreator(object):
                     page_found_offset = character_offset
                 character_offset += len(line)
 
-    def _create_filtered_index(self, source='../../data/character_index.csv',
-                               destination='../../data/character_index_filtered.csv'):
-        with open(source, 'rb') as fin_index, open(destination, 'wb') as fout:
+    def _create_filtered_index(self, source='../data/character_index.csv',
+                               destination='../data/character_index_filtered.csv'):
+        with io.open(source, 'r', encoding='utf8') as fin_index, io.open(destination, 'w', encoding='utf8') as fout:
             total_lines_relations = line_counting.cached_counter.count_lines(self.path_relations)
             tqdm.write('\n\nCollecting important entities...')
             important_articles = set()
@@ -51,22 +55,22 @@ class WikipediaDumpIndexCreator(object):
                 if subject in important_articles:
                     fout.write(subject + self.delimiter + character_offset + '\n')
 
-    def _create_sorted_index(self, source='../../data/character_index_filtered.csv',
-                             destination='../../data/character_index_sorted.csv'):
+    def _create_sorted_index(self, source='../data/character_index_filtered.csv',
+                             destination='../data/character_index_sorted.csv'):
         """ for index lookup in O(log i) instead of O(i) with i as the size of the index """
-        with open(source, 'rb') as fin, open(destination, 'wb') as fout:
+        with io.open(source, 'r', encoding='utf8') as fin, io.open(destination, 'w', encoding='utf8') as fout:
             total_lines = line_counting.cached_counter.count_lines(source)
 
             tqdm.write('\n\nSorting index...')
             index_reader = csv.reader(fin, delimiter=self.delimiter)
             sorted_list = sorted(index_reader, key=operator.itemgetter(0))
             for element in tqdm(sorted_list, total=total_lines):
-                subject, character_offset = element[0], element[1]
+                subject, character_offset = element
                 fout.write(subject + self.delimiter + character_offset + '\n')
 
     def _is_index_consistent_with_dump(self, index_path, dump_path):
         tqdm.write('\n\nChecking whether index is consistent with dump or not...')
-        with open(index_path, 'rb') as index_file, open(dump_path, 'rb') as dump_file:
+        with io.open(index_path, 'r', encoding='utf8') as index_file, open(dump_path, 'rb') as dump_file:
             index_reader = csv.reader(index_file, delimiter=self.delimiter)
             for line in index_reader:
                 subject, character_offset = line[0], int(line[1])
@@ -78,7 +82,7 @@ class WikipediaDumpIndexCreator(object):
         self._create_full_index()
         self._create_filtered_index()
         self._create_sorted_index()
-        # self._is_index_consistent_with_dump('../../data/character_index_sorted.csv', '../../data/enwiki-latest-pages-articles-redirected.xml')
+        # self._is_index_consistent_with_dump('../data/character_index_sorted.csv', '../data/enwiki-latest-pages-articles-redirected.xml')
 
 
 if __name__ == '__main__':
