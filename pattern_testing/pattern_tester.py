@@ -11,12 +11,13 @@ from fact_extractor import FactExtractor
 ttl_parser = imp.load_source('ttl_parser', '../ttl_parsing/ttl_parser.py')
 from ttl_parser import TTLParser
 
+
 class PatternTester(ConfigInitializer):
     def __init__(self, facts_limit, randomize=False, fact_extractor=None,
-                 resources_path='../data/mappingbased_objects_en.ttl'):
+                 ground_truth_path='../data/ground_truth.ttl'):
         self.facts_limit = facts_limit
         self.randomize = randomize
-        self.ttl_parser = TTLParser(resources_path, randomize)
+        self.ttl_parser = TTLParser(ground_truth_path, randomize)
         self.results = {}
 
         # count right and wrong facts for each relation

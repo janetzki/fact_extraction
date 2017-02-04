@@ -4,12 +4,12 @@ from nltk.tokenize import word_tokenize
 from nltk.tag import pos_tag_sents
 from ascii_graph import Pyasciigraph
 from collections import Counter
+from tqdm import tqdm
+from pattern_extractor import PatternExtractor, Pattern
 import re
 import imp
-from tqdm import tqdm
 import pickle
 import itertools
-from pattern_extractor import PatternExtractor, Pattern
 
 config_initializer = imp.load_source('config_initializer', '../config_initializer/config_initializer.py')
 from config_initializer import ConfigInitializer
@@ -25,12 +25,10 @@ uri_rewriting = imp.load_source('uri_rewriting', '../helper_functions/uri_rewrit
 
 class WikipediaPatternExtractor(ConfigInitializer):
     def __init__(self, relation_types_limit, facts_limit, resources_path='../data/mappingbased_objects_en.ttl',
-                 relationships=[], use_dump=False, randomize=False, perform_tests=False, type_learning=True,
+                 relationships=None, use_dump=False, randomize=False, perform_tests=False, type_learning=True,
                  write_path='../data/patterns.pkl', replace_redirects=False,
                  least_threshold_types=1, least_threshold_words=2):
         self.use_dump = use_dump
-        self.relationships = ['http://dbpedia.org/ontology/' + r for r in relationships if r]
-        self.relation_types_limit = relation_types_limit
         self.facts_limit = facts_limit
         self.perform_tests = perform_tests
         self.type_learning = type_learning
@@ -40,6 +38,14 @@ class WikipediaPatternExtractor(ConfigInitializer):
         self.wikipedia_connector = WikipediaConnector(use_dump=self.use_dump, redirect=replace_redirects)
         self.pattern_extractor = PatternExtractor()
         self.ttl_parser = TTLParser(resources_path, randomize)
+
+        if relationships is not None:
+            self.relationships = ['http://dbpedia.org/ontology/' + r for r in relationships if r]
+            self.relation_types_limit = len(self.relationships)
+        else:
+            self.relationships = None  # means any relation may be learned
+            self.relation_types_limit = relation_types_limit
+
         self.dbpedia = {}
         self.relation_patterns = {}
         self.matches = []
@@ -56,15 +62,21 @@ class WikipediaPatternExtractor(ConfigInitializer):
         type_learning = config_parser.getboolean('wiki_pattern', 'type_learning')
         least_threshold_types = config_parser.getfloat('wiki_pattern', 'least_threshold_types')
         least_threshold_words = config_parser.getfloat('wiki_pattern', 'least_threshold_words')
-        return cls(relation_types_limit, facts_limit, use_dump=use_dump, randomize=randomize,
+        relationships = config_parser.get('wiki_pattern', 'relationships')
+        relationships = WikipediaPatternExtractor.split_string_list(relationships)
+        return cls(relation_types_limit, facts_limit, relationships=relationships, use_dump=use_dump, randomize=randomize,
                    perform_tests=perform_tests, replace_redirects=replace_redirects, type_learning=type_learning,
                    least_threshold_types=least_threshold_types, least_threshold_words=least_threshold_words)
+
+    @staticmethod
+    def split_string_list(string):
+        return string.split(',')
 
     # -------------------------------------------------------------------------------------------------
     #                               Data Preprocessing
     # -------------------------------------------------------------------------------------------------
 
-    def parse_DBpedia_data(self):
+    def parse_dbpedia_data(self):
         """
         Takes all DBpedia ontology relations (subj verb target) stored in file_name
         and returns a dictionary with subjects as keys and all of their related information
@@ -86,6 +98,8 @@ class WikipediaPatternExtractor(ConfigInitializer):
                 continue
             if relation_types_counter[predicate] == self.facts_limit:
                 continue
+            if self.relationships is not None and predicate not in self.relationships:
+                continue
 
             # maintain a dict for each entity with given relations as key
             # and their target values as list
@@ -101,11 +115,7 @@ class WikipediaPatternExtractor(ConfigInitializer):
 
         return entities
 
-    def filter_relevant_sentences(self, tagged_sentences, wikipedia_resources):
-        """ Returns sentences which contain any of given Wikipedia resources """
-        return filter(lambda sent: sent.contains_any_link(wikipedia_resources), tagged_sentences)
-
-    def discover_patterns(self, relationships=[]):
+    def discover_patterns(self):
         """
         Preprocesses data (initializing main data structure)
         1. Filter relevant DBpedia facts by relationships -> still TODO
@@ -114,7 +124,7 @@ class WikipediaPatternExtractor(ConfigInitializer):
         4. Data is stored in self.dbpedia
         """
         # parse dbpedia information
-        self.dbpedia = self.parse_DBpedia_data()
+        self.dbpedia = self.parse_dbpedia_data()
 
         tqdm.write('\n\nSentence extraction...')
         for entity, values in tqdm(self.dbpedia.iteritems(), total=len(self.dbpedia)):
