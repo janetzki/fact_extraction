@@ -12,10 +12,12 @@ from pattern import Pattern, DependencyKey
 path_to_jar = os.path.join('..', 'stanford-corenlp-full-2016-10-31', 'stanford-corenlp-3.7.0.jar')
 path_to_models_jar = os.path.join('..', 'stanford-corenlp-full-2016-10-31', 'stanford-corenlp-3.7.0-models.jar')
 
+stanford_parser = StanfordDependencyParser(path_to_jar=path_to_jar, path_to_models_jar=path_to_models_jar)
+
 
 class PatternExtractor(object):
-    def __init__(self, path_to_jar=path_to_jar, path_to_models_jar=path_to_models_jar):
-        self.parser = StanfordDependencyParser(path_to_jar=path_to_jar, path_to_models_jar=path_to_models_jar)
+    def __init__(self):
+        self.parser = stanford_parser
         self.instance_types = EntityTypes()
 
     @staticmethod
@@ -77,7 +79,7 @@ class PatternExtractor(object):
                     partner = DependencyKey.partner_node(from_node, to_node, node_addr)
                     if meaning in strong_relations:
                         strong_adjacent_addresses.add(partner)
-                    else:
+                    elif meaning != 'root':
                         normal_adjacent_addresses.add(partner)
 
                 # don't go back towards root

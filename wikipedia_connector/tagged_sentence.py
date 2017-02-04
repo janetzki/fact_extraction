@@ -10,14 +10,15 @@ uri_rewriting = imp.load_source('uri_rewriting', '../helper_functions/uri_rewrit
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
+stanford_tokenizer = StanfordTokenizer(path_to_jar='../stanford-corenlp-full-2016-10-31/stanford-corenlp-3.7.0.jar')
+
 
 class TaggedSentence(object):
     def __init__(self, sentence, links, relative_position):
         self.sentence = []
         sentence = TaggedSentence.__clean_input(sentence)
         link_words = map(lambda x: x[1], links)
-        tokenizer = StanfordTokenizer(path_to_jar='../stanford-corenlp-full-2016-10-31/stanford-corenlp-3.7.0.jar')
-        tokens = tokenizer.tokenize(sentence)
+        tokens = stanford_tokenizer.tokenize(sentence)
         for token in tokens:
             if token in link_words:
                 for link in links:

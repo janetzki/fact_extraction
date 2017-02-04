@@ -172,7 +172,7 @@ class WikipediaPatternExtractor(ConfigInitializer):
                 # POS tag sentences
                 for entry in data:
                     sentence = entry['sentence']
-                    if sentence.number_of_tokens() > 100:
+                    if sentence.number_of_tokens() > 50:
                         continue  # probably too long for stanford tokenizer
                     resource = entry['resource']
                     nl_sentence = sentence.as_string()

@@ -57,10 +57,12 @@ class FactExtractor(ConfigInitializer):
 
     def _make_pattern_types_transitive(self):
         for relation, pattern in self.relation_patterns.iteritems():
-            pattern.subject_type_frequencies = self.pattern_extractor.get_transitive_types(pattern.subject_type_frequencies)
-            pattern.object_type_frequencies = self.pattern_extractor.get_transitive_types(pattern.object_type_frequencies)
-            print pattern.subject_type_frequencies
-            print pattern.object_type_frequencies
+            pattern.subject_type_frequencies = self.pattern_extractor \
+                .get_transitive_types(pattern.subject_type_frequencies)
+            pattern.object_type_frequencies = self.pattern_extractor \
+                .get_transitive_types(pattern.object_type_frequencies)
+            # print pattern.subject_type_frequencies
+            # print pattern.object_type_frequencies
 
     def _load_discovery_resources(self):
         article_counter = 0
@@ -115,7 +117,7 @@ class FactExtractor(ConfigInitializer):
                                                                                  self._get_specific_type_frequencies(
                                                                                      'subject'))
         for sentence in tqdm(sentences, total=len(sentences)):
-            if sentence.number_of_tokens() > 100:
+            if sentence.number_of_tokens() > 50:
                 continue  # probably too long for stanford tokenizer
             relative_position = sentence.relative_pos
             nl_sentence = sentence.as_string()
