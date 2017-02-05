@@ -42,8 +42,8 @@ class FactExtractor(ConfigInitializer):
         self._load_discovery_resources()
 
     @classmethod
-    def from_config_file(cls, path='../config.ini'):
-        config_parser = cls.get_config_parser(path)
+    def from_config_file(cls):
+        config_parser = cls.get_config_parser()
         use_dump = config_parser.getboolean('general', 'use_dump')
         randomize = config_parser.getboolean('fact_extractor', 'randomize')
         articles_limit = config_parser.getint('fact_extractor', 'articles_limit')

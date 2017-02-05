@@ -131,7 +131,7 @@ class TaggedSentence(object):
     def addresses_of_dbpedia_links(self):
         addresses_of_links = self.addresses_of_links()
         for link in addresses_of_links.keys():
-            dbpedia_link = uri_rewriting.convert_to_dbpedia_resource_uri(link)
+            dbpedia_link = uri_rewriting.   convert_to_dbpedia_resource_uri(link)
             addresses_of_links[dbpedia_link] = addresses_of_links.pop(link)
         return addresses_of_links
 

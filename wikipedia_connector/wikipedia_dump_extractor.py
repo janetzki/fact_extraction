@@ -20,11 +20,8 @@ class WikipediaDumpExtractor(ConfigInitializer):
         self.warnings = True
         self.load_from_config_file()
 
-    def from_config_file(cls, path):
-        return cls()  # dummy function
-
-    def load_from_config_file(self, path='../config.ini'):
-        config_parser = ConfigInitializer.get_config_parser(path)
+    def load_from_config_file(self):
+        config_parser = ConfigInitializer.get_config_parser()
         self.warnings = config_parser.getboolean('general', 'warnings')
 
     def _load_character_index(self, types_path):

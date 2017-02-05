@@ -51,8 +51,8 @@ class WikipediaPatternExtractor(ConfigInitializer):
         self.matches = []
 
     @classmethod
-    def from_config_file(cls, path='../config.ini'):
-        config_parser = cls.get_config_parser(path)
+    def from_config_file(cls):
+        config_parser = cls.get_config_parser()
         use_dump = config_parser.getboolean('general', 'use_dump')
 
         randomize = config_parser.getboolean('wiki_pattern', 'randomize')

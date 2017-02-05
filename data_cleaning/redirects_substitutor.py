@@ -102,8 +102,8 @@ class RedirectsSubstitutor:
         tqdm.write('\n\nSubstituting links in dump...')
         with open(self.path_substituted_dump, 'wb') as fout:
             for paragrapsh in self._yield_paragraphs():
-                if not RedirectsSubstitutor._is_wikimarkup_consistent(paragrapsh):
-                    pass
+                # if not RedirectsSubstitutor._is_wikimarkup_consistent(paragrapsh):
+                #     pass
                 # assert RedirectsSubstitutor._is_wikimarkup_consistent(line)
                 substituted_paragraph = sub._substitute_all(paragrapsh)
                 # assert RedirectsSubstitutor._is_wikimarkup_consistent(substituted_line)

@@ -32,8 +32,8 @@ class PatternTester(ConfigInitializer):
             self.fact_extractor.set_print_interim_results(False)
 
     @classmethod
-    def from_config_file(cls, path='../config.ini'):
-        config_parser = cls.get_config_parser(path)
+    def from_config_file(cls):
+        config_parser = cls.get_config_parser()
         facts_limit = config_parser.getint('pattern_testing', 'facts_limit')
         randomize = config_parser.getboolean('pattern_testing', 'randomize')
         return cls(facts_limit, randomize)
@@ -49,8 +49,8 @@ class PatternTester(ConfigInitializer):
         for subject, predicate, object in self.ttl_parser.yield_entries():
             if fact_counter == self.facts_limit * len(training_relations):
                 break
-            if subject in training_resources:
-                continue
+            # if subject in training_resources:  # TODO: issue #73
+            #     continue
             if predicate not in training_relations:
                 continue
             if self.known_facts_counter[predicate] == self.facts_limit:
