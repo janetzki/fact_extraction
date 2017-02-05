@@ -15,17 +15,20 @@ stanford_tokenizer = StanfordTokenizer(path_to_jar='../stanford-corenlp-full-201
 
 class TaggedSentence(object):
     def __init__(self, sentence, links, relative_position):
+        if 'divorce' in sentence:
+            pass
         self.sentence = []
         sentence = TaggedSentence.__clean_input(sentence)
-        link_words = map(lambda x: x[1], links)
         tokens = stanford_tokenizer.tokenize(sentence)
         for token in tokens:
-            if token in link_words:
-                for link in links:
-                    if token in link[1]:
-                        self.sentence.append(TaggedToken(token, target_url=link[0]))
-            else:
-                self.sentence.append(TaggedToken(token))
+            target_url = None
+            for i in range(len(links)):
+                link = links[i]
+                if token == link[1]:
+                    target_url = link[0]
+                    links.pop(i)
+                    break
+            self.sentence.append(TaggedToken(token, target_url=target_url))
 
         # self.sentence = sentence  # provisional - TODO: replace with token and tag list
         self.relative_position = relative_position  # zero based counting
@@ -131,7 +134,7 @@ class TaggedSentence(object):
     def addresses_of_dbpedia_links(self):
         addresses_of_links = self.addresses_of_links()
         for link in addresses_of_links.keys():
-            dbpedia_link = uri_rewriting.   convert_to_dbpedia_resource_uri(link)
+            dbpedia_link = uri_rewriting.convert_to_dbpedia_resource_uri(link)
             addresses_of_links[dbpedia_link] = addresses_of_links.pop(link)
         return addresses_of_links
 
@@ -172,6 +175,8 @@ class TaggedToken(object):
         self._text = token
         self._link = target_url
         # TODO if target url is set look for dbpedia redirects as aliases
+        if target_url is not None and len(target_url) > 0:
+            self._link = target_url[0].upper() + target_url[1:]  # Hotfix for issue #72, TODO: find better solution
 
     @property
     def text(self):

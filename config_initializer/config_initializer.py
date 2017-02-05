@@ -6,7 +6,7 @@ from abc import ABCMeta
 
 class ConfigInitializer(object):
     @staticmethod
-    def get_config_parser(path='../config-presentation.ini'):
+    def get_config_parser(path='../config.ini'):
         ConfigInitializer._generate_config_file_if_missing(path)
         config_parser = SafeConfigParser()
         config_parser.read(path)
