@@ -133,7 +133,7 @@ class WikipediaPatternExtractor(ConfigInitializer):
             # for each relationship filter sentences that contain
             # target resources of entity's relationship
             for rel, resources in values.iteritems():
-                wikipedia_target_resources = map(uri_rewriting.convert_to_internal_wikipedia_link, resources)
+                wikipedia_target_resources = map(uri_rewriting.convert_to_internal_wikipedia_uri, resources)
                 # retrieve tokenized wikipedia sentences that include dbpedia resources that we are lookig for
                 tagged_sentences = self.wikipedia_connector.get_filtered_wikipedia_article(entity,
                                                                                            wikipedia_target_resources)
