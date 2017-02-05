@@ -55,6 +55,14 @@ class WikipediaConnector(object):
     def _make_html_to_tagged_sentences(html, wikipedia_resources):
         return [tagged_s for tagged_s in TaggedSentence.from_html(html, wikipedia_resources)]
 
-    def get_filtered_wikipedia_article(self, dbpedia_resource, sought_wiki_resources):
+    def get_filtered_wikipedia_article(self, dbpedia_resource, sought_wiki_resources='any'):
         html = self.get_wikipedia_article_html(dbpedia_resource)
         return WikipediaConnector._make_html_to_tagged_sentences(html, sought_wiki_resources)
+
+    def test(self, resource):
+        self.get_filtered_wikipedia_article(resource)
+
+
+if __name__ == '__main__':
+    wikipedia_connector = WikipediaConnector(use_dump=True)
+    wikipedia_connector.test('Alexander_I_of_Serbia')

@@ -70,12 +70,16 @@ class PatternTester(ConfigInitializer):
         for test_entity in test_entities:
             extracted_facts = self.fact_extractor.extract_facts_from_resource(test_entity)
             for fact in extracted_facts:
+                print(fact)
                 subject, predicate, object, score, nl_sentence = fact
                 assert subject == test_entity
                 if (predicate, object) in test_entities[subject]:
                     self.right_facts_counter[predicate] += 1
+                    print('Match')
                 else:
                     self.wrong_facts_counter[predicate] += 1
+                    print('No match')
+                print('')
 
     @staticmethod
     def _calculate_f_measure(precision, recall):

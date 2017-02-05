@@ -54,6 +54,7 @@ class WikipediaPatternExtractor(ConfigInitializer):
     def from_config_file(cls, path='../config.ini'):
         config_parser = cls.get_config_parser(path)
         use_dump = config_parser.getboolean('general', 'use_dump')
+
         randomize = config_parser.getboolean('wiki_pattern', 'randomize')
         perform_tests = config_parser.getboolean('wiki_pattern', 'randomize')
         relation_types_limit = config_parser.getint('wiki_pattern', 'relation_types_limit')
@@ -64,7 +65,8 @@ class WikipediaPatternExtractor(ConfigInitializer):
         least_threshold_words = config_parser.getfloat('wiki_pattern', 'least_threshold_words')
         relationships = config_parser.get('wiki_pattern', 'relationships')
         relationships = WikipediaPatternExtractor.split_string_list(relationships)
-        return cls(relation_types_limit, facts_limit, relationships=relationships, use_dump=use_dump, randomize=randomize,
+        return cls(relation_types_limit, facts_limit, relationships=relationships, use_dump=use_dump,
+                   randomize=randomize,
                    perform_tests=perform_tests, replace_redirects=replace_redirects, type_learning=type_learning,
                    least_threshold_types=least_threshold_types, least_threshold_words=least_threshold_words)
 
@@ -203,7 +205,7 @@ class WikipediaPatternExtractor(ConfigInitializer):
         self.matches.sort()
         self.matches = list(x for x, _ in itertools.groupby(self.matches))
 
-    def print_patterns(self):
+    def print_occurences(self):
         """
         Prints each occurence of a given DBpedia fact with their corresponding and matched sentence.
         The matched sentence is POS tagges using maxent treebank pos tagging model.
@@ -293,7 +295,8 @@ if __name__ == '__main__':
     wiki_pattern_extractor.extract_patterns()
 
     # print Part-of-speech tagged sentences
-    wiki_pattern_extractor.print_patterns()
+    wiki_pattern_extractor.print_occurences()
+
     wiki_pattern_extractor.merge_patterns()
     wiki_pattern_extractor.clean_patterns()
     wiki_pattern_extractor.save_patterns()

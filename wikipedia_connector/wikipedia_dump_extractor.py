@@ -4,16 +4,28 @@ import imp
 from bs4 import BeautifulSoup as bs
 from tqdm import tqdm
 
+config_initializer = imp.load_source('config_initializer', '../config_initializer/config_initializer.py')
+from config_initializer import ConfigInitializer
+
 line_counting = imp.load_source('line_counting', '../helper_functions/line_counting.py')
 
 
-class WikipediaDumpExtractor(object):
+class WikipediaDumpExtractor(ConfigInitializer):
     def __init__(self, dump_path='../data/enwiki-latest-pages-articles-redirected.xml',
                  index_path='../data/character_index_sorted.csv'):
         self.dump_path = dump_path
         self.character_index = {}
         self.delimiter = '#'
         self._load_character_index(index_path)
+        self.warnings = True
+        self.load_from_config_file()
+
+    def from_config_file(cls, path):
+        return cls() # dummy
+
+    def load_from_config_file(self, path='../config.ini'):
+        config_parser = ConfigInitializer.get_config_parser(path)
+        self.warnings = config_parser.getboolean('general', 'warnings')
 
     def _load_character_index(self, types_path):
         total_lines = line_counting.cached_counter.count_lines(types_path)
@@ -73,7 +85,7 @@ class WikipediaDumpExtractor(object):
         html_text = re.sub(r'==Further reading==(.|\n)*', '', html_text)
 
         # remove all headlines
-        html_text = re.sub(r'[\n](=+).*?(\1)[\n]', '', html_text)
+        html_text = re.sub(r'(=+).*?(\1)[\n]', '\n', html_text)
         html_text = re.sub(r"'''.*?'''", '', html_text)
 
         # insert paragraphs
@@ -114,29 +126,31 @@ class WikipediaDumpExtractor(object):
             return False
         return True
 
-    @staticmethod
-    def _test_cleaning(html):
+    def _test_cleaning(self, html):
         bad_strings = ['==', '{', '}', '[', ']', '<ref']
         for string in bad_strings:
             if html.find(string) >= 0:
-                print('[WARN]   HTML is not clean. Found: "' + string + '"')
+                if self.warnings:
+                    print('[WARN]   HTML is not clean. Found: "' + string + '"')
 
     def get_wikipedia_html_from_dump(self, resource):
-        corrupted_articles = ['Doctor Who', 'Amsterdam']
+        corrupted_articles = ['Doctor Who', 'Amsterdam', 'Abraham Lincoln']
         if resource in corrupted_articles:
-            print('[WARN]   Resource is listed as corrupted.')
+            if self.warnings:
+                print('[WARN]   Resource is listed as corrupted.')
             return ''
         offset = self.character_index.setdefault(resource, None)
         # assert offset is not None
         if offset is None:
-            print('[WARN]   Resource not found in character index.')
+            if self.warnings:
+                print('[WARN]   Resource not found in character index.')
             return ''  # probably because of Issue #64 (https://github.com/jjanetzki/fact_extraction/issues/64)
         page = self._extract_wikipedia_page_via_offset(offset)
         text = WikipediaDumpExtractor._extract_wikipedia_text_from_page(page)
         if not WikipediaDumpExtractor._is_wikimarkup_consistent(text):
             pass
         html_text = WikipediaDumpExtractor._make_wikipedia_text_to_html(text)
-        WikipediaDumpExtractor._test_cleaning(html_text)
+        self._test_cleaning(html_text)
         return html_text
 
     @staticmethod

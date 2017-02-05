@@ -1,5 +1,6 @@
 import re
 import imp
+import io
 from random import randint
 
 line_counting = imp.load_source('line_counting', '../helper_functions/line_counting.py')
@@ -19,17 +20,13 @@ class TTLParser(object):
             yield subject, predicate, object
 
     def yield_entries(self):
-        for subject, predicate, object, length in self.yield_entries_and_length():
-            yield subject, predicate, object
-
-    def yield_entries_and_length(self):
         if self.randomize:
             total_lines = line_counting.cached_counter.count_lines(self.ttl_path)
             offset_countdown = randint(0, total_lines / 2)  # start in the first half to provide enough results
         else:
             offset_countdown = 0
 
-        with open(self.ttl_path, 'rb') as fin:
+        with io.open(self.ttl_path, encoding='utf-8') as fin:
             for line in fin:
                 if offset_countdown > 0:
                     offset_countdown -= 1
@@ -41,5 +38,4 @@ class TTLParser(object):
                 subject, predicate, object = items
                 if '__' in subject:
                     continue  # those entities are not part of Wikipedia
-                length = len(line)
-                yield subject, predicate, object, length  # length is for character index creation
+                yield subject, predicate, object

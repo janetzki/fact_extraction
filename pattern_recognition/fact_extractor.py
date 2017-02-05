@@ -121,7 +121,7 @@ class FactExtractor(ConfigInitializer):
                 continue  # probably too long for stanford tokenizer
             relative_position = sentence.relative_pos
             nl_sentence = sentence.as_string()
-            object_addresses_of_links = sentence.addresses_of_links()
+            object_addresses_of_links = sentence.addresses_of_dbpedia_links()
             for object_link, object_addresses in object_addresses_of_links.iteritems():
 
                 object_entity = uri_rewriting.strip_name(object_link)
@@ -191,6 +191,9 @@ def test(fact_extractor):
     print(fact_extractor.extract_facts_from_html(
         'He recently became a professor at the <a href="/wiki/Massachusetts_Institute_of_Technology">MIT</a>.',
         'John Doe'))
+    print(fact_extractor.extract_facts_from_html(
+        'Merkel was educated in Templin and at the <a href="/wiki/University_of_Leipzig" class="mw-redirect" title="University of Leipzig">University of Leipzig</a>, where she studied <a href="/wiki/Physics" title="Physics">physics</a> from 1973 to 1978.',
+        'Angela Merkel'))
 
 
 if __name__ == '__main__':

@@ -128,7 +128,15 @@ class TaggedSentence(object):
                 addresses_of_links[token.link].append(i)
         return addresses_of_links
 
+    def addresses_of_dbpedia_links(self):
+        addresses_of_links = self.addresses_of_links()
+        for link in addresses_of_links.keys():
+            dbpedia_link = uri_rewriting.convert_to_dbpedia_uri(link)
+            addresses_of_links[dbpedia_link] = addresses_of_links.pop(link)
+        return addresses_of_links
+
     def addresses_of_link(self, link):
+        assert isinstance(link, unicode)
         addresses_of_all_contained_links = self.addresses_of_links()
         if link not in addresses_of_all_contained_links:
             print('Link: ' + str(link))

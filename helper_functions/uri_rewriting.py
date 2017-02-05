@@ -2,7 +2,7 @@ def strip_name(uri):
     return uri.split('/')[-1]
 
 
-def convert_to_internal_wikipedia_link(uri):
+def convert_to_internal_wikipedia_uri(uri):
     entity_name = strip_name(uri)
     return '/wiki/' + entity_name
 
@@ -10,6 +10,11 @@ def convert_to_internal_wikipedia_link(uri):
 def convert_to_wikipedia_uri(uri):
     entity_name = strip_name(uri)
     return 'https://en.wikipedia.org/wiki/' + entity_name
+
+
+def convert_to_dbpedia_uri(uri):
+    entity_name = strip_name(uri)
+    return 'http://dbpedia.org/ontology/' + entity_name
 
 
 def strip_cleaned_name(uri):
