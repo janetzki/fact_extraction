@@ -12,7 +12,7 @@ line_counting = imp.load_source('line_counting', '../helper_functions/line_count
 
 class WikipediaDumpExtractor(ConfigInitializer):
     def __init__(self, dump_path='../data/enwiki-latest-pages-articles-redirected.xml',
-                 index_path='../data/character_index_sorted.csv'):
+                 index_path='../data/character_index.csv'):  # sorted index does not contain all testing resources
         self.dump_path = dump_path
         self.character_index = {}
         self.delimiter = '#'
@@ -21,7 +21,7 @@ class WikipediaDumpExtractor(ConfigInitializer):
         self.load_from_config_file()
 
     def from_config_file(cls, path):
-        return cls() # dummy
+        return cls()  # dummy function
 
     def load_from_config_file(self, path='../config.ini'):
         config_parser = ConfigInitializer.get_config_parser(path)

@@ -20,7 +20,8 @@ class PatternTester(ConfigInitializer):
         self.ttl_parser = TTLParser(ground_truth_path, randomize)
         self.results = {}
 
-        # count right and wrong facts for each relation
+        # count known, right and wrong facts for each relationship
+        self.known_facts_counter = Counter()
         self.right_facts_counter = Counter()
         self.wrong_facts_counter = Counter()
 
@@ -39,10 +40,9 @@ class PatternTester(ConfigInitializer):
 
     def _collect_testing_facts(self):
         training_resources = self.fact_extractor.training_resources
-        training_relations = self.fact_extractor.training_relations
+        training_relations = self.fact_extractor.training_relationships
 
         entities = dict()
-        relation_types_counter = Counter()
         fact_counter = 0
 
         tqdm.write('\n\nCollecting facts for testing...')
@@ -53,13 +53,13 @@ class PatternTester(ConfigInitializer):
                 continue
             if predicate not in training_relations:
                 continue
-            if relation_types_counter[predicate] == self.facts_limit:
+            if self.known_facts_counter[predicate] == self.facts_limit:
                 continue
 
             # maintain a dict for each entity with given relations as key
             # and their target values as list
             entities.setdefault(subject, []).append((predicate, object))
-            relation_types_counter[predicate] += 1
+            self.known_facts_counter[predicate] += 1
             fact_counter += 1
 
         return entities
@@ -103,12 +103,12 @@ class PatternTester(ConfigInitializer):
         return precision, recall, f_measure
 
     def print_results(self):
-        for relation in self.fact_extractor.training_relations:
-            total = self.facts_limit
-            right = self.right_facts_counter[relation]
-            wrong = self.wrong_facts_counter[relation]
+        for relationship in self.fact_extractor.training_relationships:
+            total = self.known_facts_counter[relationship]
+            right = self.right_facts_counter[relationship]
+            wrong = self.wrong_facts_counter[relationship]
             precision, recall, f_measure = PatternTester._calculate_precision_recall_and_f_measure(total, right, wrong)
-            print(relation + ' Known facts:' + str(total) + ' Right:' + str(right) + ' Wrong:' + str(wrong)
+            print(relationship + ' Known facts:' + str(total) + ' Right:' + str(right) + ' Wrong:' + str(wrong)
                   + ' Precision:' + str(precision) + ' Recall:' + str(recall) + ' F-Measure:' + str(f_measure))
 
 

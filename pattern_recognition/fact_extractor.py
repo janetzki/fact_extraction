@@ -180,7 +180,7 @@ class FactExtractor(ConfigInitializer):
             print(fact)
 
     @property
-    def training_relations(self):
+    def training_relationships(self):
         return self.relation_patterns.keys()
 
     def set_print_interim_results(self, boolean):

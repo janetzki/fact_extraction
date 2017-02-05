@@ -131,7 +131,7 @@ class TaggedSentence(object):
     def addresses_of_dbpedia_links(self):
         addresses_of_links = self.addresses_of_links()
         for link in addresses_of_links.keys():
-            dbpedia_link = uri_rewriting.convert_to_dbpedia_uri(link)
+            dbpedia_link = uri_rewriting.convert_to_dbpedia_resource_uri(link)
             addresses_of_links[dbpedia_link] = addresses_of_links.pop(link)
         return addresses_of_links
 
@@ -139,9 +139,9 @@ class TaggedSentence(object):
         assert isinstance(link, unicode)
         addresses_of_all_contained_links = self.addresses_of_links()
         if link not in addresses_of_all_contained_links:
+            # just for debugging
             print('Link: ' + str(link))
             print('All links: ' + str(addresses_of_all_contained_links))
-        assert link in addresses_of_all_contained_links
         return addresses_of_all_contained_links[link]
 
     @staticmethod

@@ -12,9 +12,9 @@ def convert_to_wikipedia_uri(uri):
     return 'https://en.wikipedia.org/wiki/' + entity_name
 
 
-def convert_to_dbpedia_uri(uri):
+def convert_to_dbpedia_resource_uri(uri):
     entity_name = strip_name(uri)
-    return 'http://dbpedia.org/ontology/' + entity_name
+    return 'http://dbpedia.org/resource/' + entity_name
 
 
 def strip_cleaned_name(uri):
