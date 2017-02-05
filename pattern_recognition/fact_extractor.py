@@ -194,6 +194,9 @@ def test(fact_extractor):
     print(fact_extractor.extract_facts_from_html(
         'Merkel was educated in Templin and at the <a href="/wiki/University_of_Leipzig" class="mw-redirect" title="University of Leipzig">University of Leipzig</a>, where she studied <a href="/wiki/Physics" title="Physics">physics</a> from 1973 to 1978.',
         'Angela Merkel'))
+    print(fact_extractor.extract_facts_from_html(
+        'He loves <a href="/wiki/pyrotechnic">pyrotechnic</a>.',
+        'Me'))
 
 
 if __name__ == '__main__':

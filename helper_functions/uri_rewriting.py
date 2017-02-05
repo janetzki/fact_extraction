@@ -17,6 +17,12 @@ def convert_to_dbpedia_resource_uri(uri):
     return 'http://dbpedia.org/resource/' + entity_name
 
 
+def capitalize(uri):
+    prefix, entity_name = uri.rsplit('/', 1)
+    entity_name = entity_name[0].upper() + entity_name[1:]
+    return prefix + '/' + entity_name
+
+
 def strip_cleaned_name(uri):
     """
     http://dbpedia.org/resource/Alain_Connes -> 'Alain Connes'

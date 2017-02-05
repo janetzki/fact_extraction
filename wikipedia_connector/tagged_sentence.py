@@ -15,8 +15,6 @@ stanford_tokenizer = StanfordTokenizer(path_to_jar='../stanford-corenlp-full-201
 
 class TaggedSentence(object):
     def __init__(self, sentence, links, relative_position):
-        if 'divorce' in sentence:
-            pass
         self.sentence = []
         sentence = TaggedSentence.__clean_input(sentence)
         tokens = stanford_tokenizer.tokenize(sentence)
@@ -176,7 +174,7 @@ class TaggedToken(object):
         self._link = target_url
         # TODO if target url is set look for dbpedia redirects as aliases
         if target_url is not None and len(target_url) > 0:
-            self._link = target_url[0].upper() + target_url[1:]  # Hotfix for issue #72, TODO: find better solution
+            self._link = uri_rewriting.capitalize(target_url)  # Hotfix for issue #72, TODO: find better solution
 
     @property
     def text(self):
@@ -187,10 +185,7 @@ class TaggedToken(object):
         return self._link
 
     def is_link(self):
-        if self._link:
-            return True
-        else:
-            return False
+        return self._link is not None
 
     def __str__(self):
         string = self._text

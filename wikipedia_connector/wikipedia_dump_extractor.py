@@ -145,7 +145,8 @@ class WikipediaDumpExtractor(ConfigInitializer):
         page = self._extract_wikipedia_page_via_offset(offset)
         text = WikipediaDumpExtractor._extract_wikipedia_text_from_page(page)
         if not WikipediaDumpExtractor._is_wikimarkup_consistent(text):
-            pass
+            if self.warnings:
+                print('[WARN]   Wikimarkup is inconsistent.')
         html_text = WikipediaDumpExtractor._make_wikipedia_text_to_html(text)
         self._test_cleaning(html_text)
         return html_text
