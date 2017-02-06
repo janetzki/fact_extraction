@@ -186,10 +186,8 @@ class FactExtractor(ConfigInitializer):
             self.logger.print_info('--- ' + wikipedia_resource + ' ----')
             html = self.wikipedia_connector.get_wikipedia_article_html(resource)
             temp =  self.extract_facts_from_html(html, resource)
-            self.logger.print_info('extractes facts_:' + str(temp))
             if temp:
                 facts.append(temp)
-        self.logger.print_info('all extracted facts:' + str(facts))
         if facts:
             self.extracted_facts.extend(facts)
 
@@ -213,7 +211,7 @@ class FactExtractor(ConfigInitializer):
         for t in threads:
             t.join()
         print(self.extracted_facts)
-        if self.extract_facts:
+        if self.extracted_facts:
             self.extracted_facts.sort(key=lambda fact: fact[0][3], reverse=True)
         self.logger.print_done('Fact extraction completed')
 
