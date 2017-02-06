@@ -208,7 +208,7 @@ class WikipediaPatternExtractor(ConfigInitializer):
         self.logger.print_info('Pattern extraction...')
         threads = []
         # gather all arguments for each thread
-        for entity, relations in tqdm(self.dbpedia.iteritems(), total=len(self.dbpedia)):
+        for entity, relations in self.dbpedia.iteritems():
             t = Thread(target=self.extract_entity_patterns, args=(entity, relations))
             threads.append(t)
         # start all threads
