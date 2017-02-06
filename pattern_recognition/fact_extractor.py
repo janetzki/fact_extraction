@@ -4,6 +4,7 @@
 import pickle
 import imp
 from tqdm import tqdm
+from threading import Thread
 
 config_initializer = imp.load_source('config_initializer', '../config_initializer/config_initializer.py')
 from config_initializer import ConfigInitializer
@@ -174,14 +175,21 @@ class FactExtractor(ConfigInitializer):
         wikipedia_resource = uri_rewriting.convert_to_wikipedia_uri(resource)
         self.logger.print_info('--- ' + wikipedia_resource + ' ----')
         html = self.wikipedia_connector.get_wikipedia_article_html(resource)
-        return self.extract_facts_from_html(html, resource)
+        self.extracted_facts.extend(self.extract_facts_from_html(html, resource))
 
     def extract_facts(self):
         self.logger.print_info('Fact extraction...')
         threads = []
         # gather resources for each thread
         for resource in self.discovery_resources:
-            self.extracted_facts.extend(self.extract_facts_from_resource(resource))
+            t = Thread(target=self.extract_facts_from_resource, args=(resource))
+            threads.append(t)
+        # start threads
+        for t in threads:
+            t.start()
+        # wait until all threads finished
+        for t in threads:
+            t.join()
         self.extracted_facts.sort(key=lambda fact: fact[3], reverse=True)
         self.logger.print_done('Fact extraction completed')
 
