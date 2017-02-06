@@ -172,6 +172,7 @@ class FactExtractor(ConfigInitializer):
         return facts
 
     def extract_facts_from_resource(self, resource):
+        print(started 'thread_patter_fact_ex')
         wikipedia_resource = uri_rewriting.convert_to_wikipedia_uri(resource)
         self.logger.print_info('--- ' + wikipedia_resource + ' ----')
         html = self.wikipedia_connector.get_wikipedia_article_html(resource)
