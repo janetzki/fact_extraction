@@ -148,6 +148,7 @@ class WikipediaPatternExtractor(ConfigInitializer):
         self.logger.print_done('Sentence extraction completed')
 
     def extract_entity_patterns(self, entity, relations):
+        print('started thread_patter_extraction')
         cleaned_subject_entity_name = uri_rewriting.strip_cleaned_name(entity)
         subject_entity = uri_rewriting.strip_name(entity)
         for rel_ontology, values in relations.iteritems():
