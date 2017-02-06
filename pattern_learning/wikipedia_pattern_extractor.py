@@ -215,6 +215,7 @@ class WikipediaPatternExtractor(ConfigInitializer):
 
                 self.matches.extend(data)
 
+
     # ---------------------------------------------------------------------------------------------
     #                               Statistics and Visualizations
     # ---------------------------------------------------------------------------------------------
