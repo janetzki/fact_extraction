@@ -263,6 +263,7 @@ class WikipediaPatternExtractor(ConfigInitializer):
         # gather all arguments for each thread
         for chunk in self._chunks(self.dbpedia, chunk_size):
             t = Thread(target=self.extract_entity_patterns, kwargs={'chunk': chunk})
+
             threads.append(t)
         # start all threads
         for x in threads:
