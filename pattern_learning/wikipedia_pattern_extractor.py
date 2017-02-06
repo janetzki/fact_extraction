@@ -129,6 +129,9 @@ class WikipediaPatternExtractor(ConfigInitializer):
         return entities
 
     def _chunks(self, data, size=10000):
+        """
+        Helper function to divide data evenly for all threads
+        """
         it = iter(data)
         for i in xrange(0, len(data), size):
             yield {k: data[k] for k in islice(it, size)}
@@ -228,11 +231,6 @@ class WikipediaPatternExtractor(ConfigInitializer):
     # ---------------------------------------------------------------------------------------------
     #                               Statistics and Visualizations
     # ---------------------------------------------------------------------------------------------
-
-    def chunks(self, data, SIZE=10000):
-        it = iter(data)
-        for i in xrange(0, len(data), SIZE):
-            yield {k:data[k] for k in islice(it, SIZE)}
 
     def extract_patterns(self):
         self.logger.print_info('Pattern extraction...')
