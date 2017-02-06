@@ -6,6 +6,7 @@ from ascii_graph import Pyasciigraph
 from collections import Counter
 from tqdm import tqdm
 from pattern_extractor import PatternExtractor, Pattern
+from threading import Thread
 import re
 import imp
 import pickle
@@ -42,7 +43,6 @@ class WikipediaPatternExtractor(ConfigInitializer):
         self.pattern_extractor = PatternExtractor()
         self.ttl_parser = TTLParser(resources_path, randomize)
         self.logger = Logger.from_config_file()
-
         if relationships is not None and len(relationships) > 0:
             self.relationships = ['http://dbpedia.org/ontology/' + r for r in relationships if r]
             self.relation_types_limit = len(self.relationships)
@@ -147,6 +147,50 @@ class WikipediaPatternExtractor(ConfigInitializer):
                                'patterns': []}
         self.logger.print_done('Sentence extraction completed')
 
+    def extract_entity_patterns(self, entity, relations):
+        cleaned_subject_entity_name = uri_rewriting.strip_cleaned_name(entity)
+        subject_entity = uri_rewriting.strip_name(entity)
+        for rel_ontology, values in relations.iteritems():
+            target_resources = values['resources']
+            sentences = values['sentences']
+            rel_ontology = rel_ontology.split('/')[-1]
+            data = [
+                {'entity': cleaned_subject_entity_name, 'relation': rel_ontology, 'resource': res, 'sentence': sent}
+                for res in target_resources
+                for sent in sentences
+                if sent.contains_any_link([res]) and res != entity]
+
+            # remove needless sentence information based on relation facts
+            # data = map(self.shorten_sentence, data)
+            # POS tag sentences
+            for entry in data:
+                sentence = entry['sentence']
+                if sentence.number_of_tokens() > 50:
+                    continue  # probably too long for stanford tokenizer
+                resource = entry['resource']
+                nl_sentence = sentence.as_string()
+                relative_position = sentence.relative_pos
+                entry['nl sentence'] = nl_sentence
+                tokenized_sentences = map(word_tokenize, [nl_sentence])
+                pos_tagged_sentences = pos_tag_sents(tokenized_sentences).pop()
+
+                object_addresses = sentence.addresses_of_link(resource)
+                object_entity = uri_rewriting.strip_name(resource)
+                pattern = self.pattern_extractor.extract_pattern(nl_sentence, object_addresses, relative_position,
+                                                                 self.type_learning, subject_entity, object_entity)
+                if pattern is not None:
+                    values['patterns'].append(pattern)
+                    entry['pattern'] = pattern
+
+                # color sentence parts according to POS tag
+                colored_sentence = [colored(word, self.color_mapping.setdefault(pos, 'white'))
+                                    for word, pos in pos_tagged_sentences]
+                colored_sentence = ' '.join(colored_sentence)
+                colored_sentence = re.sub(r' (.\[\d+m),', ',', colored_sentence)  # remove space before commas
+                entry['colored_sentence'] = colored_sentence
+
+            self.matches.extend(data)
+
     # ---------------------------------------------------------------------------------------------
     #                               Statistics and Visualizations
     # ---------------------------------------------------------------------------------------------
@@ -162,51 +206,18 @@ class WikipediaPatternExtractor(ConfigInitializer):
         color_mapping = {v: k for k, values in color_mapping.iteritems() for v in values}
 
         self.logger.print_info('Pattern extraction...')
+        threads = []
+        # gather all arguments for each thread
         for entity, relations in tqdm(self.dbpedia.iteritems(), total=len(self.dbpedia)):
-            cleaned_subject_entity_name = uri_rewriting.strip_cleaned_name(entity)
-            subject_entity = uri_rewriting.strip_name(entity)
-            for rel_ontology, values in relations.iteritems():
-                target_resources = values['resources']
-                sentences = values['sentences']
-                rel_ontology = rel_ontology.split('/')[-1]
-                data = [
-                    {'entity': cleaned_subject_entity_name, 'relation': rel_ontology, 'resource': res, 'sentence': sent}
-                    for res in target_resources
-                    for sent in sentences
-                    if sent.contains_any_link([res]) and res != entity]
+            t = Thread(target=self.extract_entity_patterns, args=(entity, relations))
+            threads.append(t)
+        # start all threads
+        for x in threads:
+            x.start()
 
-                # remove needless sentence information based on relation facts
-                # data = map(self.shorten_sentence, data)
-                # POS tag sentences
-                for entry in data:
-                    sentence = entry['sentence']
-                    if sentence.number_of_tokens() > 50:
-                        continue  # probably too long for stanford tokenizer
-                    resource = entry['resource']
-                    nl_sentence = sentence.as_string()
-                    relative_position = sentence.relative_pos
-                    entry['nl sentence'] = nl_sentence
-                    tokenized_sentences = map(word_tokenize, [nl_sentence])
-                    pos_tagged_sentences = pos_tag_sents(tokenized_sentences).pop()
-
-                    object_addresses = sentence.addresses_of_link(resource)
-                    object_entity = uri_rewriting.strip_name(resource)
-                    pattern = self.pattern_extractor.extract_pattern(nl_sentence, object_addresses, relative_position,
-                                                                     self.type_learning, subject_entity, object_entity)
-
-                    if pattern is not None:
-                        values['patterns'].append(pattern)
-                        entry['pattern'] = pattern
-
-                    # color sentence parts according to POS tag
-                    colored_sentence = [colored(word, color_mapping.setdefault(pos, 'white'))
-                                        for word, pos in pos_tagged_sentences]
-                    colored_sentence = ' '.join(colored_sentence)
-                    colored_sentence = re.sub(r' (.\[\d+m),', ',', colored_sentence)  # remove space before commas
-                    entry['colored_sentence'] = colored_sentence
-
-                self.matches.extend(data)
-
+        # Wait for all threads to finish
+        for x in threads:
+            x.join()
         # drop duplicates
         self.matches.sort()
         self.matches = list(x for x, _ in itertools.groupby(self.matches))
