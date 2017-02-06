@@ -147,6 +147,7 @@ class WikipediaPatternExtractor(ConfigInitializer):
                 values[rel] = {'resources': wikipedia_target_resources,
                                'sentences': tagged_sentences,
                                'patterns': []}
+<<<<<<< ae1658308ef1b931e381f61b4ca32420cc1b5166
 
     def discover_patterns(self):
         """
@@ -228,6 +229,7 @@ class WikipediaPatternExtractor(ConfigInitializer):
     # ---------------------------------------------------------------------------------------------
     #                               Statistics and Visualizations
     # ---------------------------------------------------------------------------------------------
+
     def chunks(self, data, SIZE=10000):
         it = iter(data)
         for i in xrange(0, len(data), SIZE):
