@@ -196,6 +196,7 @@ class FactExtractor(ConfigInitializer):
         for i in range(0, len(data), size):
             yield data[i:i + size]
 
+
     def extract_facts(self):
         self.logger.print_info('Fact extraction...')
         chunk_size = int(ceil(len(self.discovery_resources) / self.threads))
