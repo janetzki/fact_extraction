@@ -196,7 +196,6 @@ class FactExtractor(ConfigInitializer):
         for i in range(0, len(data), size):
             yield data[i:i + size]
 
-
     def extract_facts(self):
         self.logger.print_info('Fact extraction...')
         chunk_size = int(ceil(len(self.discovery_resources) / self.threads))
@@ -214,6 +213,7 @@ class FactExtractor(ConfigInitializer):
         print(self.extracted_facts)
         if self.extracted_facts:
             self.extracted_facts.sort(key=lambda fact: fact[0][3], reverse=True)
+
         self.logger.print_done('Fact extraction completed')
 
     def print_extracted_facts(self):
