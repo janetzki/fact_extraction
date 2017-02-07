@@ -183,7 +183,6 @@ class WikipediaPatternExtractor(ConfigInitializer):
             'yellow': ['JJ', 'JJR', 'JJS']
         }
         # reverse color mapping
-        color_mapping = {v: k for k, values in color_mapping.iteritems() for v in values}
         for entity, relations in chunk.iteritems():
             cleaned_subject_entity_name = uri_rewriting.strip_cleaned_name(entity)
             subject_entity = uri_rewriting.strip_name(entity)
@@ -231,6 +230,10 @@ class WikipediaPatternExtractor(ConfigInitializer):
     # ---------------------------------------------------------------------------------------------
     #                               Statistics and Visualizations
     # ---------------------------------------------------------------------------------------------
+    def chunks(self, data, SIZE=10000):
+        it = iter(data)
+        for i in xrange(0, len(data), SIZE):
+            yield {k:data[k] for k in islice(it, SIZE)}
 
     def extract_patterns(self):
         self.logger.print_info('Pattern extraction...')
