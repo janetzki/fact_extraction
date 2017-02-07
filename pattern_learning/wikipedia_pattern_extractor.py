@@ -146,6 +146,7 @@ class WikipediaPatternExtractor(ConfigInitializer):
                                'patterns': []}
         self.logger.print_done('Sentence extraction completed')
 
+<<<<<<< 100c86763603061e2035c8be3761b0772dab428f
     def discover_patterns(self):
         """
         Preprocesses data (initializing main data structure)
@@ -170,6 +171,8 @@ class WikipediaPatternExtractor(ConfigInitializer):
         for x in threads:
             x.join()
 
+=======
+>>>>>>> parameterize number of threads
     def extract_entity_patterns(self, chunk={}):
         for entity, relations in chunk.iteritems():
             cleaned_subject_entity_name = uri_rewriting.strip_cleaned_name(entity)
@@ -218,6 +221,10 @@ class WikipediaPatternExtractor(ConfigInitializer):
     # ---------------------------------------------------------------------------------------------
     #                               Statistics and Visualizations
     # ---------------------------------------------------------------------------------------------
+    def chunks(self, data, SIZE=10000):
+        it = iter(data)
+        for i in xrange(0, len(data), SIZE):
+            yield {k:data[k] for k in islice(it, SIZE)}
 
     def extract_patterns(self):
         color_mapping = {
