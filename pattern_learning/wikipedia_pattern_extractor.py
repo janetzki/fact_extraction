@@ -1,5 +1,7 @@
 from __future__ import division
+from math import ceil
 from termcolor import colored
+from itertools import islice
 from nltk.tokenize import word_tokenize
 from nltk.tag import pos_tag_sents
 from ascii_graph import Pyasciigraph
@@ -31,7 +33,8 @@ class WikipediaPatternExtractor(ConfigInitializer):
     def __init__(self, relation_types_limit, facts_limit, resources_path='../data/mappingbased_objects_en.ttl',
                  relationships=None, use_dump=False, randomize=False, perform_tests=False, type_learning=True,
                  write_path='../data/patterns.pkl', replace_redirects=False,
-                 least_threshold_types=1, least_threshold_words=2):
+                 least_threshold_types=1, least_threshold_words=2,
+                 threads=4):
         self.use_dump = use_dump
         self.facts_limit = facts_limit
         self.perform_tests = perform_tests
@@ -41,6 +44,7 @@ class WikipediaPatternExtractor(ConfigInitializer):
         self.write_path = write_path
         self.wikipedia_connector = WikipediaConnector(use_dump=self.use_dump, redirect=replace_redirects)
         self.pattern_extractor = PatternExtractor()
+        self.num_of_threads = threads
         self.ttl_parser = TTLParser(resources_path, randomize)
         self.logger = Logger.from_config_file()
         if relationships is not None and len(relationships) > 0:
@@ -67,12 +71,13 @@ class WikipediaPatternExtractor(ConfigInitializer):
         type_learning = config_parser.getboolean('wiki_pattern', 'type_learning')
         least_threshold_types = config_parser.getfloat('wiki_pattern', 'least_threshold_types')
         least_threshold_words = config_parser.getfloat('wiki_pattern', 'least_threshold_words')
+        threads = config_parser.getint('wiki_pattern', 'threads')
         relationships = config_parser.get('wiki_pattern', 'relationships')
         relationships = WikipediaPatternExtractor.split_string_list(relationships)
         return cls(relation_types_limit, facts_limit, relationships=relationships, use_dump=use_dump,
                    randomize=randomize,
                    perform_tests=perform_tests, replace_redirects=replace_redirects, type_learning=type_learning,
-                   least_threshold_types=least_threshold_types, least_threshold_words=least_threshold_words)
+                   least_threshold_types=least_threshold_types, least_threshold_words=least_threshold_words, threads=threads)
 
     @staticmethod
     def split_string_list(string):
@@ -147,54 +152,58 @@ class WikipediaPatternExtractor(ConfigInitializer):
                                'patterns': []}
         self.logger.print_done('Sentence extraction completed')
 
-    def extract_entity_patterns(self, entity, relations):
-        print('started thread_patter_extraction')
-        cleaned_subject_entity_name = uri_rewriting.strip_cleaned_name(entity)
-        subject_entity = uri_rewriting.strip_name(entity)
-        for rel_ontology, values in relations.iteritems():
-            target_resources = values['resources']
-            sentences = values['sentences']
-            rel_ontology = rel_ontology.split('/')[-1]
-            data = [
-                {'entity': cleaned_subject_entity_name, 'relation': rel_ontology, 'resource': res, 'sentence': sent}
-                for res in target_resources
-                for sent in sentences
-                if sent.contains_any_link([res]) and res != entity]
+    def extract_entity_patterns(self, chunk={}):
+        for entity, relations in chunk.iteritems():
+            cleaned_subject_entity_name = uri_rewriting.strip_cleaned_name(entity)
+            subject_entity = uri_rewriting.strip_name(entity)
+            for rel_ontology, values in relations.iteritems():
+                target_resources = values['resources']
+                sentences = values['sentences']
+                rel_ontology = rel_ontology.split('/')[-1]
+                data = [
+                    {'entity': cleaned_subject_entity_name, 'relation': rel_ontology, 'resource': res, 'sentence': sent}
+                    for res in target_resources
+                    for sent in sentences
+                    if sent.contains_any_link([res]) and res != entity]
 
-            # remove needless sentence information based on relation facts
-            # data = map(self.shorten_sentence, data)
-            # POS tag sentences
-            for entry in data:
-                sentence = entry['sentence']
-                if sentence.number_of_tokens() > 50:
-                    continue  # probably too long for stanford tokenizer
-                resource = entry['resource']
-                nl_sentence = sentence.as_string()
-                relative_position = sentence.relative_pos
-                entry['nl sentence'] = nl_sentence
-                tokenized_sentences = map(word_tokenize, [nl_sentence])
-                pos_tagged_sentences = pos_tag_sents(tokenized_sentences).pop()
+                # remove needless sentence information based on relation facts
+                # data = map(self.shorten_sentence, data)
+                # POS tag sentences
+                for entry in data:
+                    sentence = entry['sentence']
+                    if sentence.number_of_tokens() > 50:
+                        continue  # probably too long for stanford tokenizer
+                    resource = entry['resource']
+                    nl_sentence = sentence.as_string()
+                    relative_position = sentence.relative_pos
+                    entry['nl sentence'] = nl_sentence
+                    tokenized_sentences = map(word_tokenize, [nl_sentence])
+                    pos_tagged_sentences = pos_tag_sents(tokenized_sentences).pop()
 
-                object_addresses = sentence.addresses_of_link(resource)
-                object_entity = uri_rewriting.strip_name(resource)
-                pattern = self.pattern_extractor.extract_pattern(nl_sentence, object_addresses, relative_position,
-                                                                 self.type_learning, subject_entity, object_entity)
-                if pattern is not None:
-                    values['patterns'].append(pattern)
-                    entry['pattern'] = pattern
+                    object_addresses = sentence.addresses_of_link(resource)
+                    object_entity = uri_rewriting.strip_name(resource)
+                    pattern = self.pattern_extractor.extract_pattern(nl_sentence, object_addresses, relative_position,
+                                                                     self.type_learning, subject_entity, object_entity)
+                    if pattern is not None:
+                        values['patterns'].append(pattern)
+                        entry['pattern'] = pattern
 
-                # color sentence parts according to POS tag
-                colored_sentence = [colored(word, self.color_mapping.setdefault(pos, 'white'))
-                                    for word, pos in pos_tagged_sentences]
-                colored_sentence = ' '.join(colored_sentence)
-                colored_sentence = re.sub(r' (.\[\d+m),', ',', colored_sentence)  # remove space before commas
-                entry['colored_sentence'] = colored_sentence
+                    # color sentence parts according to POS tag
+                    colored_sentence = [colored(word, self.color_mapping.setdefault(pos, 'white'))
+                                        for word, pos in pos_tagged_sentences]
+                    colored_sentence = ' '.join(colored_sentence)
+                    colored_sentence = re.sub(r' (.\[\d+m),', ',', colored_sentence)  # remove space before commas
+                    entry['colored_sentence'] = colored_sentence
 
-            self.matches.extend(data)
+                self.matches.extend(data)
 
     # ---------------------------------------------------------------------------------------------
     #                               Statistics and Visualizations
     # ---------------------------------------------------------------------------------------------
+    def chunks(self, data, SIZE=10000):
+        it = iter(data)
+        for i in xrange(0, len(data), SIZE):
+            yield {k:data[k] for k in islice(it, SIZE)}
 
     def extract_patterns(self):
         color_mapping = {
@@ -208,9 +217,10 @@ class WikipediaPatternExtractor(ConfigInitializer):
 
         self.logger.print_info('Pattern extraction...')
         threads = []
+        chunk_size = int(ceil(len(self.dbpedia) / self.num_of_threads))
         # gather all arguments for each thread
-        for entity, relations in self.dbpedia.iteritems():
-            t = Thread(target=self.extract_entity_patterns, args=(entity, relations))
+        for chunk in self.chunks(self.dbpedia, chunk_size):
+            t = Thread(target=self.extract_entity_patterns, kwargs={'chunk': chunk})
             threads.append(t)
         # start all threads
         for x in threads:
