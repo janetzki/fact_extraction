@@ -175,6 +175,30 @@ class WikipediaPatternExtractor(ConfigInitializer):
         for x in threads:
             x.join()
 
+    def discover_patterns(self):
+        """
+        Preprocesses data (initializing main data structure)
+        1. Filter relevant DBpedia facts by relationships -> still TODO
+        2. Turn DBpedia data into in-memory dictionary where all processing takes place
+        3. Fetch relevant Wikipedia articles and filter relevant sentences out of html text (for link search)
+        4. Data is stored in self.dbpedia
+        """
+        # parse dbpedia information
+        self.dbpedia = self.parse_dbpedia_data()
+        tqdm.write('\n\nSentence extraction...')
+        threads = []
+        chunk_size = int(ceil(len(self.dbpedia) / self.num_of_threads))
+        # gather all arguments for each thread
+        for chunk in self.chunks(self.dbpedia, chunk_size):
+            t = Thread(target=self.tag_sentences, kwargs={'chunk': chunk})
+            threads.append(t)
+        # start all threads
+        for x in threads:
+            x.start()
+        # Wait for all threads to finish
+        for x in threads:
+            x.join()
+
     def extract_entity_patterns(self, chunk={}):
         color_mapping = {
             'magenta': ['NN', 'NNS'],
@@ -230,10 +254,6 @@ class WikipediaPatternExtractor(ConfigInitializer):
     # ---------------------------------------------------------------------------------------------
     #                               Statistics and Visualizations
     # ---------------------------------------------------------------------------------------------
-    def chunks(self, data, SIZE=10000):
-        it = iter(data)
-        for i in xrange(0, len(data), SIZE):
-            yield {k:data[k] for k in islice(it, SIZE)}
 
     def extract_patterns(self):
         self.logger.print_info('Pattern extraction...')
