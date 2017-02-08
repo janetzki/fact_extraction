@@ -94,7 +94,7 @@ class DependencyNode(object):
 
 
 class Pattern(object):
-    def __init__(self, relative_position, root, subject_type_frequencies=None, object_type_frequencies=None, nodes=None,
+    def __init__(self, relative_position, root, subject_type_frequencies, object_type_frequencies, nodes=None,
                  covered_sentences=1):
         self.relative_position = relative_position
         if nodes is None:
