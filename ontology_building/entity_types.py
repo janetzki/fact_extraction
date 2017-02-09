@@ -3,12 +3,16 @@ from collections import Counter
 import csv
 import imp
 
+logger = imp.load_source('logger', '../logging/logger.py')
+from logger import Logger
+
 line_counting = imp.load_source('line_counting', '../helper_functions/line_counting.py')
 
 
 class EntityTypes(object):
     def __init__(self, types_path='../data/types_en.csv',
                  type_inheritance_path='../data/types_inheritance_en.csv'):
+        self.logger = Logger.from_config_file()
         self.types = {}
         self.parent_types = {}
         self.delimiter = '#'
@@ -16,14 +20,14 @@ class EntityTypes(object):
 
     def _load_types(self, types_path, type_inheritance_path):
         total_lines = line_counting.cached_counter.count_lines(types_path)
-        print('\n\nReading types file...')
+        self.logger.print_info('Reading types file...')
         with open(types_path, 'rb') as fin:
             reader = csv.reader(fin, delimiter=self.delimiter)
             for name, inst_type in tqdm(reader, total=total_lines):
                 self.types.setdefault(name, []).append(inst_type)
 
         total_lines = line_counting.cached_counter.count_lines(type_inheritance_path)
-        print('\n\nReading type inheritance file...')
+        self.logger.print_info('Reading type inheritance file...')
         with open(type_inheritance_path, 'rb') as fin:
             reader = csv.reader(fin, delimiter=self.delimiter)
             for inst_type, parent_type in tqdm(reader, total=total_lines):

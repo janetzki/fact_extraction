@@ -14,6 +14,9 @@ from wikipedia_connector import WikipediaConnector, TaggedSentence
 ttl_parser = imp.load_source('ttl_parser', '../ttl_parsing/ttl_parser.py')
 from ttl_parser import TTLParser
 
+logger = imp.load_source('logger', '../logging/logger.py')
+from logger import Logger
+
 uri_rewriting = imp.load_source('uri_rewriting', '../helper_functions/uri_rewriting.py')
 
 
@@ -32,6 +35,7 @@ class FactExtractor(ConfigInitializer):
         self.wikipedia_connector = WikipediaConnector(self.use_dump)
         self.pattern_extractor = PatternExtractor()
         self.print_interim_results = print_interim_results
+        self.logger = Logger.from_config_file()
         self.training_resources = set()
         self.discovery_resources = set()
         self.relation_patterns = {}
@@ -67,13 +71,14 @@ class FactExtractor(ConfigInitializer):
     def _load_discovery_resources(self):
         article_counter = 0
 
-        tqdm.write('\n\nCollecting entities for fact extraction...')
+        self.logger.print_info('Collecting entities for fact extraction...')
         for subject, predicate, object in self.ttl_parser.yield_entries():
             if article_counter == self.articles_limit:
                 break
             if subject not in self.training_resources and subject not in self.discovery_resources:
                 self.discovery_resources.add(subject)
                 article_counter += 1
+        self.logger.print_done('Collecting entities for fact extraction completed')
 
     def _match_pattern_against_relation_patterns(self, pattern, reasonable_relations):
         matching_relations = []
@@ -164,18 +169,19 @@ class FactExtractor(ConfigInitializer):
 
     def extract_facts_from_resource(self, resource):
         wikipedia_resource = uri_rewriting.convert_to_wikipedia_uri(resource)
-        tqdm.write('\n\n--- ' + wikipedia_resource + ' ----')
+        self.logger.print_info('--- ' + wikipedia_resource + ' ----')
         html = self.wikipedia_connector.get_wikipedia_article_html(resource)
         return self.extract_facts_from_html(html, resource)
 
     def extract_facts(self):
-        tqdm.write('\n\nFact extraction...')
+        self.logger.print_info('Fact extraction...')
         for resource in self.discovery_resources:
             self.extracted_facts.extend(self.extract_facts_from_resource(resource))
         self.extracted_facts.sort(key=lambda fact: fact[3], reverse=True)
+        self.logger.print_done('Fact extraction completed')
 
     def print_extracted_facts(self):
-        print('\n\n----- Extracted facts ------')
+        self.logger.print_info('----- Extracted facts ------')
         for fact in self.extracted_facts:
             print(fact)
 

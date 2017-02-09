@@ -1,7 +1,6 @@
 import os.path
 from ConfigParser import SafeConfigParser
 from shutil import copyfile
-from abc import ABCMeta
 
 
 class ConfigInitializer(object):

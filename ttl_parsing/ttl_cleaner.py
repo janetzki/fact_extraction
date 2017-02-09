@@ -4,6 +4,9 @@ import imp
 ttl_parser = imp.load_source('ttl_parser', '../ttl_parsing/ttl_parser.py')
 from ttl_parser import TTLParser
 
+logger = imp.load_source('logger', '../logging/logger.py')
+from logger import Logger
+
 line_counting = imp.load_source('line_counting', '../helper_functions/line_counting.py')
 uri_rewriting = imp.load_source('uri_rewriting', '../helper_functions/uri_rewriting.py')
 
@@ -14,13 +17,14 @@ class TTLCleaner(object):
         self.path_cleaned_ttl = path_cleaned_ttl
         self.filter_relations = filter_relations
         self.assert_complete = assert_complete
+        self.logger = Logger.from_config_file()
         self.delimiter = '#'
 
     def clean_ttl(self):
         total_lines = line_counting.cached_counter.count_lines(self.path_ttl)
         with open(self.path_cleaned_ttl, 'wb') as fout:
             ttl_parser = TTLParser(self.path_ttl)
-            tqdm.write('\n\nType extraction...')
+            self.logger.print_info('Type extraction...')
             for subject, predicate, type in tqdm(ttl_parser.yield_entries(), total=total_lines):
                 if self.assert_complete:
                     assert predicate in self.filter_relations

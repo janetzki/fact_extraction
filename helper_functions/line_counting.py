@@ -1,10 +1,16 @@
 import pickle
 import os.path
+import imp
+
+logger = imp.load_source('logger', '../logging/logger.py')
+from logger import Logger
 
 
 class LineCounter(object):
     def __init__(self, line_numbers_path="../data/line_numbers.pkl"):
         self.line_numbers_path = line_numbers_path
+        self.logger = Logger.from_config_file()
+
         if os.path.exists(self.line_numbers_path):
             with open(self.line_numbers_path) as fin:
                 self.line_numbers = pickle.load(fin)
@@ -16,7 +22,7 @@ class LineCounter(object):
 
         if path in self.line_numbers:
             if file_size == self.line_numbers[path]['size']:
-                print(str(self.line_numbers[path]['line_count']) + ' lines (cached)')
+                self.logger.print_info(str(self.line_numbers[path]['line_count']) + ' lines (cached)')
                 return self.line_numbers[path]['line_count']
 
         self.line_numbers[path] = {}

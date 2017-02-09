@@ -4,29 +4,24 @@ import imp
 from bs4 import BeautifulSoup as bs
 from tqdm import tqdm
 
-config_initializer = imp.load_source('config_initializer', '../config_initializer/config_initializer.py')
-from config_initializer import ConfigInitializer
+logger = imp.load_source('logger', '../logging/logger.py')
+from logger import Logger
 
 line_counting = imp.load_source('line_counting', '../helper_functions/line_counting.py')
 
 
-class WikipediaDumpExtractor(ConfigInitializer):
+class WikipediaDumpExtractor(object):
     def __init__(self, dump_path='../data/enwiki-latest-pages-articles-redirected.xml',
                  index_path='../data/character_index.csv'):  # sorted index does not contain all testing resources
         self.dump_path = dump_path
         self.character_index = {}
         self.delimiter = '#'
+        self.logger = Logger.from_config_file()
         self._load_character_index(index_path)
-        self.warnings = True
-        self.load_from_config_file()
-
-    def load_from_config_file(self):
-        config_parser = ConfigInitializer.get_config_parser()
-        self.warnings = config_parser.getboolean('general', 'warnings')
 
     def _load_character_index(self, types_path):
         total_lines = line_counting.cached_counter.count_lines(types_path)
-        print('\n\nReading character index file...')
+        self.logger.print_info('Reading character index file...')
         with open(types_path, 'rb') as fin:
             reader = csv.reader(fin, delimiter=self.delimiter)
             for subject, character_offset in tqdm(reader, total=total_lines):
@@ -127,26 +122,22 @@ class WikipediaDumpExtractor(ConfigInitializer):
         bad_strings = ['==', '{', '}', '[', ']', '<ref']
         for string in bad_strings:
             if html.find(string) >= 0:
-                if self.warnings:
-                    print('[WARN]   HTML is not clean. Found: "' + string + '"')
+                self.logger.print_warning('HTML is not clean. Found: "' + string + '"')
 
     def get_wikipedia_html_from_dump(self, resource):
         corrupted_articles = ['Doctor Who', 'Amsterdam', 'Abraham Lincoln']
         if resource in corrupted_articles:
-            if self.warnings:
-                print('[WARN]   Resource is listed as corrupted.')
+            self.logger.print_error('Resource is listed as corrupted.')
             return ''
         offset = self.character_index.setdefault(resource, None)
         # assert offset is not None
         if offset is None:
-            if self.warnings:
-                print('[WARN]   Resource not found in character index.')
+            self.logger.print_error('Resource not found in character index.')
             return ''  # probably because of Issue #64 (https://github.com/jjanetzki/fact_extraction/issues/64)
         page = self._extract_wikipedia_page_via_offset(offset)
         text = WikipediaDumpExtractor._extract_wikipedia_text_from_page(page)
         if not WikipediaDumpExtractor._is_wikimarkup_consistent(text):
-            if self.warnings:
-                print('[WARN]   Wikimarkup is inconsistent.')
+            self.logger.print_warning('Wikimarkup is inconsistent.')
         html_text = WikipediaDumpExtractor._make_wikipedia_text_to_html(text)
         self._test_cleaning(html_text)
         return html_text

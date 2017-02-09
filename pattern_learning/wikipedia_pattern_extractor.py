@@ -20,6 +20,9 @@ from wikipedia_connector import WikipediaConnector
 ttl_parser = imp.load_source('ttl_parser', '../ttl_parsing/ttl_parser.py')
 from ttl_parser import TTLParser
 
+logger = imp.load_source('logger', '../logging/logger.py')
+from logger import Logger
+
 uri_rewriting = imp.load_source('uri_rewriting', '../helper_functions/uri_rewriting.py')
 
 
@@ -38,6 +41,7 @@ class WikipediaPatternExtractor(ConfigInitializer):
         self.wikipedia_connector = WikipediaConnector(use_dump=self.use_dump, redirect=replace_redirects)
         self.pattern_extractor = PatternExtractor()
         self.ttl_parser = TTLParser(resources_path, randomize)
+        self.logger = Logger.from_config_file()
 
         if relationships is not None:
             self.relationships = ['http://dbpedia.org/ontology/' + r for r in relationships if r]
@@ -92,7 +96,7 @@ class WikipediaPatternExtractor(ConfigInitializer):
         relation_types_counter = Counter()
         fact_counter = 0
 
-        tqdm.write('\n\nCollecting facts for training...')
+        self.logger.print_info('Collecting facts for training...')
         for subject, predicate, object in self.ttl_parser.yield_entries():
             if fact_counter == self.facts_limit * self.relation_types_limit:
                 break
@@ -108,8 +112,9 @@ class WikipediaPatternExtractor(ConfigInitializer):
             entities.setdefault(subject, {}).setdefault(predicate, []).append(object)
             relation_types_counter[predicate] += 1
             fact_counter += 1
+        self.logger.print_done('Collecting facts for training completed')
 
-        tqdm.write('\n\nRelation types:')
+        self.logger.print_info('Relation types:')
         most_common_relation_types = relation_types_counter.most_common()
         for i in range(len(most_common_relation_types)):
             relation_type, frequency = most_common_relation_types[i]
@@ -128,7 +133,7 @@ class WikipediaPatternExtractor(ConfigInitializer):
         # parse dbpedia information
         self.dbpedia = self.parse_dbpedia_data()
 
-        tqdm.write('\n\nSentence extraction...')
+        self.logger.print_info('Sentence extraction...')
         for entity, values in tqdm(self.dbpedia.iteritems(), total=len(self.dbpedia)):
             # for each relationship filter sentences that contain
             # target resources of entity's relationship
@@ -140,6 +145,7 @@ class WikipediaPatternExtractor(ConfigInitializer):
                 values[rel] = {'resources': wikipedia_target_resources,
                                'sentences': tagged_sentences,
                                'patterns': []}
+        self.logger.print_done('Sentence extraction completed')
 
     # ---------------------------------------------------------------------------------------------
     #                               Statistics and Visualizations
@@ -155,7 +161,7 @@ class WikipediaPatternExtractor(ConfigInitializer):
         # reverse color mapping
         color_mapping = {v: k for k, values in color_mapping.iteritems() for v in values}
 
-        tqdm.write('\n\nPattern extraction...')
+        self.logger.print_info('Pattern extraction...')
         for entity, relations in tqdm(self.dbpedia.iteritems(), total=len(self.dbpedia)):
             cleaned_subject_entity_name = uri_rewriting.strip_cleaned_name(entity)
             subject_entity = uri_rewriting.strip_name(entity)
@@ -204,6 +210,7 @@ class WikipediaPatternExtractor(ConfigInitializer):
         # drop duplicates
         self.matches.sort()
         self.matches = list(x for x, _ in itertools.groupby(self.matches))
+        self.logger.print_done('Pattern extraction completed')
 
     def print_occurences(self):
         """
@@ -262,7 +269,7 @@ class WikipediaPatternExtractor(ConfigInitializer):
             print(line)
 
     def merge_patterns(self):
-        tqdm.write('\n\nPattern merging...')
+        self.logger.print_info('Pattern merging...')
         for entity, relations in tqdm(self.dbpedia.iteritems()):
             for rel, values in relations.iteritems():
                 for pattern in values['patterns']:
@@ -271,14 +278,16 @@ class WikipediaPatternExtractor(ConfigInitializer):
                                                                     self.perform_tests)
                     else:
                         self.relation_patterns[rel] = pattern
+        self.logger.print_done('Pattern merging completed.')
 
     def clean_patterns(self):
-        tqdm.write('\n\nPattern cleaning...')
+        self.logger.print_info('Pattern cleaning...')
         for relation, pattern in tqdm(self.relation_patterns.iteritems()):
             self.relation_patterns[relation] = Pattern.clean_pattern(pattern,
                                                                      self.least_threshold_words,
                                                                      self.least_threshold_types)
         self.relation_patterns = dict(filter(lambda (rel, pat): pat is not None, self.relation_patterns.iteritems()))
+        self.logger.print_done('Pattern cleaning completed.')
 
     def save_patterns(self):
         print('\n\nPattern saving...')

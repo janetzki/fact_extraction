@@ -11,6 +11,9 @@ from fact_extractor import FactExtractor
 ttl_parser = imp.load_source('ttl_parser', '../ttl_parsing/ttl_parser.py')
 from ttl_parser import TTLParser
 
+logger = imp.load_source('logger', '../logging/logger.py')
+from logger import Logger
+
 
 class PatternTester(ConfigInitializer):
     def __init__(self, facts_limit, randomize=False, fact_extractor=None,
@@ -18,6 +21,7 @@ class PatternTester(ConfigInitializer):
         self.facts_limit = facts_limit
         self.randomize = randomize
         self.ttl_parser = TTLParser(ground_truth_path, randomize)
+        self.logger = Logger.from_config_file()
         self.results = {}
 
         # count known, right and wrong facts for each relationship
@@ -45,7 +49,7 @@ class PatternTester(ConfigInitializer):
         entities = dict()
         fact_counter = 0
 
-        tqdm.write('\n\nCollecting facts for testing...')
+        self.logger.print_info('Collecting facts for testing...')
         for subject, predicate, object in self.ttl_parser.yield_entries():
             if fact_counter == self.facts_limit * len(training_relations):
                 break

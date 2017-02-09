@@ -4,6 +4,9 @@ import csv
 import imp
 import sys
 
+logger = imp.load_source('logger', '../logging/logger.py')
+from logger import Logger
+
 line_counting = imp.load_source('line_counting', '../helper_functions/line_counting.py')
 
 reload(sys)
@@ -22,13 +25,14 @@ class RedirectsSubstitutor:
                  path_redirects='../data/redirects_en.csv'):
         self.path_dump = path_dump
         self.path_substituted_dump = path_substituted_dump
+        self.logger = Logger.from_config_file()
         self.redirects = {}
         self.delimiter = '#'
         self._load_redirects(path_redirects)
 
     def _load_redirects(self, redirects_path):
         total_lines = line_counting.cached_counter.count_lines(redirects_path)
-        tqdm.write('\n\nReading redirects file...')
+        self.logger.print_info('Reading redirects file...')
         with open(redirects_path, 'rb') as fin:
             reader = csv.reader(fin, delimiter=self.delimiter)
             for name, resource in tqdm(reader, total=total_lines):
@@ -99,7 +103,7 @@ class RedirectsSubstitutor:
 
     def substitute_redirects(self):
         # total_lines = line_counting.cached_counter.count_lines(self.path_dump)
-        tqdm.write('\n\nSubstituting links in dump...')
+        self.logger.print_info('Substituting links in dump...')
         with open(self.path_substituted_dump, 'wb') as fout:
             for paragrapsh in self._yield_paragraphs():
                 # if not RedirectsSubstitutor._is_wikimarkup_consistent(paragrapsh):

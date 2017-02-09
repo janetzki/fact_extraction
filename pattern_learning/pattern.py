@@ -1,10 +1,8 @@
 from __future__ import division
 from enum import Enum
 from ppretty import ppretty
-from collections import Counter
 from itertools import dropwhile
 import copy
-import math
 
 
 class Direction(Enum):

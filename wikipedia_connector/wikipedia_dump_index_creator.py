@@ -8,12 +8,16 @@ from bs4 import BeautifulSoup as bs
 ttl_parser = imp.load_source('ttl_parser', '../ttl_parsing/ttl_parser.py')
 from ttl_parser import TTLParser
 
+logger = imp.load_source('logger', '../logging/logger.py')
+from logger import Logger
+
 line_counting = imp.load_source('line_counting', '../helper_functions/line_counting.py')
 
 
 class WikipediaDumpIndexCreator(object):
     def __init__(self, path_relations='../data/mappingbased_objects_en.ttl'):
         self.path_relations = path_relations
+        self.logger = Logger.from_config_file()
         self.delimiter = '#'  # '#' is never used as character in page titles
 
     def _create_full_index(self, source='../data/enwiki-latest-pages-articles-redirected.xml',
@@ -24,7 +28,7 @@ class WikipediaDumpIndexCreator(object):
             character_offset = 0
             page_found_offset = None
 
-            tqdm.write('\n\nCreating index...')
+            self.logger.print_info('Creating index...')
             for line in tqdm(fin, total=total_lines):
                 if page_found_offset is not None:
                     title = line[11:-9]
@@ -41,14 +45,14 @@ class WikipediaDumpIndexCreator(object):
                                destination='../data/character_index_filtered.csv'):
         with io.open(source, 'r', encoding='utf8') as fin_index, io.open(destination, 'w', encoding='utf8') as fout:
             total_lines_relations = line_counting.cached_counter.count_lines(self.path_relations)
-            tqdm.write('\n\nCollecting important entities...')
+            self.logger.print_info('Collecting important entities...')
             important_articles = set()
             ttl_parser = TTLParser(self.path_relations)
             for subject, predicate, object in tqdm(ttl_parser.yield_cleaned_entry_names(), total=total_lines_relations):
                 important_articles.add(subject)
 
             total_lines_index = line_counting.cached_counter.count_lines(source)
-            tqdm.write('\n\nFiltering important entities...')
+            self.logger.print_info('Filtering important entities...')
             index_reader = csv.reader(fin_index, delimiter=self.delimiter)
             for line in tqdm(index_reader, total=total_lines_index):
                 subject, character_offset = line
@@ -61,7 +65,7 @@ class WikipediaDumpIndexCreator(object):
         with io.open(source, 'r', encoding='utf8') as fin, io.open(destination, 'w', encoding='utf8') as fout:
             total_lines = line_counting.cached_counter.count_lines(source)
 
-            tqdm.write('\n\nSorting index...')
+            self.logger.print_info('Sorting index...')
             index_reader = csv.reader(fin, delimiter=self.delimiter)
             sorted_list = sorted(index_reader, key=operator.itemgetter(0))
             for element in tqdm(sorted_list, total=total_lines):
@@ -69,7 +73,7 @@ class WikipediaDumpIndexCreator(object):
                 fout.write(subject + self.delimiter + character_offset + '\n')
 
     def _is_index_consistent_with_dump(self, index_path, dump_path):
-        tqdm.write('\n\nChecking whether index is consistent with dump or not...')
+        self.logger.print_info('Checking whether index is consistent with dump or not...')
         with io.open(index_path, 'r', encoding='utf8') as index_file, open(dump_path, 'rb') as dump_file:
             index_reader = csv.reader(index_file, delimiter=self.delimiter)
             for line in index_reader:
