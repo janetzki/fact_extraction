@@ -77,7 +77,7 @@ class WikipediaDumpExtractor(object):
         html_text = re.sub(r'==Further reading==(.|\n)*', '', html_text)
 
         # remove all headlines
-        html_text = re.sub(r'(=+).*?(\1)[\n]', '\n', html_text)
+        html_text = re.sub(r'^(=+)[^=]*?(\1)', '\n', html_text, flags=re.MULTILINE)
         html_text = re.sub(r"'''.*?'''", '', html_text)
 
         # insert paragraphs
@@ -106,7 +106,7 @@ class WikipediaDumpExtractor(object):
         rx_references = re.compile(r'\[\[([^\|\]]*)\|?(.*?)\]\]')
         html_text = re.sub(rx_references, WikipediaDumpExtractor._replace_links, html_text)
 
-        # occurences of this are strange, e.g., [Obama's] --> Obama's in article of Angela Merkel
+        # occurrences of this are strange, e.g., [Obama's] --> Obama's in article of Angela Merkel
         html_text = re.sub(r'\[(.*?)\]', r'\1', html_text)
         return html_text
 
@@ -119,7 +119,7 @@ class WikipediaDumpExtractor(object):
         return True
 
     def _test_cleaning(self, html):
-        bad_strings = ['==', '{', '}', '[', ']', '<ref']
+        bad_strings = ['==', '{', '}', '[', ']', '<ref', '\r']
         for string in bad_strings:
             if html.find(string) >= 0:
                 self.logger.print_warning('HTML is not clean. Found: "' + string + '"')
@@ -130,7 +130,6 @@ class WikipediaDumpExtractor(object):
             self.logger.print_error('Resource is listed as corrupted.')
             return ''
         offset = self.character_index.setdefault(resource, None)
-        # assert offset is not None
         if offset is None:
             self.logger.print_error('Resource not found in character index.')
             return ''  # probably because of Issue #64 (https://github.com/jjanetzki/fact_extraction/issues/64)

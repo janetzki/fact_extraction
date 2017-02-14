@@ -18,19 +18,19 @@ class Logger(ConfigInitializer):
         return cls(warnings, errors)
 
     def print_info(self, message):
-        info_prefix = '\n[INFO]    '
+        info_prefix = '\n[info]    '
         print(info_prefix + message)
 
     def print_done(self, message):
-        done_prefix = '\n[' + colored('DONE', 'green') + ']    '
+        done_prefix = '\n[' + colored('done', 'green') + ']    '
         print(done_prefix + message)
 
     def print_warning(self, message):
         if self.warnings:
-            warn_prefix = '\n[' + colored('WARN', 'yellow') + ']    '
+            warn_prefix = '\n[' + colored('warn', 'yellow') + ']    '
             print(warn_prefix + message)
 
     def print_error(self, message):
         if self.errors:
-            error_prefix = '\n[' + colored('ERROR', 'red') + ']   '
+            error_prefix = '\n[' + colored('error', 'red') + ']   '
             print(error_prefix + message)
