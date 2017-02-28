@@ -1,8 +1,8 @@
 import re
 import csv
 import imp
-from bs4 import BeautifulSoup as bs
 from tqdm import tqdm
+from lxml import html
 
 logger = imp.load_source('logger', '../logging/logger.py')
 from logger import Logger
@@ -41,8 +41,10 @@ class WikipediaDumpExtractor(object):
 
     @staticmethod
     def _extract_wikipedia_text_from_page(page):
-        soup = bs(page, 'lxml')
-        return soup.find('text').get_text()
+        # soup = bs(page, 'lxml')
+        # return soup.find('text').get_text()
+        document = html.fromstring(page)
+        return document.findtext('.//text')
 
     @staticmethod
     def _strip_outer_brackets(text):
@@ -74,11 +76,11 @@ class WikipediaDumpExtractor(object):
         html_text = WikipediaDumpExtractor._strip_outer_brackets(text)
 
         # truncate article
-        html_text = re.sub(r'==Further reading==(.|\n)*', '', html_text)
+        html_text = re.sub(r'== *Further reading *==(.|\n)*', '', html_text)
+        html_text = re.sub(r'== *References *==(.|\n)*', '', html_text)
 
         # remove all headlines
-        html_text = re.sub(r'^(=+)[^=]*?(\1)', '\n', html_text, flags=re.MULTILINE)
-        html_text = re.sub(r"'''.*?'''", '', html_text)
+        html_text = re.sub(r'^(=+).+?(\1)', '\n', html_text, flags=re.MULTILINE)
 
         # insert paragraphs
         html_text = re.sub(r'(.+\n)', r'<p>\1</p>', html_text)
@@ -108,6 +110,9 @@ class WikipediaDumpExtractor(object):
 
         # occurrences of this are strange, e.g., [Obama's] --> Obama's in article of Angela Merkel
         html_text = re.sub(r'\[(.*?)\]', r'\1', html_text)
+
+        # remove empty paragraphs
+        html_text = re.sub(r'<p>[ \n]*<\/p>', '', html_text)
         return html_text
 
     @staticmethod
@@ -125,13 +130,13 @@ class WikipediaDumpExtractor(object):
                 self.logger.print_warning('HTML is not clean. Found: "' + string + '"')
 
     def get_wikipedia_html_from_dump(self, resource):
-        corrupted_articles = ['Doctor Who', 'Amsterdam', 'Abraham Lincoln']
+        corrupted_articles = ['Doctor Who', 'Amsterdam']
         if resource in corrupted_articles:
             self.logger.print_error('Resource is listed as corrupted.')
             return ''
         offset = self.character_index.setdefault(resource, None)
         if offset is None:
-            self.logger.print_error('Resource not found in character index.')
+            self.logger.print_error('Resource not found in character index: "' + resource + '"')
             return ''  # probably because of Issue #64 (https://github.com/jjanetzki/fact_extraction/issues/64)
         page = self._extract_wikipedia_page_via_offset(offset)
         text = WikipediaDumpExtractor._extract_wikipedia_text_from_page(page)
