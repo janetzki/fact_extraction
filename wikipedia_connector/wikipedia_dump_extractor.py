@@ -1,6 +1,7 @@
 import re
-import csv
+import unicodecsv
 import imp
+import io
 from tqdm import tqdm
 from lxml import html
 
@@ -12,18 +13,18 @@ line_counting = imp.load_source('line_counting', '../helper_functions/line_count
 
 class WikipediaDumpExtractor(object):
     def __init__(self, dump_path='../data/enwiki-latest-pages-articles-redirected.xml',
-                 index_path='../data/character_index.csv'):  # sorted index does not contain all testing resources
+                 index_path='../data/character_index_sorted.csv'):  # sorted index does not contain all testing resources
         self.dump_path = dump_path
         self.character_index = {}
         self.delimiter = '#'
         self.logger = Logger.from_config_file()
         self._load_character_index(index_path)
 
-    def _load_character_index(self, types_path):
-        total_lines = line_counting.cached_counter.count_lines(types_path)
+    def _load_character_index(self, character_index_path):
+        total_lines = line_counting.cached_counter.count_lines(character_index_path)
         self.logger.print_info('Reading character index file...')
-        with open(types_path, 'rb') as fin:
-            reader = csv.reader(fin, delimiter=self.delimiter)
+        with io.open(character_index_path, 'r', encoding='utf8') as fin:
+            reader = unicodecsv.reader(fin, delimiter=self.delimiter)
             for subject, character_offset in tqdm(reader, total=total_lines):
                 self.character_index[subject] = int(character_offset)
 
@@ -75,6 +76,9 @@ class WikipediaDumpExtractor(object):
         # drop infobox and other garbage inside {...}
         html_text = WikipediaDumpExtractor._strip_outer_brackets(text)
 
+        # remove comments
+        html_text = re.sub(r'<!--(.|\n)*?-->', '', html_text)
+
         # truncate article
         html_text = re.sub(r'== *Further reading *==(.|\n)*', '', html_text)
         html_text = re.sub(r'== *References *==(.|\n)*', '', html_text)
@@ -82,12 +86,9 @@ class WikipediaDumpExtractor(object):
         # remove all headlines
         html_text = re.sub(r'^(=+).+?(\1)', '\n', html_text, flags=re.MULTILINE)
 
-        # insert paragraphs
-        html_text = re.sub(r'(.+\n)', r'<p>\1</p>', html_text)
-
         # drop reference tags
-        html_text = re.sub(r'<ref( .*?)?/>', '', html_text)
-        html_text = re.sub(r'<ref( .*?)?>(.|\n)*?</ref>', '', html_text)
+        html_text = re.sub(r'<(r|R)ef(( |\n)[^>]*?)?\/>', '', html_text)
+        html_text = re.sub(r'<(r|R)ef(( |\n)[^>]*?[^\/])?>(.|\n)*?<\/(r|R)ef>', '', html_text)
 
         # drop possibly nested file and image links
         no_bracket = r'[^\[\]]'
@@ -99,10 +100,16 @@ class WikipediaDumpExtractor(object):
         html_text = re.sub(r'\[\[((File)|(Image)):' + embedded_brackets + r'\]\]', '', html_text)
 
         # drop possibly nested external links
-        html_text = re.sub(r'\[https?://' + no_bracket + embedded_brackets + '\]', '', html_text)
+        html_text = re.sub(r'\[https?:\/\/' + no_bracket + embedded_brackets + '\]', '', html_text)
 
         html_text = re.sub(r'\[\[Category:' + no_brackets + r'\]\]', '', html_text)
         html_text = re.sub(r'\* ?', '', html_text)
+
+        # remove bold face and italics
+        html_text = re.sub(r"'{2,3}", '', html_text)
+
+        # insert paragraphs (at least two linebreaks required)
+        html_text = re.sub(r'((.(.|\n)+?)\n\n)', r'<p>\2</p>', html_text)
 
         # insert HTML links
         rx_references = re.compile(r'\[\[([^\|\]]*)\|?(.*?)\]\]')
@@ -113,6 +120,9 @@ class WikipediaDumpExtractor(object):
 
         # remove empty paragraphs
         html_text = re.sub(r'<p>[ \n]*<\/p>', '', html_text)
+
+        # make paragraphs equidistant
+        html_text = re.sub(r'<\/p>\n*<p>', '</p>\n\n<p>', html_text)
         return html_text
 
     @staticmethod
@@ -124,24 +134,20 @@ class WikipediaDumpExtractor(object):
         return True
 
     def _test_cleaning(self, html):
-        bad_strings = ['==', '{', '}', '[', ']', '<ref', '\r']
+        bad_strings = ['==', '{', '}', '[', ']', '<ref>', '<ref ', '</ref>', '\r', '<!--', '-->', "''"]
         for string in bad_strings:
             if html.find(string) >= 0:
                 self.logger.print_warning('HTML is not clean. Found: "' + string + '"')
 
     def get_wikipedia_html_from_dump(self, resource):
-        corrupted_articles = ['Doctor Who', 'Amsterdam']
-        if resource in corrupted_articles:
-            self.logger.print_error('Resource is listed as corrupted.')
-            return ''
         offset = self.character_index.setdefault(resource, None)
         if offset is None:
             self.logger.print_error('Resource not found in character index: "' + resource + '"')
-            return ''  # probably because of Issue #64 (https://github.com/jjanetzki/fact_extraction/issues/64)
+            return ''
         page = self._extract_wikipedia_page_via_offset(offset)
         text = WikipediaDumpExtractor._extract_wikipedia_text_from_page(page)
         if not WikipediaDumpExtractor._is_wikimarkup_consistent(text):
-            self.logger.print_warning('Wikimarkup is inconsistent.')
+            self.logger.print_warning('Wikimarkup might be inconsistent.')
         html_text = WikipediaDumpExtractor._make_wikipedia_text_to_html(text)
         self._test_cleaning(html_text)
         return html_text
