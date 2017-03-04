@@ -144,7 +144,6 @@ class WikipediaPatternExtractor(ConfigInitializer):
                 values[rel] = {'resources': wikipedia_target_resources,
                                'sentences': tagged_sentences,
                                'patterns': []}
-        self.logger.print_done('Sentence extraction completed')
 
     def discover_patterns(self):
         """
@@ -156,7 +155,7 @@ class WikipediaPatternExtractor(ConfigInitializer):
         """
         # parse dbpedia information
         self.dbpedia = self.parse_dbpedia_data()
-        tqdm.write('\n\nSentence extraction...')
+        self.logger.print_info('Sentence Extraction..')
         threads = []
         chunk_size = int(ceil(len(self.dbpedia) / self.num_of_threads))
         # gather all arguments for each thread
@@ -171,6 +170,14 @@ class WikipediaPatternExtractor(ConfigInitializer):
             x.join()
 
     def extract_entity_patterns(self, chunk={}):
+        color_mapping = {
+            'magenta': ['NN', 'NNS'],
+            'green': ['NNP', 'NNPS'],
+            'cyan': ['VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
+            'yellow': ['JJ', 'JJR', 'JJS']
+        }
+        # reverse color mapping
+        color_mapping = {v: k for k, values in color_mapping.iteritems() for v in values}
         for entity, relations in chunk.iteritems():
             cleaned_subject_entity_name = uri_rewriting.strip_cleaned_name(entity)
             subject_entity = uri_rewriting.strip_name(entity)
@@ -207,7 +214,7 @@ class WikipediaPatternExtractor(ConfigInitializer):
                         entry['pattern'] = pattern
 
                     # color sentence parts according to POS tag
-                    colored_sentence = [colored(word, self.color_mapping.setdefault(pos, 'white'))
+                    colored_sentence = [colored(word, color_mapping.setdefault(pos, 'white'))
                                         for word, pos in pos_tagged_sentences]
                     colored_sentence = ' '.join(colored_sentence)
                     colored_sentence = re.sub(r' (.\[\d+m),', ',', colored_sentence)  # remove space before commas
@@ -224,15 +231,6 @@ class WikipediaPatternExtractor(ConfigInitializer):
             yield {k:data[k] for k in islice(it, SIZE)}
 
     def extract_patterns(self):
-        color_mapping = {
-            'magenta': ['NN', 'NNS'],
-            'green': ['NNP', 'NNPS'],
-            'cyan': ['VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
-            'yellow': ['JJ', 'JJR', 'JJS']
-        }
-        # reverse color mapping
-        color_mapping = {v: k for k, values in color_mapping.iteritems() for v in values}
-
         self.logger.print_info('Pattern extraction...')
         threads = []
         chunk_size = int(ceil(len(self.dbpedia) / self.num_of_threads))
