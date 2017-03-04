@@ -274,8 +274,8 @@ class WikipediaPatternExtractor(ConfigInitializer):
             for rel, values in relations.iteritems():
                 for pattern in values['patterns']:
                     if rel in self.relation_patterns:
-                        self.relation_patterns[rel] = Pattern.merge(self.relation_patterns[rel], pattern,
-                                                                    self.perform_tests)
+                        self.relation_patterns[rel] = Pattern._merge(self.relation_patterns[rel], pattern,
+                                                                     self.perform_tests)
                     else:
                         self.relation_patterns[rel] = pattern
         self.logger.print_done('Pattern merging completed.')
