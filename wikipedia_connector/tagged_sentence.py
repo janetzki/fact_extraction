@@ -13,20 +13,68 @@ sys.setdefaultencoding('utf-8')
 stanford_tokenizer = StanfordTokenizer(path_to_jar='../stanford-corenlp-full-2016-10-31/stanford-corenlp-3.7.0.jar')
 
 
+class TokenMatcher(object):
+    """
+    NFA that matches a sequence of tokens
+    Each current_match is a state.
+    """
+
+    def __init__(self, pattern_tokens):
+        self.pattern_tokens = pattern_tokens
+        self.current_matches = {-1}
+
+    def match_next_token(self, token):
+        new_matches = {-1}
+        for current_match in self.current_matches:
+            if current_match == len(self.pattern_tokens) - 1:
+                continue
+            match = token == self.pattern_tokens[current_match + 1]
+            if match:
+                new_matches.add(current_match + 1)
+        self.current_matches = new_matches
+
+    def complete_match(self):
+        return len(self.pattern_tokens) - 1 in self.current_matches
+
+    def match_indices(self, tokens):
+        match_indices = []
+        for i in range(len(tokens)):
+            self.match_next_token(tokens[i])
+            if self.complete_match():
+                match_indices.append(i)
+        return match_indices
+
+    def full_match_indices(self, tokens):
+        match_indices = set()
+        for index in self.match_indices(tokens):
+            for i in range(len(self.pattern_tokens)):
+                match_indices.add(index - i)
+        return match_indices
+
+    def count_matches(self, tokens):
+        return len(self.match_indices(tokens))
+
+    @staticmethod
+    def test_matching():
+        assert TokenMatcher(['1', '0', '1', '0']).count_matches(['1', '0', '1', '1', '0', '1', '0']) == 1
+        assert TokenMatcher(['1', '0', '1', '0']).count_matches(['1', '0', '1', '0', '1', '0']) == 2
+        assert TokenMatcher(['0', '1', '0', '0']).count_matches(['0', '1', '0', '1', '0', '0']) == 1
+        assert TokenMatcher(['Baltimore', ',', 'Maryland']).full_match_indices(
+            ['Born', 'Elinor', 'Isabel', 'Judefind', 'in', 'Baltimore', ',', 'Maryland']) == {5, 6, 7}
+
+
 class TaggedSentence(object):
     def __init__(self, sentence, links, relative_position):
         self.sentence = []
         sentence = TaggedSentence.__clean_input(sentence)
         tokens = stanford_tokenizer.tokenize(sentence)
+
+        links = [(link[0], TokenMatcher(stanford_tokenizer.tokenize(link[1]))) for link in links]
         for token in tokens:
-            target_url = None
-            for i in range(len(links)):
-                link = links[i]
-                if token == link[1]:
-                    target_url = link[0]
-                    links.pop(i)
-                    break
-            self.sentence.append(TaggedToken(token, target_url=target_url))
+            self.sentence.append(TaggedToken(token))
+        for link in links:
+            for index in link[1].full_match_indices(tokens):
+                self.sentence[index].set_link(link[0])
 
         # self.sentence = sentence  # provisional - TODO: replace with token and tag list
         self.relative_position = relative_position  # zero based counting
@@ -184,6 +232,9 @@ class TaggedToken(object):
     def link(self):
         return self._link
 
+    def set_link(self, link):
+        self._link = link
+
     def is_link(self):
         return self._link is not None
 
@@ -192,3 +243,14 @@ class TaggedToken(object):
         if self._link:
             string += ' (' + self._link + ')'
         return string
+
+
+def test_html_parsing():
+    tagged_sentences = TaggedSentence.from_html(
+        'Born Elinor Isabel Judefind in <a href="/wiki/Baltimore" class="mw-redirect" title="Baltimore, Maryland">Baltimore, Maryland</a> , to parents of French-German descent , Agnew was daughter of William Lee Judefind , a <a href="/wiki/Chemist">chemist</a> , and his wife , the former Ruth Elinor Schafer . ')
+    print(tagged_sentences)
+
+
+if __name__ == '__main__':
+    TokenMatcher.test_matching()
+    test_html_parsing()

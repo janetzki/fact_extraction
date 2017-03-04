@@ -10,11 +10,29 @@ class Direction(Enum):
     incoming = 2
     loop = 3
 
+    def __repr__(self):
+        return 'Direction()'
+
+    def __str__(self):
+        if self.value == 1:
+            return 'outgoing'
+        elif self.value == 2:
+            return 'incoming'
+        elif self.value == 3:
+            return 'loop'
+        return '<invalid>'
+
 
 class DependencyKey(object):
     def __init__(self, meaning, from_node, to_node, node_addr):
         self.meaning = meaning
         self.direction = DependencyKey.direction(from_node, to_node, node_addr)
+
+    def __repr__(self):
+        return 'DependencyKey()'
+
+    def __str__(self):
+        return '(' + self.meaning + ',' + str(self.direction) + ')'
 
     @staticmethod
     def direction(from_node, to_node, node_addr):
