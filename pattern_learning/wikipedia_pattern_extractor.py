@@ -165,30 +165,6 @@ class WikipediaPatternExtractor(ConfigInitializer):
         threads = []
         chunk_size = int(ceil(len(self.dbpedia) / self.num_of_threads))
         # gather all arguments for each thread
-        for chunk in self._chunks(self.dbpedia, chunk_size):
-            t = Thread(target=self.tag_sentences, kwargs={'chunk': chunk})
-            threads.append(t)
-        # start all threads
-        for x in threads:
-            x.start()
-        # Wait for all threads to finish
-        for x in threads:
-            x.join()
-
-    def discover_patterns(self):
-        """
-        Preprocesses data (initializing main data structure)
-        1. Filter relevant DBpedia facts by relationships -> still TODO
-        2. Turn DBpedia data into in-memory dictionary where all processing takes place
-        3. Fetch relevant Wikipedia articles and filter relevant sentences out of html text (for link search)
-        4. Data is stored in self.dbpedia
-        """
-        # parse dbpedia information
-        self.dbpedia = self.parse_dbpedia_data()
-        tqdm.write('\n\nSentence extraction...')
-        threads = []
-        chunk_size = int(ceil(len(self.dbpedia) / self.num_of_threads))
-        # gather all arguments for each thread
         for chunk in self.chunks(self.dbpedia, chunk_size):
             t = Thread(target=self.tag_sentences, kwargs={'chunk': chunk})
             threads.append(t)
@@ -207,6 +183,7 @@ class WikipediaPatternExtractor(ConfigInitializer):
             'yellow': ['JJ', 'JJR', 'JJS']
         }
         # reverse color mapping
+        color_mapping = {v: k for k, values in color_mapping.iteritems() for v in values}
         for entity, relations in chunk.iteritems():
             cleaned_subject_entity_name = uri_rewriting.strip_cleaned_name(entity)
             subject_entity = uri_rewriting.strip_name(entity)
