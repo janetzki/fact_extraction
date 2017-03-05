@@ -69,7 +69,7 @@ class PatternTester(ConfigInitializer):
         return entities
 
     def get_testing_resources(self):
-        return set([subject for subject in self.ttl_parser.yield_entries()])
+        return set([subject for subject, predicate, object in self.ttl_parser.yield_entries()])
 
     def test_patterns(self):
         test_entities = self._collect_testing_facts()
