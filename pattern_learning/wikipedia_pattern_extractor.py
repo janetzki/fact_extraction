@@ -47,6 +47,7 @@ class WikipediaPatternExtractor(ConfigInitializer):
         self.num_of_threads = threads
         self.ttl_parser = TTLParser(resources_path, randomize)
         self.logger = Logger.from_config_file()
+
         if relationships is not None and len(relationships) > 0:
             self.relationships = ['http://dbpedia.org/ontology/' + r for r in relationships if r]
             self.relation_types_limit = len(self.relationships)
