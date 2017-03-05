@@ -36,9 +36,9 @@ class Logger(ConfigInitializer):
             print(error_prefix + message)
 
     def print_pass(self, message):
-        pass_prefix = '\n[' + colored('pass', 'green') + ']    '
+        pass_prefix = '\n[' + colored('passed', 'green') + ']  '
         print(pass_prefix + message)
 
     def print_fail(self, message):
-        fail_prefix = '\n[' + colored('fail', 'red') + ']    '
+        fail_prefix = '\n[' + colored('failed', 'red') + ']  '
         print(fail_prefix + message)

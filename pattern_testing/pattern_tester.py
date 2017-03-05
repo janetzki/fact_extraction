@@ -23,7 +23,7 @@ class PatternTester(ConfigInitializer):
         self.results = {}
         self.fact_extractor = None
 
-        # count known, right and wrong facts for each relationship
+        # count known, right and wrong facts for each relation_type
         self.known_facts_counter = Counter()
         self.right_facts_counter = Counter()
         self.wrong_facts_counter = Counter()
@@ -41,7 +41,7 @@ class PatternTester(ConfigInitializer):
             self.fact_extractor.set_print_interim_results(False)
 
         training_resources = self.fact_extractor.training_resources
-        training_relations = self.fact_extractor.training_relationships
+        training_relations = self.fact_extractor.training_relation_types
         entities = dict()
         fact_counter = 0
 
@@ -108,12 +108,12 @@ class PatternTester(ConfigInitializer):
         return precision, recall, f_measure
 
     def print_results(self):
-        for relationship in self.fact_extractor.training_relationships:
-            total = self.known_facts_counter[relationship]
-            right = self.right_facts_counter[relationship]
-            wrong = self.wrong_facts_counter[relationship]
+        for relation_type in self.fact_extractor.training_relation_types:
+            total = self.known_facts_counter[relation_type]
+            right = self.right_facts_counter[relation_type]
+            wrong = self.wrong_facts_counter[relation_type]
             precision, recall, f_measure = PatternTester._calculate_precision_recall_and_f_measure(total, right, wrong)
-            print(relationship + ' Known facts:' + str(total) + ' Right:' + str(right) + ' Wrong:' + str(wrong)
+            print(relation_type + ' Known facts:' + str(total) + ' Right:' + str(right) + ' Wrong:' + str(wrong)
                   + ' Precision:' + str(precision) + ' Recall:' + str(recall) + ' F-Measure:' + str(f_measure))
 
 

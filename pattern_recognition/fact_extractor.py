@@ -1,12 +1,5 @@
-#!/usr/bin/python
-# encoding=utf8
-
-import pickle
-import imp
 from tqdm import tqdm
-
-config_initializer = imp.load_source('config_initializer', '../config_initializer/config_initializer.py')
-from config_initializer import ConfigInitializer
+import imp
 
 pattern_extractor = imp.load_source('pattern_extractor', '../pattern_learning/pattern_extractor.py')
 from pattern_extractor import PatternExtractor, Pattern
@@ -17,34 +10,30 @@ from wikipedia_connector import WikipediaConnector, TaggedSentence
 ttl_parser = imp.load_source('ttl_parser', '../ttl_parsing/ttl_parser.py')
 from ttl_parser import TTLParser
 
-logger = imp.load_source('logger', '../logging/logger.py')
-from logger import Logger
+pattern_tool = imp.load_source('pattern_tool', '../pattern_tool/pattern_tool.py')
+from pattern_tool import PatternTool
 
 uri_rewriting = imp.load_source('uri_rewriting', '../helper_functions/uri_rewriting.py')
 
 
-class FactExtractor(ConfigInitializer):
+class FactExtractor(PatternTool):
     def __init__(self, articles_limit, use_dump=False, randomize=False, match_threshold=0.005, type_matching=True,
                  allow_unknown_entity_types=True, print_interim_results=True,
-                 pattern_path='../data/patterns.pkl',
-                 resources_path='../data/mappingbased_objects_en.ttl'):
+                 resources_path='../data/mappingbased_objects_en.ttl',
+                 patterns_input_path='../data/patterns_cleaned.pkl'):
+        super(FactExtractor, self).__init__(patterns_input_path)
         self.articles_limit = articles_limit
         self.use_dump = use_dump
         self.allow_unknown_entity_types = allow_unknown_entity_types
         self.match_threshold = match_threshold
         self.type_matching = type_matching
-        self.pattern_path = pattern_path
         self.ttl_parser = TTLParser(resources_path, randomize)
         self.wikipedia_connector = WikipediaConnector(self.use_dump)
         self.pattern_extractor = PatternExtractor()
         self.print_interim_results = print_interim_results
-        self.logger = Logger.from_config_file()
-        self.training_resources = set()
         self.discovery_resources = set()
-        self.relation_patterns = {}
         self.extracted_facts = []
 
-        self._load_patterns()
         self._make_pattern_types_transitive()
         self._load_discovery_resources()
 
@@ -58,12 +47,8 @@ class FactExtractor(ConfigInitializer):
         type_matching = config_parser.getboolean('fact_extractor', 'type_matching')
         return cls(articles_limit, use_dump, randomize, match_threshold, type_matching)
 
-    def _load_patterns(self):
-        with open(self.pattern_path, 'rb') as fin:
-            self.training_resources, self.relation_patterns = pickle.load(fin)
-
     def _make_pattern_types_transitive(self):
-        for relation, pattern in self.relation_patterns.iteritems():
+        for relation, pattern in self.relation_type_patterns.iteritems():
             pattern.subject_type_frequencies = self.pattern_extractor \
                 .get_transitive_types(pattern.subject_type_frequencies)
             pattern.object_type_frequencies = self.pattern_extractor \
@@ -83,10 +68,10 @@ class FactExtractor(ConfigInitializer):
                 article_counter += 1
         self.logger.print_done('Collecting entities for fact extraction completed')
 
-    def _match_pattern_against_relation_patterns(self, pattern, reasonable_relations):
+    def _match_pattern_against_relation_type_patterns(self, pattern, reasonable_relations):
         matching_relations = []
         for relation in reasonable_relations:
-            relation_pattern = self.relation_patterns[relation]
+            relation_pattern = self.relation_type_patterns[relation]
             match_score = Pattern.match_patterns(relation_pattern, pattern, self.type_matching,
                                                  self.allow_unknown_entity_types)
             if match_score >= self.match_threshold:
@@ -111,10 +96,10 @@ class FactExtractor(ConfigInitializer):
     def _get_specific_type_frequencies(self, subject_or_object):
         if subject_or_object == 'subject':
             return {relation: pattern.subject_type_frequencies for relation, pattern in
-                    self.relation_patterns.iteritems()}
+                    self.relation_type_patterns.iteritems()}
         elif subject_or_object == 'object':
             return {relation: pattern.object_type_frequencies for relation, pattern in
-                    self.relation_patterns.iteritems()}
+                    self.relation_type_patterns.iteritems()}
         else:
             assert False
 
@@ -138,7 +123,7 @@ class FactExtractor(ConfigInitializer):
                                                                                             'object'))
                     reasonable_relations = reasonable_relations_for_subject & reasonable_relations_for_object
                 else:
-                    reasonable_relations = self.relation_patterns
+                    reasonable_relations = self.relation_type_patterns
 
                 if not len(reasonable_relations):
                     continue
@@ -148,7 +133,7 @@ class FactExtractor(ConfigInitializer):
                 if pattern is None:
                     continue
 
-                matching_relations = self._match_pattern_against_relation_patterns(pattern, reasonable_relations)
+                matching_relations = self._match_pattern_against_relation_type_patterns(pattern, reasonable_relations)
                 new_facts = [(rel, object_link, score, nl_sentence) for (rel, score) in matching_relations]
                 facts.extend(new_facts)
 
@@ -188,8 +173,8 @@ class FactExtractor(ConfigInitializer):
             print(fact)
 
     @property
-    def training_relationships(self):
-        return self.relation_patterns.keys()
+    def training_relation_types(self):
+        return self.relation_type_patterns.keys()
 
     def set_print_interim_results(self, boolean):
         self.print_interim_results = boolean
