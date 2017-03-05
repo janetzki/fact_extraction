@@ -196,32 +196,7 @@ class FactExtractor(ConfigInitializer):
         self.print_interim_results = boolean
 
 
-def test(fact_extractor):
-    print(fact_extractor.extract_facts_from_html(
-        'He recently became a professor at the <a href="/wiki/Massachusetts_Institute_of_Technology">MIT</a>.',
-        'John Doe'))
-    print(fact_extractor.extract_facts_from_html(
-        'He loves <a href="/wiki/Pyrotechnic">pyrotechnic</a>.',
-        'Me'))
-    print(fact_extractor.extract_facts_from_html(
-        'Some person was born in <a href="/wiki/Braunschweig">Braunschweig</a>.',
-        'Me'))
-    print(fact_extractor.extract_facts_from_html(
-        'Merkel was educated in Templin and at the <a href="/wiki/University_of_Leipzig">University of Leipzig</a>, where she studied <a href="/wiki/Physics">physics</a> from 1973 to 1978.',
-        'Angela_Merkel'))
-    print(fact_extractor.extract_facts_from_html(
-        'Irma Raush was born in <a href="/wiki/Saratov">Saratov</a> on 21 April 1938 into a Volga German family.',
-        'Irma_Raush'))
-    print(fact_extractor.extract_facts_from_html(
-        'Born Elinor Isabel Judefind in <a href="/wiki/Baltimore" class="mw-redirect" title="Baltimore, Maryland">Baltimore, Maryland</a> , to parents of French-German descent , Agnew was daughter of William Lee Judefind , a <a href="/wiki/Chemist">chemist</a> , and his wife , the former Ruth Elinor Schafer . ',
-        'Judy_Agnew'))
-    print(fact_extractor.extract_facts_from_html(
-        'Her paternal grandfather was a <a href="/wiki/Methodism">Methodist</a> minister . ',
-        'Judy_Agnew'))
-
-
 if __name__ == '__main__':
     fact_extractor = FactExtractor.from_config_file()
-    # test(fact_extractor)
     fact_extractor.extract_facts()
     fact_extractor.print_extracted_facts()

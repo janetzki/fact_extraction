@@ -1,5 +1,5 @@
 import imp
-from tqdm import tqdm
+import test_data
 from collections import Counter
 
 config_initializer = imp.load_source('config_initializer', '../config_initializer/config_initializer.py')
@@ -116,7 +116,33 @@ class PatternTester(ConfigInitializer):
                   + ' Precision:' + str(precision) + ' Recall:' + str(recall) + ' F-Measure:' + str(f_measure))
 
 
-if __name__ == '__main__':
+def compare_facts(extracted_facts, reference_facts, logger):
+    extracted_facts = set([(resource, rel, obj) for (resource, rel, obj, score, nl_sentence) in extracted_facts])
+    reference_facts = set(reference_facts)
+    equal = extracted_facts == reference_facts
+    if equal:
+        logger.print_pass('Facts are equal.')
+    else:
+        logger.print_fail((str(extracted_facts) + ' does not equal: ' + str(reference_facts)))
+
+
+def small_test():
+    fact_extractor = FactExtractor.from_config_file()
+    logger = Logger.from_config_file()
+    for test_case in test_data.test_articles_list():
+        html = test_case[0]
+        resource = test_case[1]
+        expected_facts = test_case[2]
+        extracted_facts = fact_extractor.extract_facts_from_html(html, resource)
+        compare_facts(extracted_facts, expected_facts, logger)
+
+
+def large_test():
     pattern_tester = PatternTester.from_config_file()
     pattern_tester.test_patterns()
     pattern_tester.print_results()
+
+
+if __name__ == '__main__':
+    # small_test()
+    large_test()
