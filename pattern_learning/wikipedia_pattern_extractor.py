@@ -23,6 +23,9 @@ from ttl_parser import TTLParser
 logger = imp.load_source('logger', '../logging/logger.py')
 from logger import Logger
 
+pattern_tester = imp.load_source('pattern_tester', '../pattern_testing/pattern_tester.py')
+from pattern_tester import PatternTester
+
 uri_rewriting = imp.load_source('uri_rewriting', '../helper_functions/uri_rewriting.py')
 
 
@@ -95,6 +98,7 @@ class WikipediaPatternExtractor(ConfigInitializer):
         entities = dict()
         relation_types_counter = Counter()
         fact_counter = 0
+        testing_resources = PatternTester.from_config_file().get_testing_resources()
 
         self.logger.print_info('Collecting facts for training...')
         for subject, predicate, object in self.ttl_parser.yield_entries():
@@ -105,6 +109,8 @@ class WikipediaPatternExtractor(ConfigInitializer):
             if relation_types_counter[predicate] == self.facts_limit:
                 continue
             if self.relationships is not None and predicate not in self.relationships:
+                continue
+            if subject in testing_resources:
                 continue
 
             # maintain a dict for each entity with given relations as key

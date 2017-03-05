@@ -131,7 +131,6 @@ class FactExtractor(ConfigInitializer):
             nl_sentence = sentence.as_string()
             object_addresses_of_links = sentence.addresses_of_dbpedia_links()
             for object_link, object_addresses in object_addresses_of_links.iteritems():
-
                 object_entity = uri_rewriting.strip_name(object_link)
                 if self.type_matching:
                     reasonable_relations_for_object = self._filter_reasonable_relations(object_entity,

@@ -1,5 +1,4 @@
 import imp
-import test_data
 from collections import Counter
 
 config_initializer = imp.load_source('config_initializer', '../config_initializer/config_initializer.py')
@@ -14,26 +13,22 @@ from ttl_parser import TTLParser
 logger = imp.load_source('logger', '../logging/logger.py')
 from logger import Logger
 
+test_data = imp.load_source('test_data', '../pattern_testing/test_data.py')
+
 
 class PatternTester(ConfigInitializer):
-    def __init__(self, facts_limit, randomize=False, fact_extractor=None,
-                 ground_truth_path='../data/ground_truth.ttl'):
+    def __init__(self, facts_limit, randomize=False, ground_truth_path='../data/ground_truth.ttl'):
         self.facts_limit = facts_limit
         self.randomize = randomize
         self.ttl_parser = TTLParser(ground_truth_path, randomize)
         self.logger = Logger.from_config_file()
         self.results = {}
+        self.fact_extractor = None
 
         # count known, right and wrong facts for each relationship
         self.known_facts_counter = Counter()
         self.right_facts_counter = Counter()
         self.wrong_facts_counter = Counter()
-
-        if fact_extractor is not None:
-            self.fact_extractor = fact_extractor
-        else:
-            self.fact_extractor = FactExtractor.from_config_file()
-            self.fact_extractor.set_print_interim_results(False)
 
     @classmethod
     def from_config_file(cls):
@@ -43,9 +38,12 @@ class PatternTester(ConfigInitializer):
         return cls(facts_limit, randomize)
 
     def _collect_testing_facts(self):
+        if self.fact_extractor is None:
+            self.fact_extractor = FactExtractor.from_config_file()
+            self.fact_extractor.set_print_interim_results(False)
+
         training_resources = self.fact_extractor.training_resources
         training_relations = self.fact_extractor.training_relationships
-
         entities = dict()
         fact_counter = 0
 
@@ -53,8 +51,10 @@ class PatternTester(ConfigInitializer):
         for subject, predicate, object in self.ttl_parser.yield_entries():
             if fact_counter == self.facts_limit * len(training_relations):
                 break
-            # if subject in training_resources:  # TODO: issue #73
-            #     continue
+            if subject in training_resources:
+                self.logger.print_error(
+                    'Resource: "' + subject + '" was already used for training and thus won\'t be used for testing')
+                continue
             if predicate not in training_relations:
                 continue
             if self.known_facts_counter[predicate] == self.facts_limit:
@@ -67,6 +67,9 @@ class PatternTester(ConfigInitializer):
             fact_counter += 1
 
         return entities
+
+    def get_testing_resources(self):
+        return set([subject for subject in self.ttl_parser.yield_entries()])
 
     def test_patterns(self):
         test_entities = self._collect_testing_facts()
