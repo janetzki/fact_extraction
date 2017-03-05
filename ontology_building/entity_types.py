@@ -43,14 +43,14 @@ class EntityTypes(object):
     def _get_parent_type(self, type_name):
         if type_name in self.parent_types:
             return self.parent_types[type_name]
-        return False
+        return None
 
     def get_transitive_types(self, types):
-        new_types = Counter()
-        for type in list(types):
-            new_types[type] += 1
+        new_types = Counter(types)
+        for type, count in types.most_common():
             parent = self._get_parent_type(type)
-            while parent:
-                new_types[parent] += 1
+            while parent is not None:
+                new_types[parent] += count
                 parent = self._get_parent_type(parent)
+        assert sum(new_types.itervalues()) >= sum(types.itervalues())
         return new_types

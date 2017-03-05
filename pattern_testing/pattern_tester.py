@@ -13,8 +13,6 @@ from ttl_parser import TTLParser
 logger = imp.load_source('logger', '../logging/logger.py')
 from logger import Logger
 
-test_data = imp.load_source('test_data', '../pattern_testing/test_data.py')
-
 
 class PatternTester(ConfigInitializer):
     def __init__(self, facts_limit, randomize=False, ground_truth_path='../data/ground_truth.ttl'):
@@ -119,33 +117,7 @@ class PatternTester(ConfigInitializer):
                   + ' Precision:' + str(precision) + ' Recall:' + str(recall) + ' F-Measure:' + str(f_measure))
 
 
-def compare_facts(extracted_facts, reference_facts, logger):
-    extracted_facts = set([(resource, rel, obj) for (resource, rel, obj, score, nl_sentence) in extracted_facts])
-    reference_facts = set(reference_facts)
-    equal = extracted_facts == reference_facts
-    if equal:
-        logger.print_pass('Facts are equal.')
-    else:
-        logger.print_fail((str(extracted_facts) + ' does not equal: ' + str(reference_facts)))
-
-
-def small_test():
-    fact_extractor = FactExtractor.from_config_file()
-    logger = Logger.from_config_file()
-    for test_case in test_data.test_articles_list():
-        html = test_case[0]
-        resource = test_case[1]
-        expected_facts = test_case[2]
-        extracted_facts = fact_extractor.extract_facts_from_html(html, resource)
-        compare_facts(extracted_facts, expected_facts, logger)
-
-
-def large_test():
+if __name__ == '__main__':
     pattern_tester = PatternTester.from_config_file()
     pattern_tester.test_patterns()
     pattern_tester.print_results()
-
-
-if __name__ == '__main__':
-    # small_test()
-    large_test()
