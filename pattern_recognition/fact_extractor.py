@@ -177,13 +177,9 @@ class FactExtractor(ConfigInitializer):
         return self.extract_facts_from_html(html, resource)
 
     def extract_facts(self):
-<<<<<<< 75f5688d165ef8ccf4d74cd4ed1f4def9919416d
         self.logger.print_info('Fact extraction...')
         threads = []
         # gather resources for each thread
-=======
-        tqdm.write('\n\nFact extraction...')
->>>>>>> parameterize number of threads
         for resource in self.discovery_resources:
             self.extracted_facts.extend(self.extract_facts_from_resource(resource))
         self.extracted_facts.sort(key=lambda fact: fact[3], reverse=True)

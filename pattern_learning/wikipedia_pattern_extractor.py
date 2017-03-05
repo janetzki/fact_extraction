@@ -77,7 +77,8 @@ class WikipediaPatternExtractor(ConfigInitializer):
         return cls(relation_types_limit, facts_limit, relationships=relationships, use_dump=use_dump,
                    randomize=randomize,
                    perform_tests=perform_tests, replace_redirects=replace_redirects, type_learning=type_learning,
-                   least_threshold_types=least_threshold_types, least_threshold_words=least_threshold_words, threads=threads)
+                   least_threshold_types=least_threshold_types, least_threshold_words=least_threshold_words,
+                   threads=threads)
 
     @staticmethod
     def split_string_list(string):
@@ -127,12 +128,14 @@ class WikipediaPatternExtractor(ConfigInitializer):
 
         return entities
 
-    def chunks(self, data, SIZE=10000):
+    def chunks(self, data, size=10000):
         it = iter(data)
-        for i in xrange(0, len(data), SIZE):
-            yield {k:data[k] for k in islice(it, SIZE)}
+        for i in xrange(0, len(data), size):
+            yield {k: data[k] for k in islice(it, size)}
 
-    def tag_sentences(self, chunk={}):
+    def tag_sentences(self, chunk=None):
+        if chunk is None:
+            chunk = {}
         for entity, values in chunk.iteritems():
             # for each relationship filter sentences that contain
             # target resources of entity's relationship
