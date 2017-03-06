@@ -129,11 +129,11 @@ class TaggedSentence(object):
     def from_html(cls, html, sought_dbpedia_resources='any'):
         soup = bs(html, 'lxml')
         paragraphs = TaggedSentence.extract_paragraphs(soup)
-        return [tagged_s for paragraph in paragraphs
-                for tagged_s in TaggedSentence.from_bs_tag(paragraph, sought_dbpedia_resources)]
+        return [tagged_s for i, paragraph in enumerate(paragraphs)
+                for tagged_s in TaggedSentence.from_bs_tag(paragraph, sought_dbpedia_resources, i / len(paragraphs))]
 
     @classmethod
-    def from_bs_tag(cls, bs_tag, sought_wiki_resources):
+    def from_bs_tag(cls, bs_tag, sought_wiki_resources, relative_position):
         # html = html.decode('utf-8')
         assert sought_wiki_resources == 'any' or len(sought_wiki_resources) > 0
         found_resources = []
@@ -148,10 +148,8 @@ class TaggedSentence(object):
         # https://stackoverflow.com/questions/14622835/split-string-on-or-keeping-the-punctuation-mark
         sentences = [sentence for line in lines for sentence in re.split('(?<=[.!?]) +', line)]
         filtered_sentences = filter(lambda s: TaggedSentence.contains_a_link(s, found_resources), sentences)
-        if not filtered_sentences:
-            return []
-        sentences_count = len(sentences)
-        return [TaggedSentence(sent, found_resources, i / sentences_count) for i, sent in enumerate(filtered_sentences)]
+        tagged_sentences = [TaggedSentence(sent, found_resources, relative_position) for sent in filtered_sentences]
+        return tagged_sentences
 
     def contained_links(self):
         links = set()
@@ -162,9 +160,9 @@ class TaggedSentence(object):
 
     @staticmethod
     def contains_a_link(sentence, links):
-        link_words = [words for words in map(lambda l: l[1], links)]
-        for link in link_words:
-            if link in sentence:
+        links_words = [words for link, words in links]
+        for link_words in links_words:
+            if link_words in sentence:
                 return True
         return False
 
@@ -246,7 +244,8 @@ class TaggedToken(object):
 
 
 def test_html_parsing():
-    TaggedSentence.from_html('Born Elinor Isabel Judefind in <a href="/wiki/Baltimore" class="mw-redirect" title="Baltimore, Maryland">Baltimore, Maryland</a> , to parents of French-German descent , Agnew was daughter of William Lee Judefind , a <a href="/wiki/Chemist">chemist</a> , and his wife , the former Ruth Elinor Schafer . ')
+    TaggedSentence.from_html(
+        'Born Elinor Isabel Judefind in <a href="/wiki/Baltimore" class="mw-redirect" title="Baltimore, Maryland">Baltimore, Maryland</a> , to parents of French-German descent , Agnew was daughter of William Lee Judefind , a <a href="/wiki/Chemist">chemist</a> , and his wife , the former Ruth Elinor Schafer . ')
 
 
 if __name__ == '__main__':
