@@ -34,7 +34,7 @@ class FactExtractor(PatternTool):
         self.discovery_resources = set()
         self.extracted_facts = []
 
-        self._make_pattern_types_transitive()
+        # self._make_pattern_types_transitive()
         self._load_discovery_resources()
 
     @classmethod
@@ -53,8 +53,6 @@ class FactExtractor(PatternTool):
                 .get_transitive_types(pattern.subject_type_frequencies)
             pattern.object_type_frequencies = self.pattern_extractor \
                 .get_transitive_types(pattern.object_type_frequencies)
-            # print pattern.subject_type_frequencies
-            # print pattern.object_type_frequencies
 
     def _load_discovery_resources(self):
         article_counter = 0

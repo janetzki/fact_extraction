@@ -138,7 +138,7 @@ class Pattern(object):
         starting at the object are considered.
         """
         num_sentences = self.covered_sentences
-        print(num_sentences)
+        # print(num_sentences)
         if not self.root_node().dependencies:
             return 0.0
         word_counts = []

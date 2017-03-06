@@ -58,8 +58,7 @@ class PatternVisualizer(PatternTool):
 
     def plot_patterns(self):
         self.logger.print_info('Plotting patterns...')
-        for relation_type in self.relation_type_patterns.iterkeys():
-            pattern = self.relation_type_patterns[relation_type]
+        for relation_type, pattern in self.relation_type_patterns.iteritems():
             self.graph = Digraph(comment='Pattern Visualizer', format='svg')
             print('Diversity of ' + relation_type + ': ' + str(pattern.calculate_diversity_measure()))
             # print root node
