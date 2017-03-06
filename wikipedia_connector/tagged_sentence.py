@@ -143,15 +143,15 @@ class TaggedSentence(object):
 
         # get raw_text
         text = bs_tag.get_text()
+        lines = text.split('\n')
         # split text by ". ", "! " or "? " and keep them in each item
         # https://stackoverflow.com/questions/14622835/split-string-on-or-keeping-the-punctuation-mark
-        filtered_sentences = filter(lambda s: TaggedSentence.contains_a_link(s, found_resources),
-                                    re.split('(?<=[.!?]) +', text))
+        sentences = [sentence for line in lines for sentence in re.split('(?<=[.!?]) +', line)]
+        filtered_sentences = filter(lambda s: TaggedSentence.contains_a_link(s, found_resources), sentences)
         if not filtered_sentences:
             return []
-        # split sentences
-        count = filtered_sentences.__len__()
-        return [TaggedSentence(sent, found_resources, i / count) for i, sent in enumerate(filtered_sentences)]
+        sentences_count = len(sentences)
+        return [TaggedSentence(sent, found_resources, i / sentences_count) for i, sent in enumerate(filtered_sentences)]
 
     def contained_links(self):
         links = set()

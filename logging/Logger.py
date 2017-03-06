@@ -17,6 +17,10 @@ class Logger(ConfigInitializer):
         errors = config_parser.getboolean('logging', 'errors')
         return cls(warnings, errors)
 
+    def print_aligned(self, message):
+        alignment = ' ' * 10
+        print(alignment + message)
+
     def print_info(self, message):
         info_prefix = '\n[info]    '
         print(info_prefix + message)

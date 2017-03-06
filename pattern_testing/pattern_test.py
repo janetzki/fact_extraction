@@ -17,6 +17,10 @@ def compare_facts(extracted_facts, reference_facts, logger):
         logger.print_pass('Facts are equal.')
     else:
         logger.print_fail(str(extracted_facts) + ' does not equal: ' + str(reference_facts))
+        if len(extracted_facts) > len(reference_facts):
+            logger.print_aligned('Contains false positives')
+        elif len(extracted_facts) < len(reference_facts):
+            logger.print_aligned('Contains false negatives')
     return equal
 
 
