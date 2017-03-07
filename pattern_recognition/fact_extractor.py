@@ -213,7 +213,6 @@ class FactExtractor(ConfigInitializer):
         print(self.extracted_facts)
         if self.extracted_facts:
             self.extracted_facts.sort(key=lambda fact: fact[0][3], reverse=True)
-
         self.logger.print_done('Fact extraction completed')
 
     def print_extracted_facts(self):
