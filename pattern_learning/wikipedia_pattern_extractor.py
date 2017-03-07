@@ -128,7 +128,7 @@ class WikipediaPatternExtractor(ConfigInitializer):
 
         return entities
 
-    def chunks(self, data, size=10000):
+    def _chunks(self, data, size=10000):
         it = iter(data)
         for i in xrange(0, len(data), size):
             yield {k: data[k] for k in islice(it, size)}
@@ -162,7 +162,7 @@ class WikipediaPatternExtractor(ConfigInitializer):
         threads = []
         chunk_size = int(ceil(len(self.dbpedia) / self.num_of_threads))
         # gather all arguments for each thread
-        for chunk in self.chunks(self.dbpedia, chunk_size):
+        for chunk in self._chunks(self.dbpedia, chunk_size):
             t = Thread(target=self.tag_sentences, kwargs={'chunk': chunk})
             threads.append(t)
         # start all threads

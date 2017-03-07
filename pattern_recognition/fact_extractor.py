@@ -1,9 +1,13 @@
 #!/usr/bin/python
 # encoding=utf8
 
+from __future__ import division
 import pickle
 import imp
 from tqdm import tqdm
+from math import ceil
+from threading import Thread
+from itertools import islice
 
 config_initializer = imp.load_source('config_initializer', '../config_initializer/config_initializer.py')
 from config_initializer import ConfigInitializer
@@ -27,7 +31,8 @@ class FactExtractor(ConfigInitializer):
     def __init__(self, articles_limit, use_dump=False, randomize=False, match_threshold=0.005, type_matching=True,
                  allow_unknown_entity_types=True, print_interim_results=True,
                  pattern_path='../data/patterns.pkl',
-                 resources_path='../data/mappingbased_objects_en.ttl'):
+                 resources_path='../data/mappingbased_objects_en.ttl',
+                 threads=4):
         self.articles_limit = articles_limit
         self.use_dump = use_dump
         self.allow_unknown_entity_types = allow_unknown_entity_types
@@ -43,6 +48,7 @@ class FactExtractor(ConfigInitializer):
         self.discovery_resources = set()
         self.relation_patterns = {}
         self.extracted_facts = []
+        self.threads = threads
 
         self._load_patterns()
         self._make_pattern_types_transitive()
@@ -56,6 +62,7 @@ class FactExtractor(ConfigInitializer):
         articles_limit = config_parser.getint('fact_extractor', 'articles_limit')
         match_threshold = config_parser.getfloat('fact_extractor', 'match_threshold')
         type_matching = config_parser.getboolean('fact_extractor', 'type_matching')
+        num_of_treads = config_parser.getint('fact_extractor', 'threads')
         return cls(articles_limit, use_dump, randomize, match_threshold, type_matching)
 
     def _load_patterns(self):
@@ -170,18 +177,37 @@ class FactExtractor(ConfigInitializer):
         facts = [(resource, rel, obj, score, nl_sentence) for (rel, obj, score, nl_sentence) in facts]
         return facts
 
-    def extract_facts_from_resource(self, resource):
-        wikipedia_resource = uri_rewriting.convert_to_wikipedia_uri(resource)
-        self.logger.print_info('--- ' + wikipedia_resource + ' ----')
-        html = self.wikipedia_connector.get_wikipedia_article_html(resource)
-        return self.extract_facts_from_html(html, resource)
+    def extract_facts_from_resource(self, chunk=None):
+        self.logger.print_info('--- start fact extraction thread ----')
+        if chunk is None:
+            chunk = {}
+        facts = []
+        for resource in chunk:
+            wikipedia_resource = uri_rewriting.convert_to_wikipedia_uri(resource)
+            self.logger.print_info('--- ' + wikipedia_resource + ' ----')
+            html = self.wikipedia_connector.get_wikipedia_article_html(resource)
+            facts.append(self.extract_facts_from_html(html, resource))
+        self.extracted_facts.extend(facts)
+
+    def _chunks(self, data, size=10000):
+        """Yield successive n-sized chunks from l."""
+        for i in range(0, len(data), size):
+            yield data[i:i + size]
 
     def extract_facts(self):
         self.logger.print_info('Fact extraction...')
+        chunk_size = int(ceil(len(self.discovery_resources) / self.threads))
         threads = []
         # gather resources for each thread
-        for resource in self.discovery_resources:
-            self.extracted_facts.extend(self.extract_facts_from_resource(resource))
+        for chunk in self._chunks(list(self.discovery_resources), chunk_size):
+            t = Thread(target=self.extract_facts_from_resource, kwargs={'chunk': chunk})
+            threads.append(t)
+            # start all threads
+        for t in threads:
+            t.start()
+        # wait for all threads to finish
+        for t in threads:
+            t.join()
         self.extracted_facts.sort(key=lambda fact: fact[3], reverse=True)
         self.logger.print_done('Fact extraction completed')
 
