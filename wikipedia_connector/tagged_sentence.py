@@ -4,6 +4,8 @@ from nltk.tokenize import StanfordTokenizer
 import re
 import sys
 import imp
+import os
+os.environ['JAVAHOME'] = "C:\\Program Files\\Java\\jdk1.8.0_102\\bin\\java.exe"
 
 uri_rewriting = imp.load_source('uri_rewriting', '../helper_functions/uri_rewriting.py')
 
