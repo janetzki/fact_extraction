@@ -238,7 +238,7 @@ class WikipediaPatternExtractor(ConfigInitializer):
         threads = []
         chunk_size = int(ceil(len(self.dbpedia) / self.num_of_threads))
         # gather all arguments for each thread
-        for chunk in self.chunks(self.dbpedia, chunk_size):
+        for chunk in self._chunks(self.dbpedia, chunk_size):
             t = Thread(target=self.extract_entity_patterns, kwargs={'chunk': chunk})
             threads.append(t)
         # start all threads
@@ -287,7 +287,9 @@ class WikipediaPatternExtractor(ConfigInitializer):
         return matches_count
 
     def calculate_text_coverage(self):
-        """ Prints CLI stats about percentage of matched dbpedia facts in wiki raw text.  """
+        """
+        Prints CLI stats about percentage of matched dbpedia facts in wiki raw text.
+        """
         matched_count = self.count_matches()
         total_count = {}
         for entity, relationships in self.dbpedia.iteritems():
@@ -298,8 +300,10 @@ class WikipediaPatternExtractor(ConfigInitializer):
 
         occurrence_count = {}
         for relation in total_count:
-            occurrence_count[relation] = {'total': total_count[relation],
-                                          'matched': matched_count.setdefault(relation, 0)}
+            occurrence_count[relation] = {
+                'total': total_count[relation],
+                'matched': min(total_count[relation], matched_count.setdefault(relation, 0))
+                } # there might be more occurences of a fact in an article, thus, resulting in a coverage above 100%
 
         # print bar chart
         data = [('%  ' + str(vals['matched']) + '/' + str(vals['total']) + ' ' + rel.split('/')[-1],
