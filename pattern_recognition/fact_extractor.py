@@ -4,7 +4,6 @@
 from __future__ import division
 import pickle
 import imp
-from tqdm import tqdm
 from math import ceil
 from threading import Thread
 from itertools import islice
@@ -131,7 +130,7 @@ class FactExtractor(ConfigInitializer):
             reasonable_relations_for_subject = self._filter_reasonable_relations(subject_entity,
                                                                                  self._get_specific_type_frequencies(
                                                                                      'subject'))
-        for sentence in tqdm(sentences, total=len(sentences)):
+        for sentence in sentences:
             if sentence.number_of_tokens() > 50:
                 continue  # probably too long for stanford tokenizer
             relative_position = sentence.relative_pos
@@ -186,8 +185,13 @@ class FactExtractor(ConfigInitializer):
             wikipedia_resource = uri_rewriting.convert_to_wikipedia_uri(resource)
             self.logger.print_info('--- ' + wikipedia_resource + ' ----')
             html = self.wikipedia_connector.get_wikipedia_article_html(resource)
-            facts.append(self.extract_facts_from_html(html, resource))
-        self.extracted_facts.extend(facts)
+            temp =  self.extract_facts_from_html(html, resource)
+            self.logger.print_info('extractes facts_:' + str(temp))
+            if temp:
+                facts.append(temp)
+        self.logger.print_info('all extracted facts:' + str(facts))
+        if facts:
+            self.extracted_facts.extend(facts)
 
     def _chunks(self, data, size=10000):
         """Yield successive n-sized chunks from l."""
@@ -208,7 +212,9 @@ class FactExtractor(ConfigInitializer):
         # wait for all threads to finish
         for t in threads:
             t.join()
-        self.extracted_facts.sort(key=lambda fact: fact[3], reverse=True)
+        print(self.extracted_facts)
+        if self.extract_facts:
+            self.extracted_facts.sort(key=lambda fact: fact[0][3], reverse=True)
         self.logger.print_done('Fact extraction completed')
 
     def print_extracted_facts(self):
