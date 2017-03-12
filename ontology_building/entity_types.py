@@ -13,7 +13,7 @@ line_counting = imp.load_source('line_counting', '../helper_functions/line_count
 class EntityTypes(object):
     def __init__(self, types_paths=[], types_index='../data/yago_index.csv',
                  types_indexed_file='../data/yago_types.csv',
-                 type_inheritance_path='../data/types_inheritance_en.csv'):
+                 type_inheritance_path='../data/types_inheritance_en.csv', limit=False):
         self.logger = Logger.from_config_file()
         self.types = {}
         self.parent_types = {}
@@ -22,14 +22,21 @@ class EntityTypes(object):
 
         if types_indexed_file:
             total_lines = line_counting.cached_counter.count_lines(types_index)
+
             with open(types_index, 'rb') as findex:
                 self.logger.print_info('Reading types index')
                 reader = unicodecsv.reader(findex, delimiter=self.delimiter)
+                line_count = 0
                 for entity, types_info in tqdm(reader, total=total_lines):
+                    line_count += 1
+                    if limit and line_count > limit:
+                        break
                     for info in types_info.split(self.join_character):
                         self.types.setdefault(entity, []).append(info)
 
             self.types_indexed_file = open(types_indexed_file, 'rb')
+        else:
+            self.types_indexed_file = False
 
         for path in types_paths:
             self._load_types(path)
@@ -59,16 +66,21 @@ class EntityTypes(object):
         types = []
         if entity in self.types:
             for entry in self.types[entity]:
-                if self.is_number(entry):
-                    self.types_indexed_file.seek(int(entry))
-                    while True:
-                        line = self.types_indexed_file.readline()
-                        entity_name, entity_type = line.replace("\n", '').split(self.delimiter)
-                        if not entity == entity_name:
-                            break
-                        types.append(entity_type)
-                else:
-                    types.append(entry)
+                if entry:
+                    if self.is_number(entry):
+                        self.types_indexed_file.seek(int(entry))
+                        while True:
+                            line = self.types_indexed_file.readline()
+                            values = line.replace("\n", '').split(self.delimiter)
+                            if not len(values) == 2:
+                                print line
+                                assert False
+                            entity_name, entity_type = values
+                            if not entity == entity_name:
+                                break
+                            types.append(entity_type)
+                    else:
+                        types.append(entry)
         return types
 
     @staticmethod
