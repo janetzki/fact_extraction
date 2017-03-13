@@ -37,7 +37,6 @@ class EntityTypes(object):
         counter = Counter()
         if name in self.types:
             counter = Counter(self.types[name])
-        assert len(counter) <= 1  # just an assumption
         return counter
 
     def _get_parent_type(self, type_name):
