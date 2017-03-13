@@ -17,6 +17,10 @@ class Logger(ConfigInitializer):
         errors = config_parser.getboolean('logging', 'errors')
         return cls(warnings, errors)
 
+    def print_aligned(self, message):
+        alignment = ' ' * 10
+        print(alignment + message)
+
     def print_info(self, message):
         info_prefix = '\n[info]    '
         print(info_prefix + message)
@@ -34,3 +38,11 @@ class Logger(ConfigInitializer):
         if self.errors:
             error_prefix = '\n[' + colored('error', 'red') + ']   '
             print(error_prefix + message)
+
+    def print_pass(self, message):
+        pass_prefix = '\n[' + colored('passed', 'green') + ']  '
+        print(pass_prefix + message)
+
+    def print_fail(self, message):
+        fail_prefix = '\n[' + colored('failed', 'red') + ']  '
+        print(fail_prefix + message)

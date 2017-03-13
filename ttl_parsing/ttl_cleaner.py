@@ -1,3 +1,5 @@
+import codecs
+
 from tqdm import tqdm
 import imp
 
@@ -21,8 +23,9 @@ class TTLCleaner(object):
         self.delimiter = '#'
 
     def clean_ttl(self):
+        replacements = {}
         total_lines = line_counting.cached_counter.count_lines(self.path_ttl)
-        with open(self.path_cleaned_ttl, 'wb') as fout:
+        with codecs.open(self.path_cleaned_ttl, 'wb', "utf-8") as fout:
             ttl_parser = TTLParser(self.path_ttl)
             self.logger.print_info('Type extraction...')
             for subject, predicate, type in tqdm(ttl_parser.yield_entries(), total=total_lines):
@@ -32,19 +35,16 @@ class TTLCleaner(object):
                     continue
 
                 subject = uri_rewriting.strip_cleaned_name(subject)
-                type = type.replace("owl#", "owl")
+                type = type.replace("owl#", "owl").replace("Wikicat", "W").replace("Yago", "Y")
                 type = uri_rewriting.strip_cleaned_name(type)
+
                 assert self.delimiter not in subject and self.delimiter not in type
                 fout.write(subject.encode('utf-8') + self.delimiter.encode('utf-8') + type.encode('utf-8') + '\n')
 
-
-def clean_instance_types():
-    path_types = '../data/instance_types_en.ttl'
-    path_types_cleaned = '../data/types_en.csv'
+def clean_instance_types(path_types, path_types_cleaned):
     type_relation = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type'
     type_cleaner = TTLCleaner(path_types, path_types_cleaned, [type_relation], True)
     type_cleaner.clean_ttl()
-
 
 def clean_instance_types_inheritance():
     path_types_inheritance = '../data/dbpedia_2016-04.nt'
@@ -53,7 +53,6 @@ def clean_instance_types_inheritance():
     inheritance_cleaner = TTLCleaner(path_types_inheritance, path_types_inheritance_cleaned, [inheritance_relation],
                                      False)
     inheritance_cleaner.clean_ttl()
-
 
 def clean_redirects():
     path_redirects = '../data/redirects_en.ttl'
@@ -64,6 +63,7 @@ def clean_redirects():
 
 
 if __name__ == '__main__':
-    clean_instance_types()
-    clean_instance_types_inheritance()
+    clean_instance_types('../data/instance_types_en.ttl', '../data/types_en.csv')
+    clean_instance_types('../data/yago_types.ttl', '../data/yago_types.csv')
     clean_redirects()
+    clean_instance_types_inheritance()

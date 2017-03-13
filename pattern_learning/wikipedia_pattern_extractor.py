@@ -10,12 +10,8 @@ from tqdm import tqdm
 from pattern_extractor import PatternExtractor, Pattern
 from threading import Thread
 import re
-import imp
-import pickle
 import itertools
-
-config_initializer = imp.load_source('config_initializer', '../config_initializer/config_initializer.py')
-from config_initializer import ConfigInitializer
+import imp
 
 wikipedia_connector = imp.load_source('wikipedia_connector', '../wikipedia_connector/wikipedia_connector.py')
 from wikipedia_connector import WikipediaConnector
@@ -26,37 +22,38 @@ from ttl_parser import TTLParser
 logger = imp.load_source('logger', '../logging/logger.py')
 from logger import Logger
 
+pattern_tester = imp.load_source('pattern_tester', '../pattern_testing/pattern_tester.py')
+from pattern_tester import PatternTester
+
+pattern_tool = imp.load_source('pattern_tool', '../pattern_tool/pattern_tool.py')
+from pattern_tool import PatternTool
+
 uri_rewriting = imp.load_source('uri_rewriting', '../helper_functions/uri_rewriting.py')
 
 
-class WikipediaPatternExtractor(ConfigInitializer):
+class WikipediaPatternExtractor(PatternTool):
     def __init__(self, relation_types_limit, facts_limit, resources_path='../data/mappingbased_objects_en.ttl',
-                 relationships=None, use_dump=False, randomize=False, perform_tests=False, type_learning=True,
-                 write_path='../data/patterns.pkl', replace_redirects=False,
-                 least_threshold_types=1, least_threshold_words=2,
-                 threads=4):
+                 relation_types=None, use_dump=False, randomize=False, perform_tests=False, type_learning=True,
+                 replace_redirects=False, patterns_output_path='../data/patterns_raw.pkl', threads=4):
+        super(WikipediaPatternExtractor, self).__init__(None, patterns_output_path)
         self.use_dump = use_dump
         self.facts_limit = facts_limit
         self.perform_tests = perform_tests
         self.type_learning = type_learning
-        self.least_threshold_types = least_threshold_types
-        self.least_threshold_words = least_threshold_words
-        self.write_path = write_path
         self.wikipedia_connector = WikipediaConnector(use_dump=self.use_dump, redirect=replace_redirects)
         self.pattern_extractor = PatternExtractor()
         self.num_of_threads = threads
         self.ttl_parser = TTLParser(resources_path, randomize)
         self.logger = Logger.from_config_file()
 
-        if relationships is not None and len(relationships) > 0:
-            self.relationships = ['http://dbpedia.org/ontology/' + r for r in relationships if r]
-            self.relation_types_limit = len(self.relationships)
+        if relation_types is not None and len(relation_types) > 0:
+            self.relation_types = ['http://dbpedia.org/ontology/' + r for r in relation_types if r]
+            self.relation_types_limit = len(self.relation_types)
         else:
-            self.relationships = None  # means any relation may be learned
+            self.relation_types = None  # means any relation may be learned
             self.relation_types_limit = relation_types_limit
 
         self.dbpedia = {}
-        self.relation_patterns = {}
         self.matches = []
 
     @classmethod
@@ -64,22 +61,20 @@ class WikipediaPatternExtractor(ConfigInitializer):
         config_parser = cls.get_config_parser()
         use_dump = config_parser.getboolean('general', 'use_dump')
 
-        randomize = config_parser.getboolean('wiki_pattern', 'randomize')
-        perform_tests = config_parser.getboolean('wiki_pattern', 'randomize')
-        relation_types_limit = config_parser.getint('wiki_pattern', 'relation_types_limit')
-        facts_limit = config_parser.getint('wiki_pattern', 'facts_limit')
-        replace_redirects = config_parser.getboolean('wiki_pattern', 'replace_redirects')
-        type_learning = config_parser.getboolean('wiki_pattern', 'type_learning')
-        least_threshold_types = config_parser.getfloat('wiki_pattern', 'least_threshold_types')
-        least_threshold_words = config_parser.getfloat('wiki_pattern', 'least_threshold_words')
+
+        section = 'wikipedia_pattern_extractor'
+        randomize = config_parser.getboolean(section, 'randomize')
+        perform_tests = config_parser.getboolean(section, 'randomize')
+        relation_types_limit = config_parser.getint(section, 'relation_types_limit')
+        facts_limit = config_parser.getint(section, 'facts_limit')
+        replace_redirects = config_parser.getboolean(section, 'replace_redirects')
+        type_learning = config_parser.getboolean(section, 'type_learning')
+        relation_types = config_parser.get(section, 'relation_types')
+        relation_types = WikipediaPatternExtractor.split_string_list(relation_types)
         threads = config_parser.getint('wiki_pattern', 'threads')
-        relationships = config_parser.get('wiki_pattern', 'relationships')
-        relationships = WikipediaPatternExtractor.split_string_list(relationships)
-        return cls(relation_types_limit, facts_limit, relationships=relationships, use_dump=use_dump,
-                   randomize=randomize,
-                   perform_tests=perform_tests, replace_redirects=replace_redirects, type_learning=type_learning,
-                   least_threshold_types=least_threshold_types, least_threshold_words=least_threshold_words,
-                   threads=threads)
+        return cls(relation_types_limit, facts_limit, relation_types=relation_types, use_dump=use_dump,
+                   randomize=randomize, threads=threads,
+                   perform_tests=perform_tests, replace_redirects=replace_redirects, type_learning=type_learning)
 
     @staticmethod
     def split_string_list(string):
@@ -102,6 +97,7 @@ class WikipediaPatternExtractor(ConfigInitializer):
         entities = dict()
         relation_types_counter = Counter()
         fact_counter = 0
+        testing_resources = PatternTester.from_config_file().get_testing_resources()
 
         self.logger.print_info('Collecting facts for training...')
         for subject, predicate, object in self.ttl_parser.yield_entries():
@@ -111,7 +107,9 @@ class WikipediaPatternExtractor(ConfigInitializer):
                 continue
             if relation_types_counter[predicate] == self.facts_limit:
                 continue
-            if self.relationships is not None and predicate not in self.relationships:
+            if self.relation_types is not None and predicate not in self.relation_types:
+                continue
+            if subject in testing_resources:
                 continue
 
             # maintain a dict for each entity with given relations as key
@@ -282,7 +280,7 @@ class WikipediaPatternExtractor(ConfigInitializer):
 
     def count_matches(self):
         matches_count = {}
-        for relation, pattern in self.relation_patterns.iteritems():
+        for relation, pattern in self.relation_type_patterns.iteritems():
             matches_count[relation] = pattern.covered_sentences
         return matches_count
 
@@ -292,8 +290,8 @@ class WikipediaPatternExtractor(ConfigInitializer):
         """
         matched_count = self.count_matches()
         total_count = {}
-        for entity, relationships in self.dbpedia.iteritems():
-            for relation, values in relationships.iteritems():
+        for entity, relation_types in self.dbpedia.iteritems():
+            for relation, values in relation_types.iteritems():
                 target_resources = values.get('resources', [])
                 total_count.setdefault(relation, 0)
                 total_count[relation] += len(target_resources)
@@ -318,27 +316,16 @@ class WikipediaPatternExtractor(ConfigInitializer):
         for entity, relations in tqdm(self.dbpedia.iteritems()):
             for rel, values in relations.iteritems():
                 for pattern in values['patterns']:
-                    if rel in self.relation_patterns:
-                        self.relation_patterns[rel] = Pattern.merge(self.relation_patterns[rel], pattern,
-                                                                    self.perform_tests)
+                    if rel in self.relation_type_patterns:
+                        self.relation_type_patterns[rel] = Pattern._merge(self.relation_type_patterns[rel], pattern,
+                                                                         self.perform_tests)
                     else:
-                        self.relation_patterns[rel] = pattern
+                        self.relation_type_patterns[rel] = pattern
         self.logger.print_done('Pattern merging completed.')
 
-    def clean_patterns(self):
-        self.logger.print_info('Pattern cleaning...')
-        for relation, pattern in tqdm(self.relation_patterns.iteritems()):
-            self.relation_patterns[relation] = Pattern.clean_pattern(pattern,
-                                                                     self.least_threshold_words,
-                                                                     self.least_threshold_types)
-        self.relation_patterns = dict(filter(lambda (rel, pat): pat is not None, self.relation_patterns.iteritems()))
-        self.logger.print_done('Pattern cleaning completed.')
-
     def save_patterns(self):
-        print('\n\nPattern saving...')
-        with open(self.write_path, 'wb') as fout:
-            output = self.dbpedia.keys(), self.relation_patterns
-            pickle.dump(output, fout, pickle.HIGHEST_PROTOCOL)
+        self.training_resources = self.dbpedia.keys()
+        super(WikipediaPatternExtractor, self).save_patterns()
 
 
 if __name__ == '__main__':
@@ -352,7 +339,6 @@ if __name__ == '__main__':
     wiki_pattern_extractor.print_occurences()
 
     wiki_pattern_extractor.merge_patterns()
-    wiki_pattern_extractor.clean_patterns()
     wiki_pattern_extractor.save_patterns()
 
     # calculate occured facts coverage

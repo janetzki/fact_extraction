@@ -1,5 +1,4 @@
 import imp
-from tqdm import tqdm
 from collections import Counter
 
 config_initializer = imp.load_source('config_initializer', '../config_initializer/config_initializer.py')
@@ -16,24 +15,18 @@ from logger import Logger
 
 
 class PatternTester(ConfigInitializer):
-    def __init__(self, facts_limit, randomize=False, fact_extractor=None,
-                 ground_truth_path='../data/ground_truth.ttl'):
+    def __init__(self, facts_limit, randomize=False, ground_truth_path='../data/ground_truth.ttl'):
         self.facts_limit = facts_limit
         self.randomize = randomize
         self.ttl_parser = TTLParser(ground_truth_path, randomize)
         self.logger = Logger.from_config_file()
         self.results = {}
+        self.fact_extractor = None
 
-        # count known, right and wrong facts for each relationship
+        # count known, right and wrong facts for each relation_type
         self.known_facts_counter = Counter()
         self.right_facts_counter = Counter()
         self.wrong_facts_counter = Counter()
-
-        if fact_extractor is not None:
-            self.fact_extractor = fact_extractor
-        else:
-            self.fact_extractor = FactExtractor.from_config_file()
-            self.fact_extractor.set_print_interim_results(False)
 
     @classmethod
     def from_config_file(cls):
@@ -43,9 +36,12 @@ class PatternTester(ConfigInitializer):
         return cls(facts_limit, randomize)
 
     def _collect_testing_facts(self):
-        training_resources = self.fact_extractor.training_resources
-        training_relations = self.fact_extractor.training_relationships
+        if self.fact_extractor is None:
+            self.fact_extractor = FactExtractor.from_config_file()
+            self.fact_extractor.set_print_interim_results(False)
 
+        training_resources = self.fact_extractor.training_resources
+        training_relations = self.fact_extractor.training_relation_types
         entities = dict()
         fact_counter = 0
 
@@ -53,8 +49,10 @@ class PatternTester(ConfigInitializer):
         for subject, predicate, object in self.ttl_parser.yield_entries():
             if fact_counter == self.facts_limit * len(training_relations):
                 break
-            # if subject in training_resources:  # TODO: issue #73
-            #     continue
+            if subject in training_resources:
+                self.logger.print_error(
+                    'Resource: "' + subject + '" was already used for training and thus won\'t be used for testing')
+                continue
             if predicate not in training_relations:
                 continue
             if self.known_facts_counter[predicate] == self.facts_limit:
@@ -67,6 +65,9 @@ class PatternTester(ConfigInitializer):
             fact_counter += 1
 
         return entities
+
+    def get_testing_resources(self):
+        return set([subject for subject, predicate, object in self.ttl_parser.yield_entries()])
 
     def test_patterns(self):
         test_entities = self._collect_testing_facts()
@@ -107,12 +108,12 @@ class PatternTester(ConfigInitializer):
         return precision, recall, f_measure
 
     def print_results(self):
-        for relationship in self.fact_extractor.training_relationships:
-            total = self.known_facts_counter[relationship]
-            right = self.right_facts_counter[relationship]
-            wrong = self.wrong_facts_counter[relationship]
+        for relation_type in self.fact_extractor.training_relation_types:
+            total = self.known_facts_counter[relation_type]
+            right = self.right_facts_counter[relation_type]
+            wrong = self.wrong_facts_counter[relation_type]
             precision, recall, f_measure = PatternTester._calculate_precision_recall_and_f_measure(total, right, wrong)
-            print(relationship + ' Known facts:' + str(total) + ' Right:' + str(right) + ' Wrong:' + str(wrong)
+            print(relation_type + ' Known facts:' + str(total) + ' Right:' + str(right) + ' Wrong:' + str(wrong)
                   + ' Precision:' + str(precision) + ' Recall:' + str(recall) + ' F-Measure:' + str(f_measure))
 
 

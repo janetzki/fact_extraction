@@ -2,6 +2,7 @@ from __future__ import division
 from enum import Enum
 from ppretty import ppretty
 from itertools import dropwhile
+from collections import Counter
 import copy
 
 
@@ -32,7 +33,7 @@ class DependencyKey(object):
         return 'DependencyKey()'
 
     def __str__(self):
-        return '(' + self.meaning + ',' + str(self.direction) + ')'
+        return '(' + self.meaning + ', ' + str(self.direction) + ')'
 
     @staticmethod
     def direction(from_node, to_node, node_addr):
@@ -67,30 +68,30 @@ class DependencyKey(object):
 
 
 class DependencyNode(object):
-    def __init__(self, tag, word_frequencies, dependencies=None):
-        self.tag = tag
+    def __init__(self, word_frequencies, dependencies=None):
         self.word_frequencies = word_frequencies
         if dependencies is None:
             dependencies = {}
         self.dependencies = dependencies
 
     @classmethod
-    def from_word(cls, word, tag=None):
-        return cls(tag, {word: 1})
-
-    @staticmethod
-    def _merge_dictionaries(dict1, dict2):
-        return {word: dict1.get(word, 0) + dict2.get(word, 0) for word in set(dict1) | set(dict2)}
+    def from_word(cls, word):
+        return cls(Counter({word: 1}))
 
     @staticmethod
     def raw_merge(node1, node2):
-        tag = node1.tag  # TODO: improve this
-        word_frequencies = DependencyNode._merge_dictionaries(node1.word_frequencies, node2.word_frequencies)
+        word_frequencies = node1.word_frequencies + node2.word_frequencies
         dependencies = {}
-        return DependencyNode(tag, word_frequencies, dependencies)
+        return DependencyNode(word_frequencies, dependencies)
+
+    @staticmethod
+    def raw_intersect(node1, node2):
+        word_frequencies = node1.word_frequencies & node2.word_frequencies
+        dependencies = {}
+        return DependencyNode(word_frequencies, dependencies)
 
     def add_word(self, word):
-        self.word_frequencies = DependencyNode._merge_dictionaries(self.word_frequencies, {word: 1})
+        self.word_frequencies[word] += 1
 
 
 class Pattern(object):
@@ -114,20 +115,20 @@ class Pattern(object):
                        show_properties=True, show_address=True)
 
     def add_word_to_node_or_create_node(self, node_addr, word):
-        if node_addr in self.nodes_keys():
+        if node_addr in self.nodes:
             self.nodes[node_addr].add_word(word)
         else:
             self.nodes[node_addr] = DependencyNode.from_word(word)
 
     def add_dependency_to_node(self, node_addr, key, value):
-        assert node_addr in self.nodes_keys()
+        assert node_addr in self.nodes.keys()
         dependencies = self.nodes[node_addr].dependencies
         if key not in dependencies.keys():
             dependencies[key] = value
         return dependencies[key]
 
-    def get_node_by_id(self, id):
-        return self.nodes[id]
+    def root_node(self):
+        return self.nodes[self.root]
 
     def calculate_diversity_measure(self):
         """
@@ -137,12 +138,11 @@ class Pattern(object):
         starting at the object are considered.
         """
         num_sentences = self.covered_sentences
-        print(num_sentences)
-        root_node = self.nodes[self.root]
-        if not root_node.dependencies:
+        # print(num_sentences)
+        if not self.root_node().dependencies:
             return 0.0
         word_counts = []
-        for rel, node_id in root_node.dependencies.iteritems():
+        for rel, node_id in self.root_node().dependencies.iteritems():
             if rel.meaning == 'compound':
                 continue
             node = self.nodes[node_id]
@@ -166,7 +166,7 @@ class Pattern(object):
             into_nodes[new_node_addr].dependencies[dep] = future_node_addr
 
     @staticmethod
-    def merge_nodes(node1_addr, node2_addr, nodes1, nodes2, new_nodes):
+    def _merge_nodes(node1_addr, node2_addr, nodes1, nodes2, new_nodes):
         node1 = nodes1[node1_addr]
         node2 = nodes2[node2_addr]
         new_node = DependencyNode.raw_merge(node1, node2)
@@ -176,7 +176,7 @@ class Pattern(object):
         for dep1 in node1.dependencies.keys():
             future_node_addr = len(new_nodes)
             if dep1 in node2.dependencies.keys():
-                Pattern.merge_nodes(node1.dependencies[dep1], node2.dependencies[dep1], nodes1, nodes2, new_nodes)
+                Pattern._merge_nodes(node1.dependencies[dep1], node2.dependencies[dep1], nodes1, nodes2, new_nodes)
             else:
                 Pattern.insert_nodes(node1.dependencies[dep1], nodes1, new_nodes)
             new_nodes[new_node_addr].dependencies[dep1] = future_node_addr
@@ -195,7 +195,7 @@ class Pattern(object):
             return type_frequencies2
 
     @staticmethod
-    def merge(pattern1, pattern2, assert_valid=False):
+    def _merge(pattern1, pattern2, assert_valid=False):
         if assert_valid:
             pattern1.assert_is_tree()
             pattern2.assert_is_tree()
@@ -207,10 +207,9 @@ class Pattern(object):
                                                                       pattern2.object_type_frequencies)
         new_relative_position = (pattern1.covered_sentences * pattern1.relative_position +
                                  pattern2.covered_sentences * pattern2.relative_position) / new_covered_sentences
-        # assert self.nodes[self.root].tag == pattern.nodes[pattern.root].tag
 
         new_nodes = {}
-        Pattern.merge_nodes(pattern1.root, pattern2.root, pattern1.nodes, pattern2.nodes, new_nodes)
+        Pattern._merge_nodes(pattern1.root, pattern2.root, pattern1.nodes, pattern2.nodes, new_nodes)
         new_pattern = Pattern(new_relative_position, 0, new_subject_type_frequencies, new_object_type_frequencies,
                               new_nodes, new_covered_sentences)
 
@@ -222,13 +221,40 @@ class Pattern(object):
 
         return new_pattern
 
-    def nodes_keys(self):
-        if type(self.nodes) is dict:
-            return self.nodes.keys()
-        elif type(self.nodes) is list:
-            return range(len(self.nodes))
-        else:
-            assert False
+    @staticmethod
+    def _intersect_nodes(node1_addr, node2_addr, nodes1, nodes2, new_nodes):
+        node1 = nodes1[node1_addr]
+        node2 = nodes2[node2_addr]
+        current_node_addr = len(new_nodes) - 1
+
+        for dep2 in node2.dependencies.keys():
+            if dep2 not in node1.dependencies.keys():
+                continue
+
+            child1_addr, child2_addr = node1.dependencies[dep2], node2.dependencies[dep2]
+            child1, child2 = nodes1[child1_addr], nodes2[child2_addr]
+            new_node = DependencyNode.raw_intersect(child1, child2)
+            if len(new_node.word_frequencies) == 0:
+                continue
+
+            new_node_addr = len(new_nodes)
+            new_nodes[new_node_addr] = new_node
+            Pattern._intersect_nodes(node1.dependencies[dep2], node2.dependencies[dep2], nodes1, nodes2, new_nodes)
+            new_nodes[current_node_addr].dependencies[dep2] = new_node_addr
+
+    @staticmethod
+    def _intersect(pattern1, pattern2):
+        new_covered_sentences = min(pattern1.covered_sentences, pattern2.covered_sentences)
+        new_subject_type_frequencies = pattern1.subject_type_frequencies & pattern2.subject_type_frequencies
+        new_object_type_frequencies = pattern1.object_type_frequencies & pattern2.object_type_frequencies
+        new_relative_position = (pattern1.covered_sentences * pattern1.relative_position +
+                                 pattern2.covered_sentences * pattern2.relative_position) / new_covered_sentences
+
+        new_nodes = {0: DependencyNode.raw_intersect(pattern1.root_node(), pattern2.root_node())}
+        Pattern._intersect_nodes(pattern1.root, pattern2.root, pattern1.nodes, pattern2.nodes, new_nodes)
+        new_pattern = Pattern(new_relative_position, 0, new_subject_type_frequencies, new_object_type_frequencies,
+                              new_nodes, new_covered_sentences)
+        return new_pattern
 
     def assert_is_tree(self):
         visited, queue = set(), [self.root]
@@ -240,8 +266,8 @@ class Pattern(object):
             assert len(adjacent_addresses) == len(set(adjacent_addresses))  # forbid double edges
             queue.extend(adjacent_addresses)
 
-        assert visited == set(
-            self.nodes_keys())  # forbid unconnected nodes or dependencies that don't face from the root
+        assert visited == \
+               set(self.nodes.keys())  # forbid unconnected nodes or dependencies that don't face from the root
 
     def total_words_under_node(self, node_addr):
         node = self.nodes[node_addr]
@@ -250,10 +276,13 @@ class Pattern(object):
             total_words += self.total_words_under_node(partner)
         return total_words
 
+    def total_words(self):
+        return self.total_words_under_node(self.root)
+
     def total_words_under_node_with_max_freq(self, node_addr, max_freq):
         node = self.nodes[node_addr]
 
-        total_words = sum(filter(lambda x: x < max_freq, node.word_frequencies.itervalues()))
+        total_words = sum(v for k, v in node.word_frequencies.iteritems() if v < max_freq)
         for partner in node.dependencies.values():
             total_words += self.total_words_under_node_with_max_freq(partner, max_freq)
         return total_words
@@ -280,20 +309,34 @@ class Pattern(object):
         return type_frequencies
 
     @staticmethod  # static because pattern might be deleted
-    def clean_word_frequencies(pattern, least_threshold, node_addr=None):
+    def clean_nodes_statically(pattern, least_threshold, node_addr=None):
         if node_addr is None:
             node_addr = pattern.root
         node = pattern.nodes[node_addr]
-        node.word_frequencies = dict(filter(lambda (word, frequency): frequency >= least_threshold,
-                                            node.word_frequencies.iteritems()))
+        node.word_frequencies = Counter({k: v for k, v in node.word_frequencies.iteritems() if v >= least_threshold})
         if len(node.word_frequencies) == 0 and node_addr != pattern.root:
             pattern = Pattern._delete_node(pattern, node_addr)
         else:
             for dep, child_addr in node.dependencies.iteritems():
-                pattern = Pattern.clean_word_frequencies(pattern, least_threshold, child_addr)
+                pattern = Pattern.clean_nodes_statically(pattern, least_threshold, child_addr)
                 if child_addr not in pattern.nodes:
                     node.dependencies[dep] = None
             node.dependencies = dict(filter(lambda (dep, addr): addr is not None, node.dependencies.iteritems()))
+        return pattern
+
+    @staticmethod  # static because pattern might be deleted
+    def clean_nodes(pattern, least_threshold_words):
+        pattern.root_node().word_frequencies = {}
+        if least_threshold_words < 1:
+            lower_bound = pattern.total_words(pattern) * least_threshold_words
+            least_threshold_words = 2
+            while lower_bound <= (
+                pattern.total_words(pattern) - pattern.total_words_under_node_with_max_freq(pattern.root,
+                                                                                            least_threshold_words)):
+                pattern = Pattern.clean_nodes_statically(pattern, least_threshold_words)
+                least_threshold_words += 1
+        else:
+            pattern = Pattern.clean_nodes_statically(pattern, least_threshold_words)
         return pattern
 
     @staticmethod  # static because pattern might be deleted
@@ -302,18 +345,7 @@ class Pattern(object):
                                                                           least_threshold_types)
         pattern.object_type_frequencies = Pattern.clean_type_frequencies(pattern.object_type_frequencies,
                                                                          least_threshold_types)
-
-        if least_threshold_words < 1:
-            lower_bound = pattern.total_words_under_node(pattern.root) * least_threshold_words
-            least_threshold_words = 2
-            while lower_bound <= (pattern.total_words_under_node(pattern.root) -
-                                      pattern.total_words_under_node_with_max_freq(pattern.root,
-                                                                                   least_threshold_words)):
-                pattern = Pattern.clean_word_frequencies(pattern, least_threshold_words)
-                least_threshold_words += 1
-        else:
-            pattern = Pattern.clean_word_frequencies(pattern, least_threshold_words)
-
+        pattern = Pattern.clean_nodes(pattern, least_threshold_words)
         return pattern
 
     @staticmethod
@@ -364,6 +396,15 @@ class Pattern(object):
                * Pattern._match_pattern_nodes_unidirectional(pattern2, pattern2.root, pattern1, pattern1.root)
 
     @staticmethod
+    def _compute_pattern_intersection_score(pattern1, pattern2):
+        intersection = Pattern._intersect(pattern1, pattern2)
+        words1, words2, words_intersection = pattern1.total_words(), pattern2.total_words(), intersection.total_words()
+        avg_words1 = words1 / pattern1.covered_sentences
+        avg_words2 = words2 / pattern2.covered_sentences
+        avg_words_intersection = words_intersection / intersection.covered_sentences
+        return (avg_words_intersection / avg_words1) * (avg_words_intersection / avg_words2)
+
+    @staticmethod
     def _weighted_arithmetic_mean(data, weights):
         # TODO: Wold geometric mean be more appropriate?
         assert len(data) == len(weights)
@@ -400,7 +441,7 @@ class Pattern(object):
                                                                 except_second_empty)
             if object_type_score == 0:
                 return 0
-            node_score = Pattern._match_pattern_nodes_bidirectional(pattern1, pattern2)
+            node_score = Pattern._compute_pattern_intersection_score(pattern1, pattern2)
             scores = [subject_type_score, object_type_score, node_score]
             weights = [0.25, 0.25, 0.5]
             return Pattern._weighted_arithmetic_mean(scores, weights)

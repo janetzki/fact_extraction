@@ -59,10 +59,12 @@ class WikipediaConnector(object):
         html = self.get_wikipedia_article_html(dbpedia_resource)
         return WikipediaConnector._make_html_to_tagged_sentences(html, sought_wiki_resources)
 
-    def test(self, resource):
-        self.get_filtered_wikipedia_article(resource)
+
+def test(wikipedia_connector, resource):
+    wikipedia_connector.get_filtered_wikipedia_article(resource)
 
 
 if __name__ == '__main__':
     wikipedia_connector = WikipediaConnector(use_dump=True)
-    wikipedia_connector.test('Alexander_I_of_Serbia')
+    test(wikipedia_connector, 'Alexander_I_of_Serbia')
+    test(wikipedia_connector, 'Andrew Wiles')

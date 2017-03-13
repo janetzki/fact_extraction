@@ -1,15 +1,9 @@
-#!/usr/bin/python
-# encoding=utf8
-
 from __future__ import division
-import pickle
-import imp
+from tqdm import tqdm
 from math import ceil
 from threading import Thread
 from itertools import islice
-
-config_initializer = imp.load_source('config_initializer', '../config_initializer/config_initializer.py')
-from config_initializer import ConfigInitializer
+import imp
 
 pattern_extractor = imp.load_source('pattern_extractor', '../pattern_learning/pattern_extractor.py')
 from pattern_extractor import PatternExtractor, Pattern
@@ -20,37 +14,32 @@ from wikipedia_connector import WikipediaConnector, TaggedSentence
 ttl_parser = imp.load_source('ttl_parser', '../ttl_parsing/ttl_parser.py')
 from ttl_parser import TTLParser
 
-logger = imp.load_source('logger', '../logging/logger.py')
-from logger import Logger
+pattern_tool = imp.load_source('pattern_tool', '../pattern_tool/pattern_tool.py')
+from pattern_tool import PatternTool
 
 uri_rewriting = imp.load_source('uri_rewriting', '../helper_functions/uri_rewriting.py')
 
 
-class FactExtractor(ConfigInitializer):
+class FactExtractor(PatternTool):
     def __init__(self, articles_limit, use_dump=False, randomize=False, match_threshold=0.005, type_matching=True,
-                 allow_unknown_entity_types=True, print_interim_results=True,
-                 pattern_path='../data/patterns.pkl',
+                 allow_unknown_entity_types=True, print_interim_results=True, threads=4,
                  resources_path='../data/mappingbased_objects_en.ttl',
-                 threads=4):
+                 patterns_input_path='../data/patterns_cleaned.pkl'):
+        super(FactExtractor, self).__init__(patterns_input_path)
         self.articles_limit = articles_limit
         self.use_dump = use_dump
         self.allow_unknown_entity_types = allow_unknown_entity_types
         self.match_threshold = match_threshold
         self.type_matching = type_matching
-        self.pattern_path = pattern_path
         self.ttl_parser = TTLParser(resources_path, randomize)
         self.wikipedia_connector = WikipediaConnector(self.use_dump)
         self.pattern_extractor = PatternExtractor()
         self.print_interim_results = print_interim_results
-        self.logger = Logger.from_config_file()
-        self.training_resources = set()
         self.discovery_resources = set()
-        self.relation_patterns = {}
         self.extracted_facts = []
         self.threads = threads
 
-        self._load_patterns()
-        self._make_pattern_types_transitive()
+        # self._make_pattern_types_transitive()
         self._load_discovery_resources()
 
     @classmethod
@@ -64,18 +53,12 @@ class FactExtractor(ConfigInitializer):
         num_of_treads = config_parser.getint('fact_extractor', 'threads')
         return cls(articles_limit, use_dump, randomize, match_threshold, type_matching)
 
-    def _load_patterns(self):
-        with open(self.pattern_path, 'rb') as fin:
-            self.training_resources, self.relation_patterns = pickle.load(fin)
-
     def _make_pattern_types_transitive(self):
-        for relation, pattern in self.relation_patterns.iteritems():
+        for relation, pattern in self.relation_type_patterns.iteritems():
             pattern.subject_type_frequencies = self.pattern_extractor \
                 .get_transitive_types(pattern.subject_type_frequencies)
             pattern.object_type_frequencies = self.pattern_extractor \
                 .get_transitive_types(pattern.object_type_frequencies)
-            # print pattern.subject_type_frequencies
-            # print pattern.object_type_frequencies
 
     def _load_discovery_resources(self):
         article_counter = 0
@@ -89,10 +72,10 @@ class FactExtractor(ConfigInitializer):
                 article_counter += 1
         self.logger.print_done('Collecting entities for fact extraction completed')
 
-    def _match_pattern_against_relation_patterns(self, pattern, reasonable_relations):
+    def _match_pattern_against_relation_type_patterns(self, pattern, reasonable_relations):
         matching_relations = []
         for relation in reasonable_relations:
-            relation_pattern = self.relation_patterns[relation]
+            relation_pattern = self.relation_type_patterns[relation]
             match_score = Pattern.match_patterns(relation_pattern, pattern, self.type_matching,
                                                  self.allow_unknown_entity_types)
             if match_score >= self.match_threshold:
@@ -117,10 +100,10 @@ class FactExtractor(ConfigInitializer):
     def _get_specific_type_frequencies(self, subject_or_object):
         if subject_or_object == 'subject':
             return {relation: pattern.subject_type_frequencies for relation, pattern in
-                    self.relation_patterns.iteritems()}
+                    self.relation_type_patterns.iteritems()}
         elif subject_or_object == 'object':
             return {relation: pattern.object_type_frequencies for relation, pattern in
-                    self.relation_patterns.iteritems()}
+                    self.relation_type_patterns.iteritems()}
         else:
             assert False
 
@@ -137,7 +120,6 @@ class FactExtractor(ConfigInitializer):
             nl_sentence = sentence.as_string()
             object_addresses_of_links = sentence.addresses_of_dbpedia_links()
             for object_link, object_addresses in object_addresses_of_links.iteritems():
-
                 object_entity = uri_rewriting.strip_name(object_link)
                 if self.type_matching:
                     reasonable_relations_for_object = self._filter_reasonable_relations(object_entity,
@@ -145,7 +127,7 @@ class FactExtractor(ConfigInitializer):
                                                                                             'object'))
                     reasonable_relations = reasonable_relations_for_subject & reasonable_relations_for_object
                 else:
-                    reasonable_relations = self.relation_patterns
+                    reasonable_relations = self.relation_type_patterns
 
                 if not len(reasonable_relations):
                     continue
@@ -155,7 +137,7 @@ class FactExtractor(ConfigInitializer):
                 if pattern is None:
                     continue
 
-                matching_relations = self._match_pattern_against_relation_patterns(pattern, reasonable_relations)
+                matching_relations = self._match_pattern_against_relation_type_patterns(pattern, reasonable_relations)
                 new_facts = [(rel, object_link, score, nl_sentence) for (rel, score) in matching_relations]
                 facts.extend(new_facts)
 
@@ -221,39 +203,14 @@ class FactExtractor(ConfigInitializer):
             print(fact)
 
     @property
-    def training_relationships(self):
-        return self.relation_patterns.keys()
+    def training_relation_types(self):
+        return self.relation_type_patterns.keys()
 
     def set_print_interim_results(self, boolean):
         self.print_interim_results = boolean
 
 
-def test(fact_extractor):
-    print(fact_extractor.extract_facts_from_html(
-        'He recently became a professor at the <a href="/wiki/Massachusetts_Institute_of_Technology">MIT</a>.',
-        'John Doe'))
-    print(fact_extractor.extract_facts_from_html(
-        'Merkel was educated in Templin and at the <a href="/wiki/University_of_Leipzig" class="mw-redirect" title="University of Leipzig">University of Leipzig</a>, where she studied <a href="/wiki/Physics" title="Physics">physics</a> from 1973 to 1978.',
-        'Angela Merkel'))
-    print(fact_extractor.extract_facts_from_html(
-        'He loves <a href="/wiki/Pyrotechnic">pyrotechnic</a>.',
-        'Me'))
-    print(fact_extractor.extract_facts_from_html(
-        'Some person was born in <a href="/wiki/Braunschweig">Braunschweig</a>.',
-        'Me'))
-    print(fact_extractor.extract_facts_from_html(
-        'Irma Raush was born in <a href="/wiki/Saratov">Saratov</a> on 21 April 1938 into a Volga German family.',
-        'Irma Raush'))
-    print(fact_extractor.extract_facts_from_html(
-        'Born Elinor Isabel Judefind in <a href="/wiki/Baltimore" class="mw-redirect" title="Baltimore, Maryland">Baltimore, Maryland</a> , to parents of French-German descent , Agnew was daughter of William Lee Judefind , a <a href="/wiki/Chemist">chemist</a> , and his wife , the former Ruth Elinor Schafer . ',
-        'Judy Agnew'))
-    print(fact_extractor.extract_facts_from_html(
-        'Her paternal grandfather was a <a href="/wiki/Methodism">Methodist</a> minister . ',
-        'Judy Agnew'))
-
-
 if __name__ == '__main__':
     fact_extractor = FactExtractor.from_config_file()
-    # test(fact_extractor)
     fact_extractor.extract_facts()
     fact_extractor.print_extracted_facts()
