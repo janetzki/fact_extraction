@@ -39,7 +39,7 @@ class TTLCleaner(object):
                 type = uri_rewriting.strip_cleaned_name(type)
 
                 assert self.delimiter not in subject and self.delimiter not in type
-                fout.write(subject + self.delimiter + type + '\n')
+                fout.write(subject.encode('utf-8') + self.delimiter.encode('utf-8') + type.encode('utf-8') + '\n')
 
 def clean_instance_types(path_types, path_types_cleaned):
     type_relation = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type'

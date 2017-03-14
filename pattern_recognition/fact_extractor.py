@@ -1,4 +1,8 @@
+from __future__ import division
 from tqdm import tqdm
+from math import ceil
+from threading import Thread
+from itertools import islice
 import imp
 
 pattern_extractor = imp.load_source('pattern_extractor', '../pattern_learning/pattern_extractor.py')
@@ -18,7 +22,7 @@ uri_rewriting = imp.load_source('uri_rewriting', '../helper_functions/uri_rewrit
 
 class FactExtractor(PatternTool):
     def __init__(self, articles_limit, use_dump=False, randomize=False, match_threshold=0.005, type_matching=True,
-                 allow_unknown_entity_types=True, print_interim_results=True,
+                 allow_unknown_entity_types=True, print_interim_results=True, threads=4,
                  resources_path='../data/mappingbased_objects_en.ttl',
                  patterns_input_path='../data/patterns_cleaned.pkl'):
         super(FactExtractor, self).__init__(patterns_input_path)
@@ -33,6 +37,7 @@ class FactExtractor(PatternTool):
         self.print_interim_results = print_interim_results
         self.discovery_resources = set()
         self.extracted_facts = []
+        self.threads = threads
 
         # self._make_pattern_types_transitive()
         self._load_discovery_resources()
@@ -45,6 +50,7 @@ class FactExtractor(PatternTool):
         articles_limit = config_parser.getint('fact_extractor', 'articles_limit')
         match_threshold = config_parser.getfloat('fact_extractor', 'match_threshold')
         type_matching = config_parser.getboolean('fact_extractor', 'type_matching')
+        num_of_treads = config_parser.getint('fact_extractor', 'threads')
         return cls(articles_limit, use_dump, randomize, match_threshold, type_matching)
 
     def _make_pattern_types_transitive(self):
@@ -107,7 +113,7 @@ class FactExtractor(PatternTool):
             reasonable_relations_for_subject = self._filter_reasonable_relations(subject_entity,
                                                                                  self._get_specific_type_frequencies(
                                                                                      'subject'))
-        for sentence in tqdm(sentences, total=len(sentences)):
+        for sentence in sentences:
             if sentence.number_of_tokens() > 50:
                 continue  # probably too long for stanford tokenizer
             relative_position = sentence.relative_pos
@@ -152,17 +158,43 @@ class FactExtractor(PatternTool):
         facts = [(resource, rel, obj, score, nl_sentence) for (rel, obj, score, nl_sentence) in facts]
         return facts
 
-    def extract_facts_from_resource(self, resource):
-        wikipedia_resource = uri_rewriting.convert_to_wikipedia_uri(resource)
-        self.logger.print_info('--- ' + wikipedia_resource + ' ----')
-        html = self.wikipedia_connector.get_wikipedia_article_html(resource)
-        return self.extract_facts_from_html(html, resource)
+    def extract_facts_from_resource(self, chunk=None):
+        self.logger.print_info('--- start fact extraction thread ----')
+        if chunk is None:
+            chunk = {}
+        facts = []
+        for resource in chunk:
+            wikipedia_resource = uri_rewriting.convert_to_wikipedia_uri(resource)
+            self.logger.print_info('--- ' + wikipedia_resource + ' ----')
+            html = self.wikipedia_connector.get_wikipedia_article_html(resource)
+            temp =  self.extract_facts_from_html(html, resource)
+            if temp:
+                facts.append(temp)
+        if facts:
+            self.extracted_facts.extend(facts)
+
+    def _chunks(self, data, size=10000):
+        """Yield successive n-sized chunks from l."""
+        for i in range(0, len(data), size):
+            yield data[i:i + size]
 
     def extract_facts(self):
         self.logger.print_info('Fact extraction...')
-        for resource in self.discovery_resources:
-            self.extracted_facts.extend(self.extract_facts_from_resource(resource))
-        self.extracted_facts.sort(key=lambda fact: fact[3], reverse=True)
+        chunk_size = int(ceil(len(self.discovery_resources) / self.threads))
+        threads = []
+        # gather resources for each thread
+        for chunk in self._chunks(list(self.discovery_resources), chunk_size):
+            t = Thread(target=self.extract_facts_from_resource, kwargs={'chunk': chunk})
+            threads.append(t)
+            # start all threads
+        for t in threads:
+            t.start()
+        # wait for all threads to finish
+        for t in threads:
+            t.join()
+        print(self.extracted_facts)
+        if self.extracted_facts:
+            self.extracted_facts.sort(key=lambda fact: fact[0][3], reverse=True)
         self.logger.print_done('Fact extraction completed')
 
     def print_extracted_facts(self):

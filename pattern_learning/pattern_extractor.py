@@ -1,5 +1,6 @@
 import imp
 import os
+from collections import Counter
 
 from nltk.parse.stanford import StanfordDependencyParser
 
@@ -57,8 +58,8 @@ class PatternExtractor(object):
         return graph
 
     @staticmethod
-    def _build_pattern(parse, graph, object_address, relative_position, depth, strong_relations, subject_types=None,
-                       object_types=None):
+    def _build_pattern(parse, graph, object_address, relative_position, depth, strong_relations, subject_types,
+                       object_types):
         new_pattern = Pattern(relative_position, object_address, subject_types, object_types)
         visited, queue = set(), [object_address]
         distances = {k: float('inf') for k in parse.nodes.keys()}
@@ -137,8 +138,8 @@ class PatternExtractor(object):
             subject_types = self.instance_types.count_types(subject_entity)
             object_types = self.instance_types.count_types(object_entity)
         else:
-            subject_types = None
-            object_types = None
+            subject_types = Counter()
+            object_types = Counter()
 
         strong_relations = ['xcmp', 'auxpass']
         return PatternExtractor._build_pattern(parse, graph, object_address, relative_position, depth, strong_relations,
