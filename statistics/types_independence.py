@@ -2,6 +2,8 @@ from __future__ import print_function
 import imp
 import operator
 import time
+import pandas as pd
+import matplotlib.pyplot as plt
 from collections import Counter
 from tqdm import tqdm
 import unicodecsv
@@ -18,11 +20,13 @@ from logger import Logger
 uri_rewriting = imp.load_source('uri_rewriting', '../helper_functions/uri_rewriting.py')
 line_counting = imp.load_source('line_counting', '../helper_functions/line_counting.py')
 
+
 class StatisticGenerator(object):
 
     def __init__(self, resources_path='../data/mappingbased_objects_en.ttl', facts_limit=100000):
-        self.instance_types = EntityTypes(types_paths=["../data/types_en.csv"], types_index=False,
-                 types_indexed_file=False)
+        # self.instance_types = EntityTypes(types_paths=["../data/types_en.csv"], types_index=False,
+        #          types_indexed_file=False)
+        self.instance_types = EntityTypes()
         self.resources_path = resources_path
         self.ttl_parser = TTLParser(resources_path, False)
         self.logger = Logger.from_config_file()
@@ -47,10 +51,58 @@ class StatisticGenerator(object):
 
             self.predicates.setdefault(predicate, {}).setdefault(subject, []).append(object)
 
-    def test_types_independence(self, expectation_threshold = 10, ):
+    def count_types(self):
+        subject_counts = []
+        object_counts = []
+        has_both = 0
+        has_exact_one = 0
+        has_nothing = 0
+        facts = 0
+        outlier_threshold = 100
+
+        for predicate in tqdm(self.predicates, total=len(self.predicates)):
+            for subject in self.predicates[predicate]:
+                subject_types = self.instance_types.get_types(subject)
+
+                for object in self.predicates[predicate][subject]:
+                    object_types = self.instance_types.get_types(object)
+
+                    facts += 1
+                    if subject_types:
+                        if len(subject_types) < outlier_threshold:
+                            subject_counts.append(len(subject_types))
+                    if object_types:
+                        if len(object_types) < outlier_threshold:
+                            object_counts.append(len(object_types))
+                    if subject_types and object_types:
+                        has_both += 1
+                    if not subject_types and not object_types:
+                        has_nothing += 1
+                    if (len(subject_types) > 0) ^ (len(object_types) > 0):
+                        has_exact_one += 1
+
+        subject_counts = pd.Series(subject_counts)
+        #subject_counts.plot.hist(bins=100)
+        #plt.show()
+        object_counts = pd.Series(object_counts)
+        #object_counts.plot.hist(bins=100)
+        #plt.show()
+        self.logger.print_info('Facts: ' + str(facts))
+        self.logger.print_info('With subject type: ' + str(subject_counts.count()))
+        self.logger.print_info('Mean subject type count: ' + str(subject_counts.mean()))
+        self.logger.print_info('Standard deviation subject type count: ' + str(subject_counts.std()))
+        self.logger.print_info('With object type: ' + str(object_counts.count()))
+        self.logger.print_info('Mean object type count: ' + str(object_counts.mean()))
+        self.logger.print_info('Standard deviation object type count: ' + str(object_counts.std()))
+        self.logger.print_info('Both with type(s): ' + str(has_both))
+        self.logger.print_info('Exact one with type(s): ' + str(has_exact_one))
+        self.logger.print_info('None with type(s): ' + str(has_nothing))
+
+    def test_types_independence(self, expectation_threshold = 10):
         variances = {}
         total_included_count = 0
         sum_avg_variance = 0
+        empty_token = '#empty'
 
         self.logger.print_info('Collecting subject and object types for each predicate and calculating independence score...')
         for predicate in tqdm(self.predicates, total=len(self.predicates)):
@@ -59,9 +111,10 @@ class StatisticGenerator(object):
             predicate_object_types = Counter()
             combinations = Counter()
             for subject in self.predicates[predicate]:
-                subject_types = self.instance_types.get_types(subject)
+                subject_types = self.instance_types.get_types(subject).append(empty_token)
                 for object in self.predicates[predicate][subject]:
-                    # optional check for occurrence in Wikipedia article
+                    # TODO: check for occurrence in Wikipedia article
+                    # TODO: exclude double underscores
                     predicate_count += 1
                     object_types = self.instance_types.get_types(object)
                     predicate_subject_types.update(subject_types)
@@ -94,34 +147,8 @@ class StatisticGenerator(object):
     @staticmethod
     def calculate_independence_score(facts_count, subject_types, object_types, combinations, expectation_threshold):
         sum_rel_variance = 0
-
-        # # kick out combinations with expected counts less than threshold
-        # for combination, observed_count in combinations.most_common():
-        #     subject, object = combination
-        #     expected_count = float(subject_types[subject] * object_types[object]) / facts_count
-        #     if expected_count >= threshold:
-        #         filtered_combinations.update({combination: observed_count})
-        #         expected_total += expected_count
-        #     else:
-        #         subject_types.subtract({subject: observed_count})
-        #         object_types.subtract({object: observed_count})
-        #
-        # for combination, observed_count in filtered_combinations.most_common():
-        #     subject, object = combination
-        #     expected_count = float(subject_types[subject] * object_types[object]) / facts_count
-        #     assert expected_count >= threshold
-        #     expected_total += expected_count
-
-
-        # avg_count = combination_count / float(unique_combination_count)
-        # print "Average count per combination: ", avg_count
-
-        # observed_total = sum(combinations.values())
-        # print(combinations)
-        # print(subject_types)
-        # print(object_types)
-        # combination_count = len(list(combinations))
         included_combination_count = 0
+
         for combination, observed_count in combinations.most_common():
             subject, object = combination
             expected_count = float(subject_types[subject] * object_types[object]) / facts_count
@@ -136,10 +163,14 @@ class StatisticGenerator(object):
         return sum_rel_variance / included_combination_count
 
 if __name__ == '__main__':
-    limits = [100000, 1000000, 5000000, 8000000]
-    thresholds = [1, 2, 3, 5, 8, 10, 15]
     statistic_generator = StatisticGenerator()
-    for l in limits:
-        statistic_generator.collect_predicates(facts_limit=l)
-        for t in thresholds:
-            statistic_generator.test_types_independence(expectation_threshold=t)
+
+    # limits = [100000, 1000000, 5000000, 8000000]
+    # thresholds = [1, 2, 3, 5, 8, 10, 15]
+    # for l in limits:
+    #     statistic_generator.collect_predicates(facts_limit=l)
+    #     for t in thresholds:
+    #         statistic_generator.test_types_independence(expectation_threshold=t)
+
+    statistic_generator.collect_predicates(facts_limit=1000000)
+    statistic_generator.count_types()

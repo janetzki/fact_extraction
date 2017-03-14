@@ -73,8 +73,7 @@ class EntityTypes(object):
                             line = self.types_indexed_file.readline()
                             values = line.replace("\n", '').split(self.delimiter)
                             if not len(values) == 2:
-                                print line
-                                assert False
+                                break
                             entity_name, entity_type = values
                             if not entity == entity_name:
                                 break
