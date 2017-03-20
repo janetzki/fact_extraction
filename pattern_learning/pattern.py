@@ -328,10 +328,10 @@ class Pattern(object):
     def clean_nodes(pattern, least_threshold_words):
         pattern.root_node().word_frequencies = {}
         if least_threshold_words < 1:
-            lower_bound = pattern.total_words(pattern) * least_threshold_words
+            lower_bound = pattern.total_words() * least_threshold_words
             least_threshold_words = 2
             while lower_bound <= (
-                        pattern.total_words(pattern) - pattern.total_words_under_node_with_max_freq(pattern.root,
+                        pattern.total_words() - pattern.total_words_under_node_with_max_freq(pattern.root,
                                                                                                     least_threshold_words)):
                 pattern = Pattern.clean_nodes_statically(pattern, least_threshold_words)
                 least_threshold_words += 1
