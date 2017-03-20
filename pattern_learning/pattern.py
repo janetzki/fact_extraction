@@ -331,8 +331,8 @@ class Pattern(object):
             lower_bound = pattern.total_words(pattern) * least_threshold_words
             least_threshold_words = 2
             while lower_bound <= (
-                pattern.total_words(pattern) - pattern.total_words_under_node_with_max_freq(pattern.root,
-                                                                                            least_threshold_words)):
+                        pattern.total_words(pattern) - pattern.total_words_under_node_with_max_freq(pattern.root,
+                                                                                                    least_threshold_words)):
                 pattern = Pattern.clean_nodes_statically(pattern, least_threshold_words)
                 least_threshold_words += 1
         else:
@@ -349,10 +349,9 @@ class Pattern(object):
         return pattern
 
     @staticmethod
-    def _match_type_frequencies(type_frequencies1, type_frequencies2, except_second_empty=False):
+    def _match_type_frequencies_unidirectional(type_frequencies1, type_frequencies2, except_second_empty=False):
         '''
-        assume that type_frequencies2 contains at most 1 type
-        calculate which ratio this type has in type_frequencies1
+        calculate which summed ratio types in type_frequency2 have in type_frequencies1
         :return:    between 0.0 and 1.0
         '''
         if len(type_frequencies2) == 0:
@@ -360,12 +359,29 @@ class Pattern(object):
                 return None  # new objects with no type shall not be penalized
             else:
                 return 0
+        frequency_sum = sum(type_frequencies1.values())
+        ratio_sum = 0
 
-        assert len(type_frequencies2) == 1
-        type = type_frequencies2.keys()[0]
-        type_amount = type_frequencies1[type]
-        total = sum(type_frequencies1.values())
-        return float(type_amount) / total
+        for type, count in type_frequencies2.items():
+            if type in type_frequencies1:
+                ratio_sum += float(type_frequencies1[type]) / frequency_sum
+        return ratio_sum
+
+    @staticmethod
+    def _match_type_frequencies(type_frequencies1, type_frequencies2, except_second_empty=False):
+        in_order = Pattern._match_type_frequencies_unidirectional(type_frequencies1, type_frequencies2, except_second_empty)
+        reversed_order = Pattern._match_type_frequencies_unidirectional(type_frequencies2, type_frequencies1, except_second_empty)
+        if in_order is None or reversed_order is None:
+            return None
+        return in_order * reversed_order
+
+    @staticmethod
+    def _match_relative_position(position1, position2):
+        '''
+        calculate the similarity of relative positions of sentences
+        :return: between 0.0 and 1.0
+        '''
+        return (1 - abs(position1 - position2)) ** 2
 
     @staticmethod
     def _match_pattern_nodes_unidirectional(pattern1, node1_addr, pattern2, node2_addr, weighting=None):
@@ -441,9 +457,20 @@ class Pattern(object):
                                                                 except_second_empty)
             if object_type_score == 0:
                 return 0
+            position_score = Pattern._match_relative_position(pattern1.relative_position, pattern2.relative_position)
             node_score = Pattern._compute_pattern_intersection_score(pattern1, pattern2)
-            scores = [subject_type_score, object_type_score, node_score]
-            weights = [0.25, 0.25, 0.5]
+            scores = [subject_type_score, object_type_score, position_score, node_score]
+            # print scores
+            weights = [0.25, 0.25, 0.10, 0.40]
             return Pattern._weighted_arithmetic_mean(scores, weights)
         else:
             return Pattern._match_pattern_nodes_bidirectional(pattern1, pattern2)
+
+if __name__ == '__main__':
+    test_freq1 = Counter('AAAAABBBC')
+    test_freq2 = Counter('CDEAAA')
+    print Pattern._match_type_frequencies(test_freq1,test_freq2)
+
+    pos1 = 0.9
+    pos2 = 1
+    print Pattern._match_relative_position(pos1, pos2)

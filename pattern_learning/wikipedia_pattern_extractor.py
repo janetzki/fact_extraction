@@ -71,7 +71,7 @@ class WikipediaPatternExtractor(PatternTool):
         type_learning = config_parser.getboolean(section, 'type_learning')
         relation_types = config_parser.get(section, 'relation_types')
         relation_types = WikipediaPatternExtractor.split_string_list(relation_types)
-        threads = config_parser.getint('wiki_pattern', 'threads')
+        threads = config_parser.getint(section, 'threads')
         return cls(relation_types_limit, facts_limit, relation_types=relation_types, use_dump=use_dump,
                    randomize=randomize, threads=threads,
                    perform_tests=perform_tests, replace_redirects=replace_redirects, type_learning=type_learning)

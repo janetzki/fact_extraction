@@ -1,4 +1,4 @@
-import csv
+import unicodecsv as csv
 import operator
 import imp
 import io
@@ -43,7 +43,7 @@ class WikipediaDumpIndexCreator(object):
 
     def _create_filtered_index(self, source='../data/character_index.csv',
                                destination='../data/character_index_filtered.csv'):
-        with io.open(source, 'r', encoding='utf8') as fin_index, io.open(destination, 'w', encoding='utf8') as fout:
+        with io.open(source, 'rb') as fin_index, io.open(destination, 'w', encoding='utf8') as fout:
             total_lines_relations = line_counting.cached_counter.count_lines(self.path_relations)
             self.logger.print_info('Collecting important entities...')
             important_articles = set()
@@ -53,7 +53,7 @@ class WikipediaDumpIndexCreator(object):
 
             total_lines_index = line_counting.cached_counter.count_lines(source)
             self.logger.print_info('Filtering important entities...')
-            index_reader = csv.reader(fin_index, delimiter=self.delimiter)
+            index_reader = csv.reader(fin_index, delimiter=self.delimiter, encoding='utf-8', quoting=csv.QUOTE_NONE)
             for line in tqdm(index_reader, total=total_lines_index):
                 subject, character_offset = line
                 if subject in important_articles:
@@ -62,11 +62,11 @@ class WikipediaDumpIndexCreator(object):
     def _create_sorted_index(self, source='../data/character_index_filtered.csv',
                              destination='../data/character_index_sorted.csv'):
         """ for index lookup in O(log i) instead of O(i) with i as the size of the index """
-        with io.open(source, 'r', encoding='utf8') as fin, io.open(destination, 'w', encoding='utf8') as fout:
+        with io.open(source, 'rb') as fin, io.open(destination, 'w', encoding='utf8') as fout:
             total_lines = line_counting.cached_counter.count_lines(source)
 
             self.logger.print_info('Sorting index...')
-            index_reader = csv.reader(fin, delimiter=self.delimiter)
+            index_reader = csv.reader(fin, delimiter=self.delimiter, encoding='utf-8')
             sorted_list = sorted(index_reader, key=operator.itemgetter(0))
             for element in tqdm(sorted_list, total=total_lines):
                 subject, character_offset = element
@@ -74,19 +74,19 @@ class WikipediaDumpIndexCreator(object):
 
     def _is_index_consistent_with_dump(self, index_path, dump_path):
         self.logger.print_info('Checking whether index is consistent with dump or not...')
-        with io.open(index_path, 'r', encoding='utf8') as index_file, open(dump_path, 'rb') as dump_file:
-            index_reader = csv.reader(index_file, delimiter=self.delimiter)
+        with io.open(index_path, 'rb') as index_file, open(dump_path, 'rb') as dump_file:
+            index_reader = csv.reader(index_file, delimiter=self.delimiter, encoding='utf-8')
             for line in index_reader:
                 subject, character_offset = line[0], int(line[1])
                 dump_file.seek(character_offset)
                 page_begin = dump_file.readline()
-                assert page_begin == '  <page>\n'  # otherwise the character index does not match the dump
+                assert page_begin[:8] == '  <page>'  # otherwise the character index does not match the dump
 
     def create_wikipedia_index(self):
         self._create_full_index()
         self._create_filtered_index()
         self._create_sorted_index()
-        # self._is_index_consistent_with_dump('../data/character_index_sorted.csv', '../data/enwiki-latest-pages-articles-redirected.xml')
+        self._is_index_consistent_with_dump('../data/character_index_sorted.csv', '../data/enwiki-latest-pages-articles-redirected.xml')
 
 
 if __name__ == '__main__':

@@ -170,6 +170,7 @@ class FactExtractor(PatternTool):
             temp =  self.extract_facts_from_html(html, resource)
             if temp:
                 facts.append(temp)
+
         if facts:
             self.extracted_facts.extend(facts)
 

@@ -34,7 +34,7 @@ class WikipediaDumpExtractor(object):
             page = ''
             for line in fin:
                 if len(page) == 0:
-                    assert line == '  <page>\n'  # otherwise the character index does not match the dump
+                    assert line[:8] == '  <page>'  # otherwise the character index does not match the dump
                 page += line
                 if line[0:9] == '  </page>':
                     break
