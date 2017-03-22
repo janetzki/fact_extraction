@@ -80,7 +80,7 @@ class EntityTypes(object):
                             types.append(entity_type)
                     else:
                         types.append(entry)
-        return types
+        return set(types) # avoid duplicates
 
     @staticmethod
     def is_number(s):

@@ -14,6 +14,9 @@ from ttl_parser import TTLParser
 entity_types = imp.load_source('entity_types', '../ontology_building/entity_types.py')
 from entity_types import EntityTypes
 
+pattern = imp.load_source('pattern', '../pattern_learning/pattern.py')
+from pattern import Pattern
+
 logger = imp.load_source('logger', '../logging/logger.py')
 from logger import Logger
 
@@ -144,6 +147,67 @@ class StatisticGenerator(object):
                 writer.writerow([predicate, variance])
                 print(predicate, " ", variance)
 
+    def measure_type_diversity(self, threshold=2):
+        subject_types_count = Counter()
+        object_types_count = Counter()
+        relation_subject_types = {}
+        relation_object_types = {}
+
+        facts = Counter()
+
+        for predicate in tqdm(self.predicates, total=len(self.predicates)):
+            relation_subject_types[predicate] = Counter()
+            relation_object_types[predicate] = Counter()
+            for subject in self.predicates[predicate]:
+                subject_types = self.instance_types.get_types(subject)
+
+                for object in self.predicates[predicate][subject]:
+                    object_types = self.instance_types.get_types(object)
+
+                    facts[predicate] += 1
+                    for subject_type in subject_types:
+                        relation_subject_types[predicate][subject_type] += 1
+                        subject_types_count[subject_type] += 1
+                    for object_type in object_types:
+                        relation_object_types[predicate][object_type] += 1
+                        object_types_count[object_type] += 1
+                    #print(predicate, subject, object)
+
+        subject_specs = StatisticGenerator.calculate_specifity(facts, subject_types_count, relation_subject_types)
+        object_specs = StatisticGenerator.calculate_specifity(facts, object_types_count, relation_object_types)
+        both_specs = {}
+        for predicate in subject_specs:
+            both_specs[predicate] = {}
+            both_specs[predicate]["subject"] = subject_specs[predicate]
+        for predicate in object_specs:
+            both_specs.setdefault(predicate, {})
+            both_specs[predicate]["object"] = object_specs[predicate]
+        for predicate in both_specs:
+            print(';'.join([predicate, str(both_specs[predicate].setdefault("subject", -1)), str(both_specs[predicate].setdefault("object", -1))]))
+
+    @staticmethod
+    def calculate_specifity(facts, types, relation_types):
+        total_facts = sum(facts.values())
+        specifities = {}
+
+        for predicate in relation_types:
+            if len(set(relation_types[predicate])) == 0:
+                continue
+
+            deviations = 0
+            for name, predicate_type_frequency in relation_types[predicate].most_common():
+                predicate_relative_frequency = float(predicate_type_frequency) / facts[predicate]
+                total_frequency = float(types[name]-predicate_type_frequency) / total_facts
+                # print(name)
+                # print(facts[predicate])
+                # print(predicate_frequency)
+                # print(predicate_relative_frequency)
+                # print(total_frequency)
+                assert abs(predicate_relative_frequency-total_frequency) <= 1
+                deviations += predicate_type_frequency * abs(predicate_relative_frequency-total_frequency)
+            specifities[predicate] = float(deviations) / sum(relation_types[predicate].values())
+        return specifities
+
     @staticmethod
     def calculate_independence_score(facts_count, subject_types, object_types, combinations, expectation_threshold):
         sum_rel_variance = 0
@@ -173,4 +237,5 @@ if __name__ == '__main__':
     #         statistic_generator.test_types_independence(expectation_threshold=t)
 
     statistic_generator.collect_predicates(facts_limit=1000000)
-    statistic_generator.count_types()
+    statistic_generator.measure_type_diversity()
+    #statistic_generator.count_types()
