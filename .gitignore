@@ -19,3 +19,6 @@ config.ini
 
 # virtual environment
 venv/
+
+# throwaway code
+test.py

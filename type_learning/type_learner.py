@@ -1,10 +1,10 @@
 import imp
 
-file_tool = imp.load_source('file_tool', '../storing_tools/file_tool.py')
-from file_tool import FileTool
+type_tool = imp.load_source('type_tool', '../storing_tools/type_tool.py')
+from type_tool import TypeTool
 
 
-class TypeLearner(FileTool):
+class TypeLearner(TypeTool):
     def __init__(self, output_path='../data/type_probabilities_raw.pkl'):
         super(TypeLearner, self).__init__(None, output_path)
 
@@ -20,6 +20,7 @@ class TypeLearner(FileTool):
     def learn_types(self):
         self.logger.print_info('Type learning...')
         # TODO
+        # self.type_probabilities = ...
         self.logger.print_done('Type learning completed.')
 
 

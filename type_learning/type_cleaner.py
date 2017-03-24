@@ -1,10 +1,10 @@
 import imp
 
-file_tool = imp.load_source('file_tool', '../storing_tools/file_tool.py')
-from file_tool import FileTool
+type_tool = imp.load_source('type_tool', '../storing_tools/type_tool.py')
+from type_tool import TypeTool
 
 
-class TypeCleaner(FileTool):
+class TypeCleaner(TypeTool):
     def __init__(self, input_path='../data/type_probabilities_raw.pkl',
                  output_path='../data/type_probabilities_cleaned.pkl'):
         super(TypeCleaner, self).__init__(input_path, output_path)
@@ -21,6 +21,7 @@ class TypeCleaner(FileTool):
     def clean_types(self):
         self.logger.print_info('Type cleaning...')
         # TODO
+        # self.type_probabilities = ...
         self.logger.print_done('Type cleaning completed.')
 
 
