@@ -21,9 +21,7 @@ class TypeCleaner(TypeTool):
         object_minimum = config_parser.getfloat(section, 'object_minimum')
         return cls(subject_minimum=subject_minimum, object_minimum=object_minimum)
 
-
-
-    def calculcate_probabilities(self, type_pattern, key_attr):
+    def calculate_probabilities(self, type_pattern, key_attr):
         types = getattr(type_pattern, key_attr + "_types")
         probabilities = getattr(type_pattern, key_attr + "_probabilities")
         total = sum(types.values())
@@ -44,22 +42,18 @@ class TypeCleaner(TypeTool):
 
         return weighted_probabability
 
-
     def clean_types(self):
         self.logger.print_info('Type cleaning...')
-
         for predicate in self.type_patterns:
             self.type_patterns[predicate].clean_subject_types(self.subject_minimum)
             self.type_patterns[predicate].clean_object_types(self.object_minimum)
 
-
         self.logger.print_info('Calculate probabilities for each pattern...')
         for predicate in tqdm(self.type_patterns, total=len(self.type_patterns)):
             type_pattern = self.type_patterns[predicate]
-            type_pattern.subject_weighted_probability = self.calculcate_probabilities(type_pattern, "subject")
-            type_pattern.object_weighted_probability = self.calculcate_probabilities(type_pattern, "object")
+            type_pattern.subject_weighted_probability = self.calculate_probabilities(type_pattern, "subject")
+            type_pattern.object_weighted_probability = self.calculate_probabilities(type_pattern, "object")
 
-        print self.type_patterns
         self.logger.print_done('Type cleaning completed.')
 
 
