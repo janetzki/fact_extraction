@@ -25,7 +25,7 @@ from logger import Logger
 pattern_tester = imp.load_source('pattern_tester', '../pattern_testing/pattern_tester.py')
 from pattern_tester import PatternTester
 
-pattern_tool = imp.load_source('pattern_tool', '../pattern_tool/pattern_tool.py')
+pattern_tool = imp.load_source('pattern_tool', '../storing_tools/pattern_tool.py')
 from pattern_tool import PatternTool
 
 uri_rewriting = imp.load_source('uri_rewriting', '../helper_functions/uri_rewriting.py')

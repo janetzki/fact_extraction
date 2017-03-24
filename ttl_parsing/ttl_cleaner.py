@@ -23,7 +23,6 @@ class TTLCleaner(object):
         self.delimiter = '#'
 
     def clean_ttl(self):
-        replacements = {}
         total_lines = line_counting.cached_counter.count_lines(self.path_ttl)
         with codecs.open(self.path_cleaned_ttl, 'wb', "utf-8") as fout:
             ttl_parser = TTLParser(self.path_ttl)
@@ -41,10 +40,12 @@ class TTLCleaner(object):
                 assert self.delimiter not in subject and self.delimiter not in type
                 fout.write(subject.encode('utf-8') + self.delimiter.encode('utf-8') + type.encode('utf-8') + '\n')
 
+
 def clean_instance_types(path_types, path_types_cleaned):
     type_relation = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type'
     type_cleaner = TTLCleaner(path_types, path_types_cleaned, [type_relation], True)
     type_cleaner.clean_ttl()
+
 
 def clean_instance_types_inheritance():
     path_types_inheritance = '../data/dbpedia_2016-04.nt'
@@ -53,6 +54,7 @@ def clean_instance_types_inheritance():
     inheritance_cleaner = TTLCleaner(path_types_inheritance, path_types_inheritance_cleaned, [inheritance_relation],
                                      False)
     inheritance_cleaner.clean_ttl()
+
 
 def clean_redirects():
     path_redirects = '../data/redirects_en.ttl'
