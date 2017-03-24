@@ -40,7 +40,8 @@ class EntityTypes(object):
 
         for path in types_paths:
             self._load_types(path)
-        self._load_type_inheritance(type_inheritance_path)
+        # currently out of work
+        # self._load_type_inheritance(type_inheritance_path)
 
     def __del__(self):
         if self.types_indexed_file:

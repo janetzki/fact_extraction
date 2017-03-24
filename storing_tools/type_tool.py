@@ -17,11 +17,11 @@ class TypeTool(FileTool):
         self.save()
 
     @property
-    def type_probabilities(self):
+    def type_patterns(self):
         """ convenience function """
         return self.data
 
-    @type_probabilities.setter
-    def type_probabilities(self, value):
+    @type_patterns.setter
+    def type_patterns(self, value):
         """ convenience function """
         self.data = value
