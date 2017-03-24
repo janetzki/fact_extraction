@@ -14,7 +14,7 @@ from wikipedia_connector import WikipediaConnector, TaggedSentence
 ttl_parser = imp.load_source('ttl_parser', '../ttl_parsing/ttl_parser.py')
 from ttl_parser import TTLParser
 
-pattern_tool = imp.load_source('pattern_tool', '../pattern_tool/pattern_tool.py')
+pattern_tool = imp.load_source('pattern_tool', '../storing_tools/pattern_tool.py')
 from pattern_tool import PatternTool
 
 uri_rewriting = imp.load_source('uri_rewriting', '../helper_functions/uri_rewriting.py')

@@ -3,7 +3,7 @@ from graphviz import Digraph
 import textwrap
 import imp
 
-pattern_tool = imp.load_source('pattern_tool', '../pattern_tool/pattern_tool.py')
+pattern_tool = imp.load_source('pattern_tool', '../storing_tools/pattern_tool.py')
 from pattern_tool import PatternTool
 
 
