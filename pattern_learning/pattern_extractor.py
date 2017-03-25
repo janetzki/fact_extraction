@@ -17,9 +17,10 @@ stanford_parser = StanfordDependencyParser(path_to_jar=path_to_jar, path_to_mode
 
 
 class PatternExtractor(object):
-    def __init__(self):
+    def __init__(self, type_learning=True):
         self.parser = stanford_parser
-        self.instance_types = EntityTypes()
+        if type_learning:
+            self.instance_types = EntityTypes()
 
     @staticmethod
     def _find_main_address(parse, object_token_addresses):
@@ -133,7 +134,7 @@ class PatternExtractor(object):
 
         graph = PatternExtractor._build_graph_from_dependeny_parse(parse)
 
-        if type_extraction:
+        if type_extraction and self.instance_types:
             assert subject_entity is not None and object_entity is not None
             subject_types = self.instance_types.count_types(subject_entity)
             object_types = self.instance_types.count_types(object_entity)

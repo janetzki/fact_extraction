@@ -40,7 +40,8 @@ class EntityTypes(object):
 
         for path in types_paths:
             self._load_types(path)
-        self._load_type_inheritance(type_inheritance_path)
+        # currently out of work
+        # self._load_type_inheritance(type_inheritance_path)
 
     def __del__(self):
         if self.types_indexed_file:
@@ -80,7 +81,7 @@ class EntityTypes(object):
                             types.append(entity_type)
                     else:
                         types.append(entry)
-        return types
+        return set(types) # avoid duplicates
 
     @staticmethod
     def is_number(s):
