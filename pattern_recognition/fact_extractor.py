@@ -17,6 +17,9 @@ from ttl_parser import TTLParser
 pattern_tool = imp.load_source('pattern_tool', '../storing_tools/pattern_tool.py')
 from pattern_tool import PatternTool
 
+pattern_matcher = imp.load_source('pattern_matcher', '../pattern_recognition/pattern_matcher.py')
+from pattern_matcher import PatternMatcher
+
 uri_rewriting = imp.load_source('uri_rewriting', '../helper_functions/uri_rewriting.py')
 
 
@@ -34,6 +37,7 @@ class FactExtractor(PatternTool):
         self.ttl_parser = TTLParser(resources_path, randomize)
         self.wikipedia_connector = WikipediaConnector(self.use_dump)
         self.pattern_extractor = PatternExtractor()
+        self.pattern_matcher = PatternMatcher()
         self.print_interim_results = print_interim_results
         self.discovery_resources = set()
         self.extracted_facts = []
@@ -50,8 +54,8 @@ class FactExtractor(PatternTool):
         articles_limit = config_parser.getint('fact_extractor', 'articles_limit')
         match_threshold = config_parser.getfloat('fact_extractor', 'match_threshold')
         type_matching = config_parser.getboolean('fact_extractor', 'type_matching')
-        num_of_treads = config_parser.getint('fact_extractor', 'threads')
-        return cls(articles_limit, use_dump, randomize, match_threshold, type_matching)
+        num_of_threads = config_parser.getint('fact_extractor', 'threads')
+        return cls(articles_limit, use_dump, randomize, match_threshold, type_matching, threads=num_of_threads)
 
     def _make_pattern_types_transitive(self):
         for relation, pattern in self.relation_type_patterns.iteritems():
@@ -76,8 +80,8 @@ class FactExtractor(PatternTool):
         matching_relations = []
         for relation in reasonable_relations:
             relation_pattern = self.relation_type_patterns[relation]
-            match_score = Pattern.match_patterns(relation_pattern, pattern, self.type_matching,
-                                                 self.allow_unknown_entity_types)
+            match_score = self.pattern_matcher.match_patterns(relation, relation_pattern, pattern, self.type_matching,
+                                                              self.allow_unknown_entity_types)
             if match_score >= self.match_threshold:
                 matching_relations.append((relation, match_score))
         return matching_relations
@@ -167,7 +171,7 @@ class FactExtractor(PatternTool):
             wikipedia_resource = uri_rewriting.convert_to_wikipedia_uri(resource)
             self.logger.print_info('--- ' + wikipedia_resource + ' ----')
             html = self.wikipedia_connector.get_wikipedia_article_html(resource)
-            temp =  self.extract_facts_from_html(html, resource)
+            temp = self.extract_facts_from_html(html, resource)
             if temp:
                 facts.append(temp)
 

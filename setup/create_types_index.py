@@ -10,6 +10,7 @@ from entity_types import EntityTypes
 
 line_counting = imp.load_source('line_counting', '../helper_functions/line_counting.py')
 
+
 class TypesIntegrator(object):
     def __init__(self):
         self.logger = Logger.from_config_file()
@@ -18,7 +19,7 @@ class TypesIntegrator(object):
         self.instance_types = EntityTypes(types_paths=['../data/types_en.csv'], types_indexed_file=False)
 
     def integrate_types_indices(self, types_path='../data/yago_types.csv',
-                        output_path='../data/yago_index.csv'):
+                                output_path='../data/yago_index.csv'):
         total_lines = line_counting.cached_counter.count_lines(types_path)
         character_offset = 0
         entities = {}
@@ -42,7 +43,7 @@ class TypesIntegrator(object):
             for key, value in tqdm(entities.items(), total=len(entities)):
                 writer.writerow([key, value])
 
+
 if __name__ == '__main__':
     integrator = TypesIntegrator()
     integrator.integrate_types_indices()
-

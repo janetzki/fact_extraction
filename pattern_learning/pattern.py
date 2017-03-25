@@ -221,41 +221,6 @@ class Pattern(object):
 
         return new_pattern
 
-    @staticmethod
-    def _intersect_nodes(node1_addr, node2_addr, nodes1, nodes2, new_nodes):
-        node1 = nodes1[node1_addr]
-        node2 = nodes2[node2_addr]
-        current_node_addr = len(new_nodes) - 1
-
-        for dep2 in node2.dependencies.keys():
-            if dep2 not in node1.dependencies.keys():
-                continue
-
-            child1_addr, child2_addr = node1.dependencies[dep2], node2.dependencies[dep2]
-            child1, child2 = nodes1[child1_addr], nodes2[child2_addr]
-            new_node = DependencyNode.raw_intersect(child1, child2)
-            if len(new_node.word_frequencies) == 0:
-                continue
-
-            new_node_addr = len(new_nodes)
-            new_nodes[new_node_addr] = new_node
-            Pattern._intersect_nodes(node1.dependencies[dep2], node2.dependencies[dep2], nodes1, nodes2, new_nodes)
-            new_nodes[current_node_addr].dependencies[dep2] = new_node_addr
-
-    @staticmethod
-    def _intersect(pattern1, pattern2):
-        new_covered_sentences = min(pattern1.covered_sentences, pattern2.covered_sentences)
-        new_subject_type_frequencies = pattern1.subject_type_frequencies & pattern2.subject_type_frequencies
-        new_object_type_frequencies = pattern1.object_type_frequencies & pattern2.object_type_frequencies
-        new_relative_position = (pattern1.covered_sentences * pattern1.relative_position +
-                                 pattern2.covered_sentences * pattern2.relative_position) / new_covered_sentences
-
-        new_nodes = {0: DependencyNode.raw_intersect(pattern1.root_node(), pattern2.root_node())}
-        Pattern._intersect_nodes(pattern1.root, pattern2.root, pattern1.nodes, pattern2.nodes, new_nodes)
-        new_pattern = Pattern(new_relative_position, 0, new_subject_type_frequencies, new_object_type_frequencies,
-                              new_nodes, new_covered_sentences)
-        return new_pattern
-
     def assert_is_tree(self):
         visited, queue = set(), [self.root]
         while queue:  # BFS
@@ -332,7 +297,7 @@ class Pattern(object):
             least_threshold_words = 2
             while lower_bound <= (
                         pattern.total_words() - pattern.total_words_under_node_with_max_freq(pattern.root,
-                                                                                                    least_threshold_words)):
+                                                                                             least_threshold_words)):
                 pattern = Pattern.clean_nodes_statically(pattern, least_threshold_words)
                 least_threshold_words += 1
         else:
@@ -347,130 +312,3 @@ class Pattern(object):
                                                                          least_threshold_types)
         pattern = Pattern.clean_nodes(pattern, least_threshold_words)
         return pattern
-
-    @staticmethod
-    def _match_type_frequencies_unidirectional(type_frequencies1, type_frequencies2, except_second_empty=False):
-        '''
-        calculate which summed ratio types in type_frequency2 have in type_frequencies1
-        :return:    between 0.0 and 1.0
-        '''
-        if len(type_frequencies2) == 0:
-            if except_second_empty:
-                return None  # new objects with no type shall not be penalized
-            else:
-                return 0
-        frequency_sum = sum(type_frequencies1.values())
-        ratio_sum = 0
-
-        for type, count in type_frequencies2.items():
-            if type in type_frequencies1:
-                ratio_sum += float(type_frequencies1[type]) / frequency_sum
-        return ratio_sum
-
-    @staticmethod
-    def _match_type_frequencies(type_frequencies1, type_frequencies2, except_second_empty=False):
-        in_order = Pattern._match_type_frequencies_unidirectional(type_frequencies1, type_frequencies2, except_second_empty)
-        reversed_order = Pattern._match_type_frequencies_unidirectional(type_frequencies2, type_frequencies1, except_second_empty)
-        if in_order is None or reversed_order is None:
-            return None
-        return in_order * reversed_order
-
-    @staticmethod
-    def _match_relative_position(position1, position2):
-        '''
-        calculate the similarity of relative positions of sentences
-        :return: between 0.0 and 1.0
-        '''
-        return (1 - abs(position1 - position2)) ** 2
-
-    @staticmethod
-    def _match_pattern_nodes_unidirectional(pattern1, node1_addr, pattern2, node2_addr, weighting=None):
-        '''
-        Calculate how much of pattern2 is inside pattern1.
-        :return:    between 0.0 and 1.0
-        '''
-        match_score = 0
-        if weighting is None:
-            words_under_node = pattern1.total_words_under_node(node1_addr)
-            if words_under_node == 0:
-                return 0
-            weighting = 1.0 / words_under_node
-        node1, node2 = pattern1.nodes[node1_addr], pattern2.nodes[node2_addr]
-        for dep2 in node2.dependencies.keys():
-            if dep2 in node1.dependencies.keys():
-                child1_addr, child2_addr = node1.dependencies[dep2], node2.dependencies[dep2]
-                child1, child2 = pattern1.nodes[child1_addr], pattern2.nodes[child2_addr]
-                if any(word in child1.word_frequencies.keys() for word in child2.word_frequencies.keys()):
-                    match_score += sum(child1.word_frequencies.values()) * weighting
-                    match_score += Pattern._match_pattern_nodes_unidirectional(pattern1, child1_addr,
-                                                                               pattern2, child2_addr, weighting)
-        return match_score
-
-    @staticmethod
-    def _match_pattern_nodes_bidirectional(pattern1, pattern2):
-        return Pattern._match_pattern_nodes_unidirectional(pattern1, pattern1.root, pattern2, pattern2.root) \
-               * Pattern._match_pattern_nodes_unidirectional(pattern2, pattern2.root, pattern1, pattern1.root)
-
-    @staticmethod
-    def _compute_pattern_intersection_score(pattern1, pattern2):
-        intersection = Pattern._intersect(pattern1, pattern2)
-        words1, words2, words_intersection = pattern1.total_words(), pattern2.total_words(), intersection.total_words()
-        avg_words1 = words1 / pattern1.covered_sentences
-        avg_words2 = words2 / pattern2.covered_sentences
-        avg_words_intersection = words_intersection / intersection.covered_sentences
-        return (avg_words_intersection / avg_words1) * (avg_words_intersection / avg_words2)
-
-    @staticmethod
-    def _weighted_arithmetic_mean(data, weights):
-        # TODO: Wold geometric mean be more appropriate?
-        assert len(data) == len(weights)
-
-        # filter empty values
-        weighted_data = zip(data, weights)
-        weighted_data = filter(lambda (d, w): d is not None, weighted_data)
-        data, weights = zip(*weighted_data)
-
-        # normalize weights
-        total_weight = sum(weights)
-        normalization_factor = 1.0 / total_weight
-        weights = map(lambda w: w * normalization_factor, weights)
-
-        # calculate mean
-        mean = 0
-        for i in range(len(data)):
-            mean += data[i] * weights[i]
-        return mean
-
-    @staticmethod
-    def match_patterns(pattern1, pattern2, type_matching=True, except_second_empty=False):
-        '''
-        :return:    between 0.0 and 1.0
-        '''
-        if type_matching:
-            subject_type_score = Pattern._match_type_frequencies(pattern1.subject_type_frequencies,
-                                                                 pattern2.subject_type_frequencies,
-                                                                 except_second_empty)
-            if subject_type_score == 0:
-                return 0
-            object_type_score = Pattern._match_type_frequencies(pattern1.object_type_frequencies,
-                                                                pattern2.object_type_frequencies,
-                                                                except_second_empty)
-            if object_type_score == 0:
-                return 0
-            position_score = Pattern._match_relative_position(pattern1.relative_position, pattern2.relative_position)
-            node_score = Pattern._compute_pattern_intersection_score(pattern1, pattern2)
-            scores = [subject_type_score, object_type_score, position_score, node_score]
-            # print scores
-            weights = [0.25, 0.25, 0.10, 0.40]
-            return Pattern._weighted_arithmetic_mean(scores, weights)
-        else:
-            return Pattern._match_pattern_nodes_bidirectional(pattern1, pattern2)
-
-if __name__ == '__main__':
-    test_freq1 = Counter('AAAAABBBC')
-    test_freq2 = Counter('CDEAAA')
-    print Pattern._match_type_frequencies(test_freq1,test_freq2)
-
-    pos1 = 0.9
-    pos2 = 1
-    print Pattern._match_relative_position(pos1, pos2)
