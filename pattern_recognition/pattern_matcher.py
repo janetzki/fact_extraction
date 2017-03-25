@@ -40,9 +40,9 @@ class PatternMatcher(TypeTool):
                                                                  new_pattern.relative_position)
         node_score = PatternMatcher._compute_pattern_intersection_score(learned_pattern, new_pattern)
 
-        relative_position_weight = 0.5  # self.type_patterns[relation_type]['relative position weight']
+        relative_position_weight = 0.15  # self.type_patterns[relation_type]['relative position weight']
         scores = [subject_type_score, object_type_score, position_score, node_score]
-        weights = [1.0, 1.0, 1.0, relative_position_weight]
+        weights = [1.0, 1.0, relative_position_weight, 1.0]
         match_score = PatternMatcher._weighted_arithmetic_mean(scores, weights)
 
         # apriori_probability = self.type_patterns[relation_type].facts / float(self.total_facts)
@@ -63,11 +63,11 @@ class PatternMatcher(TypeTool):
 
         assert max(new_type_frequencies.itervalues()) <= 1
         # It is considered as a set because it should be retrieved from a single subject / object.
+        new_type_frequencies = set(new_type_frequencies)
 
-        probability_sum = 0
-        for type in new_type_frequencies:
-            if type in learned_type_frequencies:
-                probability_sum += learned_type_frequencies[type]
+        types_intersection = new_type_frequencies & set(learned_type_frequencies.keys())
+        types_intersection = {type_name: learned_type_frequencies[type_name] for type_name in types_intersection}
+        probability_sum = sum(types_intersection.values())
         return probability_sum / len(new_type_frequencies)
 
     @staticmethod
@@ -137,7 +137,7 @@ class PatternMatcher(TypeTool):
         avg_words1 = words1 / pattern1.covered_sentences
         avg_words2 = words2 / pattern2.covered_sentences
         avg_words_intersection = words_intersection / intersection.covered_sentences
-        return (avg_words_intersection / avg_words1) * (avg_words_intersection / avg_words2)
+        return (float(avg_words_intersection) / avg_words1) * (float(avg_words_intersection) / avg_words2)
 
     @staticmethod
     def _weighted_arithmetic_mean(data, weights):
