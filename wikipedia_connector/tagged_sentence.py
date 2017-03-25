@@ -5,7 +5,6 @@ import re
 import sys
 import imp
 
-
 uri_rewriting = imp.load_source('uri_rewriting', '../helper_functions/uri_rewriting.py')
 
 reload(sys)
@@ -69,6 +68,7 @@ class TaggedSentence(object):
     Data structure that is containing a tokenized sentenced. In case a word is hyperlinked,
     the linked entity is stored as well.
     """
+
     def __init__(self, sentence, links, relative_position):
         self.sentence = []
         sentence = TaggedSentence.__clean_input(sentence)
@@ -222,6 +222,7 @@ class TaggedToken(object):
     """
     Represents a word in a sentence. Furthermore it can be hyperlinked to an entity
     """
+
     def __init__(self, token, target_url=None):
         super(TaggedToken, self).__init__()
         self._text = token

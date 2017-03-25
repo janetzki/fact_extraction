@@ -1,8 +1,6 @@
 from __future__ import division
-from tqdm import tqdm
 from math import ceil
 from threading import Thread
-from itertools import islice
 import imp
 
 pattern_extractor = imp.load_source('pattern_extractor', '../pattern_learning/pattern_extractor.py')

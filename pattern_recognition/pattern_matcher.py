@@ -26,7 +26,8 @@ class PatternMatcher(TypeTool):
         if not type_matching:
             return PatternMatcher._compute_pattern_intersection_score(learned_pattern, new_pattern)
 
-        subject_type_score = self._match_type_frequencies(self.type_patterns[relation_type].subject_probabilities,
+        type_pattern = self.type_patterns[relation_type]
+        subject_type_score = self._match_type_frequencies(type_pattern.subject_probabilities,
                                                           new_pattern.subject_type_frequencies,
                                                           except_new_pattern_empty)
         if subject_type_score == 0:
@@ -38,15 +39,19 @@ class PatternMatcher(TypeTool):
             return 0
         position_score = PatternMatcher._match_relative_position(learned_pattern.relative_position,
                                                                  new_pattern.relative_position)
-        node_score = PatternMatcher._compute_pattern_intersection_score(learned_pattern, new_pattern)
+        syntax_score = PatternMatcher._compute_pattern_intersection_score(learned_pattern, new_pattern)
+        scores = [subject_type_score, object_type_score, position_score, syntax_score]
 
-        relative_position_weight = 0.15  # self.type_patterns[relation_type]['relative position weight']
-        scores = [subject_type_score, object_type_score, position_score, node_score]
-        weights = [1.0, 1.0, relative_position_weight, 1.0]
+        subject_type_weight = type_pattern.subject_weighted_probability
+        object_type_weight = type_pattern.object_weighted_probability
+        relative_position_weight = 0.15
+        weights = [subject_type_weight, object_type_weight, relative_position_weight, 1.0]
         match_score = PatternMatcher._weighted_arithmetic_mean(scores, weights)
 
         # apriori_probability = self.type_patterns[relation_type].facts / float(self.total_facts)
         # match_score = apriori_probability * match_score # makes match scores too low
+
+        assert 0 <= match_score <= 1
         return match_score
 
     @staticmethod
@@ -97,8 +102,7 @@ class PatternMatcher(TypeTool):
         new_covered_sentences = min(pattern1.covered_sentences, pattern2.covered_sentences)
         new_subject_type_frequencies = pattern1.subject_type_frequencies & pattern2.subject_type_frequencies
         new_object_type_frequencies = pattern1.object_type_frequencies & pattern2.object_type_frequencies
-        new_relative_position = (pattern1.covered_sentences * pattern1.relative_position +
-                                 pattern2.covered_sentences * pattern2.relative_position) / new_covered_sentences
+        new_relative_position = None  # relative position makes no sense for intersected pattern
 
         new_nodes = {0: DependencyNode.raw_intersect(pattern1.root_node(), pattern2.root_node())}
         PatternMatcher._intersect_nodes(pattern1.root, pattern2.root, pattern1.nodes, pattern2.nodes, new_nodes)
@@ -134,10 +138,12 @@ class PatternMatcher(TypeTool):
     def _compute_pattern_intersection_score(pattern1, pattern2):
         intersection = PatternMatcher._intersect(pattern1, pattern2)
         words1, words2, words_intersection = pattern1.total_words(), pattern2.total_words(), intersection.total_words()
-        avg_words1 = words1 / pattern1.covered_sentences
-        avg_words2 = words2 / pattern2.covered_sentences
-        avg_words_intersection = words_intersection / intersection.covered_sentences
-        return (float(avg_words_intersection) / avg_words1) * (float(avg_words_intersection) / avg_words2)
+        avg_words1 = float(words1) / pattern1.covered_sentences
+        avg_words2 = float(words2) / pattern2.covered_sentences
+        avg_words_intersection = float(words_intersection) / intersection.covered_sentences
+        syntax_score = (float(avg_words_intersection) / avg_words1) * (float(avg_words_intersection) / avg_words2)
+        syntax_score = min(1.0, syntax_score)
+        return syntax_score
 
     @staticmethod
     def _weighted_arithmetic_mean(data, weights):

@@ -8,15 +8,16 @@ logger = imp.load_source('logger', '../logging/logger.py')
 from logger import Logger
 
 line_counting = imp.load_source('line_counting', '../helper_functions/line_counting.py')
+uri_rewriting = imp.load_source('uri_rewriting', '../helper_functions/uri_rewriting.py')
 
 
 class EntityTypes(object):
-    def __init__(self, types_paths=[], types_index='../data/yago_index.csv',
+    def __init__(self, types_paths=list(), types_index='../data/yago_index.csv',
                  types_indexed_file='../data/yago_types.csv',
                  type_inheritance_path='../data/types_inheritance_en.csv', limit=False):
         self.logger = Logger.from_config_file()
-        self.types = {}
-        self.parent_types = {}
+        self.types = dict()
+        self.parent_types = dict()
         self.delimiter = '#'
         self.join_character = '_'
 
@@ -43,10 +44,6 @@ class EntityTypes(object):
             # currently out of work
             # self._load_type_inheritance(type_inheritance_path)
 
-    def __del__(self):
-        if self.types_indexed_file:
-            self.types_indexed_file.close()
-
     def _load_types(self, types_path):
         total_lines = line_counting.cached_counter.count_lines(types_path)
         self.logger.print_info('Reading types file: %s...' % types_path)
@@ -64,7 +61,8 @@ class EntityTypes(object):
                 self.parent_types[inst_type] = parent_type
 
     def get_types(self, entity):
-        types = []
+        types = set()
+        entity = uri_rewriting.strip_cleaned_name(entity)
         if entity in self.types:
             for entry in self.types[entity]:
                 if entry:
@@ -78,10 +76,12 @@ class EntityTypes(object):
                             entity_name, entity_type = values
                             if not entity == entity_name:
                                 break
-                            types.append(entity_type)
+                            types.add(entity_type)
                     else:
-                        types.append(entry)
-        return set(types)  # avoid duplicates
+                        types.add(entry)
+        else:
+            self.logger.print_warning('Unknown entity: "' + entity + '"')
+        return types
 
     @staticmethod
     def is_number(s):
