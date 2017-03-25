@@ -16,16 +16,16 @@ class TypeCleaner(TypeTool):
     @classmethod
     def from_config_file(cls):
         config_parser = cls.get_config_parser()
-        section = 'type_learner'
+        section = 'type_cleaner'
         subject_minimum = config_parser.getfloat(section, 'subject_minimum')
         object_minimum = config_parser.getfloat(section, 'object_minimum')
         return cls(subject_minimum=subject_minimum, object_minimum=object_minimum)
 
-    def calculate_probabilities(self, type_pattern, key_attr):
+    def _calculate_probabilities(self, type_pattern, key_attr):
         types = getattr(type_pattern, key_attr + "_types")
         probabilities = getattr(type_pattern, key_attr + "_probabilities")
         total = sum(types.values())
-        weighted_probabability = 0
+        weighted_probability = 0
         for type, quantity in types.iteritems():
             type_frequency = float(quantity) / type_pattern.facts
             all_frequencies = 0
@@ -35,12 +35,12 @@ class TypeCleaner(TypeTool):
                 if type in other_types:
                     all_frequencies += float(other_types[type]) / another_type_pattern.facts
 
-            #print type, type_frequency, all_frequencies
+            # print type, type_frequency, all_frequencies
             probability = type_frequency / all_frequencies
             probabilities[type] = probability
-            weighted_probabability += float(quantity) / total * probability
+            weighted_probability += float(quantity) / total * probability
 
-        return weighted_probabability
+        return weighted_probability
 
     def clean_types(self):
         self.logger.print_info('Type cleaning...')
@@ -51,13 +51,13 @@ class TypeCleaner(TypeTool):
         self.logger.print_info('Calculate probabilities for each pattern...')
         for predicate in tqdm(self.type_patterns, total=len(self.type_patterns)):
             type_pattern = self.type_patterns[predicate]
-            type_pattern.subject_weighted_probability = self.calculate_probabilities(type_pattern, "subject")
-            type_pattern.object_weighted_probability = self.calculate_probabilities(type_pattern, "object")
+            type_pattern.subject_weighted_probability = self._calculate_probabilities(type_pattern, "subject")
+            type_pattern.object_weighted_probability = self._calculate_probabilities(type_pattern, "object")
 
         self.logger.print_done('Type cleaning completed.')
 
 
 if __name__ == '__main__':
-    pattern_cleaner = TypeCleaner.from_config_file()
-    pattern_cleaner.clean_types()
-    pattern_cleaner.save()
+    type_cleaner = TypeCleaner.from_config_file()
+    type_cleaner.clean_types()
+    type_cleaner.save_type_patterns()

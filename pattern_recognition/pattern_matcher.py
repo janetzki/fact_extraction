@@ -13,22 +13,26 @@ class PatternMatcher(TypeTool):
     articles. It returns a match score between 0.0 (no match) and 1.0 (complete match).
     """
 
-    def __init__(self, input_path='../data/type_probabilities_cleaned.pkl'):
+    def __init__(self, input_path='../data/type_patterns_cleaned.pkl'):
         super(PatternMatcher, self).__init__(input_path, None)
+        self.total_facts = sum([type_pattern.facts for type_pattern in self.type_patterns.values()])
 
     def match_patterns(self, relation_type, learned_pattern, new_pattern, type_matching=True,
                        except_new_pattern_empty=False):
-        '''
+        """
+        calculate match score for a large learned pattern and a small pattern from one sentence
         :return:    between 0.0 and 1.0
-        '''
+        """
         if not type_matching:
             return PatternMatcher._compute_pattern_intersection_score(learned_pattern, new_pattern)
 
-        subject_type_score = self._match_type_frequencies(relation_type, new_pattern.subject_type_frequencies,
+        subject_type_score = self._match_type_frequencies(self.type_patterns[relation_type].subject_probabilities,
+                                                          new_pattern.subject_type_frequencies,
                                                           except_new_pattern_empty)
         if subject_type_score == 0:
             return 0
-        object_type_score = self._match_type_frequencies(relation_type, new_pattern.object_type_frequencies,
+        object_type_score = self._match_type_frequencies(self.type_patterns[relation_type].object_probabilities,
+                                                         new_pattern.object_type_frequencies,
                                                          except_new_pattern_empty)
         if object_type_score == 0:
             return 0
@@ -36,28 +40,31 @@ class PatternMatcher(TypeTool):
                                                                  new_pattern.relative_position)
         node_score = PatternMatcher._compute_pattern_intersection_score(learned_pattern, new_pattern)
 
-        relative_position_weight = self.type_probabilities[relation_type]['relative position weight']
-        apriori_probability = self.type_probabilities[relation_type]['apriori probability']
+        relative_position_weight = 0.5  # self.type_patterns[relation_type]['relative position weight']
         scores = [subject_type_score, object_type_score, position_score, node_score]
         weights = [1.0, 1.0, 1.0, relative_position_weight]
         match_score = PatternMatcher._weighted_arithmetic_mean(scores, weights)
-        match_score = apriori_probability * match_score
+
+        # apriori_probability = self.type_patterns[relation_type].facts / float(self.total_facts)
+        # match_score = apriori_probability * match_score # makes match scores too low
         return match_score
 
-    def _match_type_frequencies(self, relation_type, new_type_frequencies, except_new_empty=False):
-        '''
+    @staticmethod
+    def _match_type_frequencies(learned_type_frequencies, new_type_frequencies, except_new_empty=False):
+        """
         calculate score that new_type_frequencies belong to relation type of learned type frequencies
         :return:    between 0.0 and 1.0
-        '''
+        """
         if len(new_type_frequencies) == 0:
             if except_new_empty:
                 return None  # new objects with no type shall not be penalized
             else:
                 return 0
 
-        assert max(new_type_frequencies.values) <= 1
+        assert max(new_type_frequencies.itervalues()) <= 1
+        # It is considered as a set because it should be retrieved from a single subject / object.
+
         probability_sum = 0
-        learned_type_frequencies = self.type_probabilities[relation_type]['type probabilities']
         for type in new_type_frequencies:
             if type in learned_type_frequencies:
                 probability_sum += learned_type_frequencies[type]
@@ -117,10 +124,10 @@ class PatternMatcher(TypeTool):
 
     @staticmethod
     def _match_relative_position(position1, position2):
-        '''
+        """
         calculate the similarity of relative positions of sentences
         :return: between 0.0 and 1.0
-        '''
+        """
         return (1 - abs(position1 - position2)) ** 2
 
     @staticmethod
@@ -155,6 +162,7 @@ class PatternMatcher(TypeTool):
 
 
 if __name__ == '__main__':
+    pattern_matcher = PatternMatcher()
     pos1 = 0.9
     pos2 = 1
     print(PatternMatcher._match_relative_position(pos1, pos2))

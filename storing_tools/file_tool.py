@@ -26,7 +26,7 @@ class FileTool(ConfigInitializer):
             self._data = pickle.load(fin)
 
     def save(self):
-        print('\n\nSaving...')
+        print('\n\nSaving to "' + self.output_path + '"...')
         with open(self.output_path, 'wb') as fout:
             output = self._data
             pickle.dump(output, fout, pickle.HIGHEST_PROTOCOL)

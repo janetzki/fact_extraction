@@ -1,5 +1,6 @@
 from collections import Counter
 
+
 class TypePattern(object):
     def __init__(self):
         self.facts = 0
@@ -12,12 +13,12 @@ class TypePattern(object):
 
     def __repr__(self):
         return "Subject: " + str(self.subject_types) + str(self.subject_probabilities) + \
-            "Subject weighted: " + str(self.subject_weighted_probability) + \
-            " Object: " + str(self.object_types) + str(self.object_probabilities) + \
-            "Object weighted: " + str(self.object_weighted_probability)
+               "Subject weighted: " + str(self.subject_weighted_probability) + \
+               "Object: " + str(self.object_types) + str(self.object_probabilities) + \
+               "Object weighted: " + str(self.object_weighted_probability)
 
     def clean_types(self, types, minimum):
-        if (0 < minimum) & (minimum < 1):
+        if 0 < minimum < 1:
             minimum = self.facts * minimum
 
         new_types = Counter()

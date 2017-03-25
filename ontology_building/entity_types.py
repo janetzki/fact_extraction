@@ -40,8 +40,8 @@ class EntityTypes(object):
 
         for path in types_paths:
             self._load_types(path)
-        # currently out of work
-        # self._load_type_inheritance(type_inheritance_path)
+            # currently out of work
+            # self._load_type_inheritance(type_inheritance_path)
 
     def __del__(self):
         if self.types_indexed_file:
@@ -55,7 +55,7 @@ class EntityTypes(object):
             for name, inst_type in tqdm(reader, total=total_lines):
                 self.types.setdefault(name, []).append(inst_type)
 
-    def _load_type_inheritance(self,  type_inheritance_path):
+    def _load_type_inheritance(self, type_inheritance_path):
         total_lines = line_counting.cached_counter.count_lines(type_inheritance_path)
         self.logger.print_info('Reading type inheritance file...')
         with open(type_inheritance_path, 'rb') as fin:
@@ -81,7 +81,7 @@ class EntityTypes(object):
                             types.append(entity_type)
                     else:
                         types.append(entry)
-        return set(types) # avoid duplicates
+        return set(types)  # avoid duplicates
 
     @staticmethod
     def is_number(s):
@@ -109,6 +109,7 @@ class EntityTypes(object):
                 parent = self._get_parent_type(parent)
         assert sum(new_types.itervalues()) >= sum(types.itervalues())
         return new_types
+
 
 if __name__ == '__main__':
     instance_types = EntityTypes()
