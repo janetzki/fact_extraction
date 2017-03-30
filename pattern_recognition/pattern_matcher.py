@@ -141,7 +141,7 @@ class PatternMatcher(TypeTool):
         avg_words1 = float(words1) / pattern1.covered_sentences
         avg_words2 = float(words2) / pattern2.covered_sentences
         avg_words_intersection = float(words_intersection) / intersection.covered_sentences
-        syntax_score = (float(avg_words_intersection) / avg_words1) * (float(avg_words_intersection) / avg_words2)
+        syntax_score = float(avg_words_intersection) ** 2 / avg_words1 / avg_words2
         syntax_score = min(1.0, syntax_score)
         return syntax_score
 
