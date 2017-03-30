@@ -160,24 +160,23 @@ class FactExtractor(PatternTool):
         facts = [(resource, rel, obj, score, nl_sentence) for (rel, obj, score, nl_sentence) in facts]
         return facts
 
-    def extract_facts_from_resource(self, chunk=None):
+    def _extract_facts_from_resource(self, chunk=None):
         self.logger.print_info('--- start fact extraction thread ----')
         if chunk is None:
-            chunk = {}
+            chunk = set()
         facts = []
         for resource in chunk:
             wikipedia_resource = uri_rewriting.convert_to_wikipedia_uri(resource)
             self.logger.print_info('--- ' + wikipedia_resource + ' ----')
             html = self.wikipedia_connector.get_wikipedia_article_html(resource)
-            temp = self.extract_facts_from_html(html, resource)
-            if temp:
-                facts.append(temp)
+            facts.extend(self.extract_facts_from_html(html, resource))
 
         if facts:
             self.extracted_facts.extend(facts)
 
-    def _chunks(self, data, size=10000):
-        """Yield successive n-sized chunks from l."""
+    @staticmethod
+    def _chunks(data, size=10000):
+        """ Yield successive n-sized chunks from l. """
         for i in range(0, len(data), size):
             yield data[i:i + size]
 
@@ -187,7 +186,7 @@ class FactExtractor(PatternTool):
         threads = []
         # gather resources for each thread
         for chunk in self._chunks(list(self.discovery_resources), chunk_size):
-            t = Thread(target=self.extract_facts_from_resource, kwargs={'chunk': chunk})
+            t = Thread(target=self._extract_facts_from_resource, kwargs={'chunk': chunk})
             threads.append(t)
             # start all threads
         for t in threads:
@@ -201,7 +200,7 @@ class FactExtractor(PatternTool):
         self.logger.print_done('Fact extraction completed')
 
     def print_extracted_facts(self):
-        self.logger.print_info('----- Extracted facts ------')
+        self.logger.print_info('--- Extracted facts ---')
         for fact in self.extracted_facts:
             print(fact)
 

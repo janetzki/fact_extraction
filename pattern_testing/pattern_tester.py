@@ -71,20 +71,19 @@ class PatternTester(ConfigInitializer):
 
     def test_patterns(self):
         test_entities = self._collect_testing_facts()
+        self.fact_extractor.discovery_resources = test_entities
+        self.fact_extractor.extract_facts()
 
-        for test_entity in test_entities:
-            extracted_facts = self.fact_extractor.extract_facts_from_resource(test_entity)
-            for fact in extracted_facts:
-                print(fact)
-                subject, predicate, object, score, nl_sentence = fact
-                assert subject == test_entity
-                if (predicate, object) in test_entities[subject]:
-                    self.right_facts_counter[predicate] += 1
-                    print('Match')
-                else:
-                    self.wrong_facts_counter[predicate] += 1
-                    print('No match')
-                print('')
+        for fact in self.fact_extractor.extracted_facts:
+            print(fact)
+            subject, predicate, object, score, nl_sentence = fact
+            if (predicate, object) in test_entities[subject]:
+                self.right_facts_counter[predicate] += 1
+                print('Match')
+            else:
+                self.wrong_facts_counter[predicate] += 1
+                print('No match')
+            print('')
 
     @staticmethod
     def _calculate_f_measure(precision, recall):

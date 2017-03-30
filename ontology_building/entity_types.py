@@ -80,7 +80,7 @@ class EntityTypes(object):
                     else:
                         types.add(entry)
         else:
-            self.logger.print_warning('Unknown entity: "' + entity + '"')
+            self.logger.print_warning('Unknown entity for type retrieval: "' + entity + '"')
         return types
 
     @staticmethod
