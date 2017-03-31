@@ -15,7 +15,7 @@ from logger import Logger
 
 
 class PatternTester(ConfigInitializer):
-    def __init__(self, facts_limit, randomize=False, ground_truth_path='../data/ground_truth.ttl'):
+    def __init__(self, facts_limit, randomize=False, ground_truth_path='../pattern_testing/ground_truth.ttl'):
         self.facts_limit = facts_limit
         self.randomize = randomize
         self.ttl_parser = TTLParser(ground_truth_path, randomize)
