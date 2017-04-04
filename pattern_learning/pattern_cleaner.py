@@ -1,9 +1,11 @@
 from tqdm import tqdm
-from pattern_extractor import Pattern
 import imp
 
 pattern_tool = imp.load_source('pattern_tool', '../storing_tools/pattern_tool.py')
 from pattern_tool import PatternTool
+
+pattern = imp.load_source('pattern', '../pattern_extraction/pattern.py')
+from pattern import Pattern
 
 
 class PatternCleaner(PatternTool):
@@ -25,8 +27,8 @@ class PatternCleaner(PatternTool):
         self.logger.print_info('Pattern cleaning...')
         for relation, pattern in tqdm(self.relation_type_patterns.iteritems()):
             self.relation_type_patterns[relation] = Pattern.clean_pattern(pattern,
-                                                                         self.least_threshold_words,
-                                                                         self.least_threshold_types)
+                                                                          self.least_threshold_words,
+                                                                          self.least_threshold_types)
         self.relation_type_patterns = dict(
             filter(lambda (rel, pat): pat is not None, self.relation_type_patterns.iteritems()))
         self.logger.print_done('Pattern cleaning completed.')
