@@ -22,3 +22,6 @@ venv/
 
 # throwaway code
 test.py
+
+# outputs
+*.log
