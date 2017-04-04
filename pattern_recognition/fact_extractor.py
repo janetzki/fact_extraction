@@ -3,8 +3,8 @@ from math import ceil
 from threading import Thread
 import imp
 
-pattern_extractor = imp.load_source('pattern_extractor', '../pattern_learning/pattern_extractor.py')
-from pattern_extractor import PatternExtractor, Pattern
+pattern_extractor = imp.load_source('pattern_extractor', '../pattern_extraction/pattern_extractor.py')
+from pattern_extractor import PatternExtractor
 
 wikipedia_connector = imp.load_source('wikipedia_connector', '../wikipedia_connector/wikipedia_connector.py')
 from wikipedia_connector import WikipediaConnector, TaggedSentence

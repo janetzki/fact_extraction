@@ -1,97 +1,12 @@
 from __future__ import division
-from enum import Enum
 from ppretty import ppretty
 from itertools import dropwhile
 from collections import Counter
 import copy
+import imp
 
-
-class Direction(Enum):
-    outgoing = 1
-    incoming = 2
-    loop = 3
-
-    def __repr__(self):
-        return 'Direction()'
-
-    def __str__(self):
-        if self.value == 1:
-            return 'outgoing'
-        elif self.value == 2:
-            return 'incoming'
-        elif self.value == 3:
-            return 'loop'
-        return '<invalid>'
-
-
-class DependencyKey(object):
-    def __init__(self, meaning, from_node, to_node, node_addr):
-        self.meaning = meaning
-        self.direction = DependencyKey.direction(from_node, to_node, node_addr)
-
-    def __repr__(self):
-        return 'DependencyKey()'
-
-    def __str__(self):
-        return '(' + self.meaning + ', ' + str(self.direction) + ')'
-
-    @staticmethod
-    def direction(from_node, to_node, node_addr):
-        if from_node == node_addr and to_node == node_addr:
-            assert False
-            return Direction.loop
-        if from_node == node_addr:
-            return Direction.outgoing
-        elif to_node == node_addr:
-            return Direction.incoming
-        else:
-            assert False
-
-    @staticmethod
-    def partner_node(from_node, to_node, node_addr):
-        direction = DependencyKey.direction(from_node, to_node, node_addr)
-        if direction == Direction.outgoing or direction == Direction.loop:
-            return to_node
-        elif direction == Direction.incoming:
-            return from_node
-        else:
-            assert False
-
-    def __hash__(self):
-        return hash((self.meaning, self.direction))
-
-    def __eq__(self, other):
-        return (self.meaning, self.direction) == (other.meaning, other.direction)
-
-    def __ne__(self, other):
-        return not (self == other)
-
-
-class DependencyNode(object):
-    def __init__(self, word_frequencies, dependencies=None):
-        self.word_frequencies = word_frequencies
-        if dependencies is None:
-            dependencies = {}
-        self.dependencies = dependencies
-
-    @classmethod
-    def from_word(cls, word):
-        return cls(Counter({word: 1}))
-
-    @staticmethod
-    def raw_merge(node1, node2):
-        word_frequencies = node1.word_frequencies + node2.word_frequencies
-        dependencies = {}
-        return DependencyNode(word_frequencies, dependencies)
-
-    @staticmethod
-    def raw_intersect(node1, node2):
-        word_frequencies = node1.word_frequencies & node2.word_frequencies
-        dependencies = {}
-        return DependencyNode(word_frequencies, dependencies)
-
-    def add_word(self, word):
-        self.word_frequencies[word] += 1
+dependency_node = imp.load_source('dependency_node', '../pattern_extraction/dependency_node.py')
+from dependency_node import DependencyNode
 
 
 class Pattern(object):

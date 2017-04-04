@@ -28,14 +28,12 @@ class FileTool(ConfigInitializer):
     def save(self):
         print('\n\nSaving to "' + self.output_path + '"...')
         with open(self.output_path, 'wb') as fout:
-            output = self._data
-            pickle.dump(output, fout, pickle.HIGHEST_PROTOCOL)
+            pickle.dump(self._data, fout, pickle.HIGHEST_PROTOCOL)
 
     @property
     def data(self):
-        if self._data is None:
-            if self.input_path is not None:
-                self._load()
+        if self._data is None and self.input_path is not None:
+            self._load()
         return self._data
 
     @data.setter

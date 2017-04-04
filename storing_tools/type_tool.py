@@ -3,7 +3,7 @@ import imp
 file_tool = imp.load_source('file_tool', '../storing_tools/file_tool.py')
 from file_tool import FileTool
 
-# Do not remove this import! It is necessary if pickle has to load a TypePattern from a file.
+# Do not remove this import! It is necessary as pickle has to load a TypePattern from a file.
 type_pattern = imp.load_source('type_pattern', '../type_learning/type_pattern.py')
 from type_pattern import TypePattern
 

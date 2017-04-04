@@ -7,7 +7,6 @@ from nltk.tag import pos_tag_sents
 from ascii_graph import Pyasciigraph
 from collections import Counter
 from tqdm import tqdm
-from pattern_extractor import PatternExtractor, Pattern
 from threading import Thread
 import re
 import itertools
@@ -24,6 +23,12 @@ from logger import Logger
 
 pattern_tester = imp.load_source('pattern_tester', '../pattern_testing/pattern_tester.py')
 from pattern_tester import PatternTester
+
+pattern = imp.load_source('pattern', '../pattern_extraction/pattern.py')
+from pattern import Pattern
+
+pattern_extractor = imp.load_source('pattern_extractor', '../pattern_extraction/pattern_extractor.py')
+from pattern_extractor import PatternExtractor
 
 pattern_tool = imp.load_source('pattern_tool', '../storing_tools/pattern_tool.py')
 from pattern_tool import PatternTool
@@ -60,7 +65,6 @@ class WikipediaPatternExtractor(PatternTool):
     def from_config_file(cls):
         config_parser = cls.get_config_parser()
         use_dump = config_parser.getboolean('general', 'use_dump')
-
 
         section = 'wikipedia_pattern_extractor'
         randomize = config_parser.getboolean(section, 'randomize')
@@ -160,7 +164,7 @@ class WikipediaPatternExtractor(PatternTool):
         """
         # parse dbpedia information
         self.dbpedia = self.parse_dbpedia_data()
-        self.logger.print_info('Sentence Extraction..')
+        self.logger.print_info('Sentence Extraction...')
         threads = []
         chunk_size = int(ceil(len(self.dbpedia) / self.num_of_threads))
         # gather all arguments for each thread
@@ -301,7 +305,7 @@ class WikipediaPatternExtractor(PatternTool):
             occurrence_count[relation] = {
                 'total': total_count[relation],
                 'matched': min(total_count[relation], matched_count.setdefault(relation, 0))
-                } # there might be more occurences of a fact in an article, thus, resulting in a coverage above 100%
+            }  # there might be more occurences of a fact in an article, thus, resulting in a coverage above 100%
 
         # print bar chart
         data = [('%  ' + str(vals['matched']) + '/' + str(vals['total']) + ' ' + rel.split('/')[-1],
@@ -318,13 +322,13 @@ class WikipediaPatternExtractor(PatternTool):
                 for pattern in values['patterns']:
                     if rel in self.relation_type_patterns:
                         self.relation_type_patterns[rel] = Pattern._merge(self.relation_type_patterns[rel], pattern,
-                                                                         self.perform_tests)
+                                                                          self.perform_tests)
                     else:
                         self.relation_type_patterns[rel] = pattern
         self.logger.print_done('Pattern merging completed.')
 
     def save_patterns(self):
-        self.training_resources = self.dbpedia.keys()
+        self.training_resources = set(self.dbpedia.keys())
         super(WikipediaPatternExtractor, self).save_patterns()
 
 
@@ -341,5 +345,5 @@ if __name__ == '__main__':
     wiki_pattern_extractor.merge_patterns()
     wiki_pattern_extractor.save_patterns()
 
-    # calculate occured facts coverage
+    # calculate occurred facts coverage
     wiki_pattern_extractor.calculate_text_coverage()

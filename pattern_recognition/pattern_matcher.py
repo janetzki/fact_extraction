@@ -3,7 +3,7 @@ import imp
 type_tool = imp.load_source('type_tool', '../storing_tools/type_tool.py')
 from type_tool import TypeTool
 
-pattern = imp.load_source('pattern', '../pattern_learning/pattern.py')
+pattern = imp.load_source('pattern', '../pattern_extraction/pattern.py')
 from pattern import Pattern, DependencyNode
 
 
