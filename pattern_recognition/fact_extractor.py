@@ -171,8 +171,7 @@ class FactExtractor(PatternTool):
             html = self.wikipedia_connector.get_wikipedia_article_html(resource)
             facts.extend(self.extract_facts_from_html(html, resource))
 
-        if facts:
-            self.extracted_facts.extend(facts)
+        self.extracted_facts.extend(facts)
 
     @staticmethod
     def _chunks(data, size=10000):
@@ -194,9 +193,7 @@ class FactExtractor(PatternTool):
         # wait for all threads to finish
         for t in threads:
             t.join()
-        print(self.extracted_facts)
-        if self.extracted_facts:
-            self.extracted_facts.sort(key=lambda fact: fact[0][3], reverse=True)
+        self.extracted_facts.sort(key=lambda fact: fact[0][3], reverse=True)
         self.logger.print_done('Fact extraction completed')
 
     def print_extracted_facts(self):
