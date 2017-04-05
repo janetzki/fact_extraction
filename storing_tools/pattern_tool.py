@@ -4,10 +4,6 @@ import imp
 file_tool = imp.load_source('file_tool', '../storing_tools/file_tool.py')
 from file_tool import FileTool
 
-# Do not remove this import! It is necessary as pickle has to load DependencyKeys from a file.
-dependency_key = imp.load_source('dependency_key', '../pattern_extraction/dependency_key.py')
-from dependency_key import DependencyKey
-
 
 class PatternTool(FileTool):
     """
