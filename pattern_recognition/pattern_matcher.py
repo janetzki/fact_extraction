@@ -147,7 +147,6 @@ class PatternMatcher(TypeTool):
 
     @staticmethod
     def _weighted_arithmetic_mean(data, weights):
-        # TODO: Would geometric mean be more appropriate?
         assert len(data) == len(weights)
 
         # filter empty values
