@@ -1,6 +1,8 @@
 from __future__ import division
 from math import ceil
 from threading import Thread
+from tqdm import tqdm
+import codecs
 import imp
 
 pattern_extractor = imp.load_source('pattern_extractor', '../pattern_extraction/pattern_extractor.py')
@@ -25,7 +27,9 @@ class FactExtractor(PatternTool):
     def __init__(self, articles_limit, use_dump=False, randomize=False, match_threshold=0.005, type_matching=True,
                  allow_unknown_entity_types=True, print_interim_results=True, threads=4,
                  resources_path='../data/mappingbased_objects_en.ttl',
-                 patterns_input_path='../data/patterns_cleaned.pkl'):
+                 patterns_input_path='../data/patterns_cleaned.pkl',
+                 facts_output_path='../data/extracted_facts.nt',
+                 extended_facts_output_path='../data/extracted_facts_extended.txt'):
         super(FactExtractor, self).__init__(patterns_input_path)
         self.articles_limit = articles_limit
         self.use_dump = use_dump
@@ -40,6 +44,8 @@ class FactExtractor(PatternTool):
         self.discovery_resources = set()
         self.extracted_facts = []
         self.threads = threads
+        self.facts_output_path = facts_output_path
+        self.extended_facts_output_path = extended_facts_output_path
 
         # self._make_pattern_types_transitive()
         self._load_discovery_resources()
@@ -140,7 +146,7 @@ class FactExtractor(PatternTool):
                     continue
 
                 matching_relations = self._match_pattern_against_relation_type_patterns(pattern, reasonable_relations)
-                new_facts = [(rel, object_link, score, nl_sentence) for (rel, score) in matching_relations]
+                new_facts = [(predicate, object_link, score, nl_sentence) for (predicate, score) in matching_relations]
                 facts.extend(new_facts)
 
                 if self.print_interim_results:
@@ -157,7 +163,7 @@ class FactExtractor(PatternTool):
         else:
             subject_entity = None
         facts = self._extract_facts_from_sentences(referenced_sentences, subject_entity)
-        facts = [(resource, rel, obj, score, nl_sentence) for (rel, obj, score, nl_sentence) in facts]
+        facts = [(resource, predicate, object, score, nl_sentence) for (predicate, object, score, nl_sentence) in facts]
         return facts
 
     def _extract_facts_from_resource(self, chunk=None):
@@ -196,10 +202,21 @@ class FactExtractor(PatternTool):
         self.extracted_facts.sort(key=lambda fact: fact[0][3], reverse=True)
         self.logger.print_done('Fact extraction completed')
 
-    def print_extracted_facts(self):
-        self.logger.print_info('--- Extracted facts ---')
-        for fact in self.extracted_facts:
-            print(fact)
+    def save_extracted_facts(self):
+        with codecs.open(self.facts_output_path, 'wb', 'utf-8') as fout:
+            self.logger.print_info('\n\nSaving facts to "' + self.facts_output_path + '"...')
+            for subject, predicate, object, score, nl_sentence in tqdm(self.extracted_facts):
+                iri_map = {'http://dbpedia.org/resource/': 'dbr:', 'http://dbpedia.org/ontology/': 'dbo:'}
+                for uri, iri in iri_map.items():
+                    subject = subject.replace(uri, iri)
+                    predicate = predicate.replace(uri, iri)
+                    object = object.replace(uri, iri)
+                fout.write('<' + subject + '> <' + predicate + '> <' + object + '> .\n')
+
+        with codecs.open(self.extended_facts_output_path, 'wb', 'utf-8') as fout:
+            self.logger.print_info('\n\nSaving extended facts to "' + self.extended_facts_output_path + '"...')
+            for fact in tqdm(self.extracted_facts):
+                fout.write(str(fact) + '\n')
 
     @property
     def training_relation_types(self):
@@ -212,4 +229,4 @@ class FactExtractor(PatternTool):
 if __name__ == '__main__':
     fact_extractor = FactExtractor.from_config_file()
     fact_extractor.extract_facts()
-    fact_extractor.print_extracted_facts()
+    fact_extractor.save_extracted_facts()
