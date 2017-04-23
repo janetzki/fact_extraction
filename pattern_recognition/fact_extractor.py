@@ -185,6 +185,10 @@ class FactExtractor(PatternTool):
         for i in range(0, len(data), size):
             yield data[i:i + size]
 
+    def _remove_dead_objects(self):
+        self.extracted_facts = filter(
+            lambda (subject, predicate, object, score, nl_sentence): 'redlink=1' not in object, self.extracted_facts)
+
     def extract_facts(self):
         self.logger.print_info('Fact extraction...')
         chunk_size = int(ceil(len(self.discovery_resources) / self.threads))
@@ -199,6 +203,7 @@ class FactExtractor(PatternTool):
         # wait for all threads to finish
         for t in threads:
             t.join()
+        self._remove_dead_objects()
         self.extracted_facts.sort(key=lambda fact: fact[0][3], reverse=True)
         self.logger.print_done('Fact extraction completed')
 
