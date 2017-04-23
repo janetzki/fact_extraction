@@ -58,8 +58,10 @@ class FactExtractor(PatternTool):
         articles_limit = config_parser.getint('fact_extractor', 'articles_limit')
         match_threshold = config_parser.getfloat('fact_extractor', 'match_threshold')
         type_matching = config_parser.getboolean('fact_extractor', 'type_matching')
+        allow_unknown_entity_types = config_parser.getboolean('fact_extractor', 'allow_unknown_entity_types')
         num_of_threads = config_parser.getint('fact_extractor', 'threads')
-        return cls(articles_limit, use_dump, randomize, match_threshold, type_matching, threads=num_of_threads)
+        return cls(articles_limit, use_dump, randomize, match_threshold, type_matching, allow_unknown_entity_types,
+                   threads=num_of_threads)
 
     def _make_pattern_types_transitive(self):
         for relation, pattern in self.relation_type_patterns.iteritems():
@@ -68,16 +70,26 @@ class FactExtractor(PatternTool):
             pattern.object_type_frequencies = self.pattern_extractor \
                 .get_transitive_types(pattern.object_type_frequencies)
 
+    @staticmethod
+    def flat_map(list_of_lists):
+        return [item for list in list_of_lists for item in list]
+
     def _load_discovery_resources(self):
         article_counter = 0
+        valid_types = set(FactExtractor.flat_map(self._get_specific_type_frequencies('subject').values()))
 
         self.logger.print_info('Collecting entities for fact extraction...')
         for subject, predicate, object in self.ttl_parser.yield_entries():
             if article_counter == self.articles_limit:
                 break
-            if subject not in self.training_resources and subject not in self.discovery_resources:
+            if subject in self.training_resources or subject in self.discovery_resources:
+                continue
+            subject_types = set(self.pattern_extractor.get_entity_types(subject).keys())
+            if (self.allow_unknown_entity_types and len(subject_types) == 0) \
+                    or len(subject_types & valid_types) > 0:
                 self.discovery_resources.add(subject)
                 article_counter += 1
+
         self.logger.print_done('Collecting entities for fact extraction completed')
 
     def _match_pattern_against_relation_type_patterns(self, pattern, reasonable_relations):
@@ -100,7 +112,6 @@ class FactExtractor(PatternTool):
                 assert types is not None
                 # Otherwise types were not learned in the training step.
                 # In this case you probably have to adjust the config file and rerun the training step.
-
                 if len(entity_types & types) > 0:
                     reasonable_relations.add(relation)
         return reasonable_relations
