@@ -7,7 +7,7 @@ from pattern_tool import PatternTool
 pattern = imp.load_source('pattern', '../pattern_extraction/pattern.py')
 from pattern import Pattern
 
-# # Do not remove this import! It is necessary as pickle has to load DependencyKeys from a file.
+# Do not remove this import! It is necessary as pickle has to load DependencyKeys from a file.
 dependency_key = imp.load_source('dependency_key', '../pattern_extraction/dependency_key.py')
 from dependency_key import DependencyKey
 

@@ -1,4 +1,3 @@
-from pattern import Direction
 from graphviz import Digraph
 import textwrap
 import imp
@@ -6,6 +5,17 @@ import imp
 pattern_tool = imp.load_source('pattern_tool', '../storing_tools/pattern_tool.py')
 from pattern_tool import PatternTool
 
+# Do not remove this import! It is necessary as pickle has to load Patterns from a file.
+pattern = imp.load_source('pattern', '../pattern_extraction/pattern.py')
+from pattern import Pattern
+
+# Do not remove this import! It is necessary as pickle has to load DependencyKeys from a file.
+dependency_key = imp.load_source('dependency_key', '../pattern_extraction/dependency_key.py')
+from dependency_key import DependencyKey
+
+# Do not remove this import! It is necessary as pickle has to load Directions from a file.
+direction = imp.load_source('direction', '../pattern_extraction/direction.py')
+from direction import Direction
 
 class PatternVisualizer(PatternTool):
     def __init__(self, patterns_input_path='../data/patterns_raw.pkl'):
