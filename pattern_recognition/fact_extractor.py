@@ -222,11 +222,6 @@ class FactExtractor(PatternTool):
         with codecs.open(self.facts_output_path, 'wb', 'utf-8') as fout:
             self.logger.print_info('\n\nSaving facts to "' + self.facts_output_path + '"...')
             for subject, predicate, object, score, nl_sentence in tqdm(self.extracted_facts):
-                iri_map = {'http://dbpedia.org/resource/': 'dbr:', 'http://dbpedia.org/ontology/': 'dbo:'}
-                for uri, iri in iri_map.items():
-                    subject = subject.replace(uri, iri)
-                    predicate = predicate.replace(uri, iri)
-                    object = object.replace(uri, iri)
                 fout.write('<' + subject + '> <' + predicate + '> <' + object + '> .\n')
 
         with codecs.open(self.extended_facts_output_path, 'wb', 'utf-8') as fout:
