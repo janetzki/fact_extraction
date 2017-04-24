@@ -28,8 +28,8 @@ class FactExtractor(PatternTool):
                  allow_unknown_entity_types=True, print_interim_results=True, threads=4,
                  resources_path='../data/mappingbased_objects_en.ttl',
                  patterns_input_path='../data/patterns_cleaned.pkl',
-                 facts_output_path='../data/extracted_facts.nt',
-                 extended_facts_output_path='../data/extracted_facts_extended.txt'):
+                 facts_output_path='../results/extracted_facts.nt',
+                 extended_facts_output_path='../results/extracted_facts_extended.txt'):
         super(FactExtractor, self).__init__(patterns_input_path)
         self.articles_limit = articles_limit
         self.use_dump = use_dump
