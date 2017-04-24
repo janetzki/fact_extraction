@@ -24,6 +24,7 @@ Pattern learning and recognition using available DBpedia facts and the correspon
 
 ### Pattern Validation
 If you want to test the fact extraction on ground truth data run:
+
 `$ cd pattern_testing/`
 
 `$ ./test_patterns.sh`
