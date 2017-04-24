@@ -1,16 +1,24 @@
 # Fact Extraction
-
-Pattern learning and recognition using already available DBpedia facts in corresponding Wikipedia raw text.
+Pattern learning and recognition using available DBpedia facts and the corresponding Wikipedia's free text.
 
 ## Setup
-In `setup/` just run `$ ./setup.sh` and you're good to go!
+`$ cd setup/`
+`$ ./setup.sh`
 
 ## Usage
-### Pattern Learning
-`$ python pattern_learning/wikipedia_pattern_extractor.py`
+### Syntactic Pattern Learning
+`$ cd pattern_learning/`
+`$ ./learn_patterns.sh`
+
+### Type Pattern Learning
+`$ cd type_learning/`
+`$ ./learn_types.sh`
 
 ### The Fact Extraction itself
-`$ python pattern_recognition/fact_extractor.py`
+`$ cd pattern_recognition/`
+`$ ./fact_extractor.sh`
 
 ### Pattern Validation
-`$ python pattern_testing/pattern_tester.py`
+If you want to test the fact extraction on ground truth data run:
+`$ cd pattern_testing/`
+`$ ./test_patterns.sh`
