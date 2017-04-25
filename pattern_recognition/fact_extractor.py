@@ -90,7 +90,8 @@ class FactExtractor(PatternTool):
                 self.discovery_resources.add(subject)
                 article_counter += 1
 
-        self.logger.print_done('Collecting entities for fact extraction completed')
+        self.logger.print_done('Collecting entities for fact extraction completed: '
+                               + str(len(self.discovery_resources)) + ' articles')
 
     def _match_pattern_against_relation_type_patterns(self, pattern, reasonable_relations):
         matching_relations = []
@@ -159,11 +160,6 @@ class FactExtractor(PatternTool):
                 matching_relations = self._match_pattern_against_relation_type_patterns(pattern, reasonable_relations)
                 new_facts = [(predicate, object_link, score, nl_sentence) for (predicate, score) in matching_relations]
                 facts.extend(new_facts)
-
-                if self.print_interim_results:
-                    for fact in new_facts:
-                        print('')
-                        print(fact)
         return facts
 
     def extract_facts_from_html(self, html, resource):
@@ -175,6 +171,9 @@ class FactExtractor(PatternTool):
             subject_entity = None
         facts = self._extract_facts_from_sentences(referenced_sentences, subject_entity)
         facts = [(resource, predicate, object, score, nl_sentence) for (predicate, object, score, nl_sentence) in facts]
+        if self.print_interim_results:
+            for fact in facts:
+                print(fact)
         return facts
 
     def _extract_facts_from_resource(self, chunk=None):

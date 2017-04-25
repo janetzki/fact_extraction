@@ -21,12 +21,12 @@ class FileTool(ConfigInitializer):
         self.output_path = output_path
 
     def _load(self):
-        self.logger.print_info('\n\nLoading from "' + self.input_path + '"...')
+        self.logger.print_info('Loading from "' + self.input_path + '"...')
         with open(self.input_path, 'rb') as fin:
             self._data = pickle.load(fin)
 
     def save(self):
-        self.logger.print_info('\n\nSaving to "' + self.output_path + '"...')
+        self.logger.print_info('Saving to "' + self.output_path + '"...')
         with open(self.output_path, 'wb') as fout:
             pickle.dump(self._data, fout, pickle.HIGHEST_PROTOCOL)
 

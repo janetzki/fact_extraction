@@ -17,6 +17,7 @@ from dependency_key import DependencyKey
 direction = imp.load_source('direction', '../pattern_extraction/direction.py')
 from direction import Direction
 
+
 class PatternVisualizer(PatternTool):
     def __init__(self, patterns_input_path='../data/patterns_raw.pkl'):
         super(PatternVisualizer, self).__init__(patterns_input_path)
