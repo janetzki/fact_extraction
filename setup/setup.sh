@@ -1,16 +1,18 @@
 #!/bin/bash
 
-./setup_virtualenv.sh
-# start virtual environmet
-source ../venv/bin/activate
+BASEDIR=$(dirname "$0")
 
-./setup_stanford_core_nlp.sh
+$BASEDIR/setup_virtualenv.sh
+# start virtual environmet
+source $BASEDIR/../venv/bin/activate
+
+$BASEDIR/setup_stanford_core_nlp.sh
 python setup_nltk.py
 
-./download_dbpedia_relations.sh
-./download_redirects.sh
-./setup_ontology_and_redirects.sh
+$BASEDIR/download_dbpedia_relations.sh
+$BASEDIR/download_redirects.sh
+$BASEDIR/setup_ontology_and_redirects.sh
 
-./download_wikipedia_dump.sh
-./create_redirected_wikipedia_dump.sh
-./create_wikipedia_dump_index.sh
+$BASEDIR/download_wikipedia_dump.sh
+$BASEDIR/create_redirected_wikipedia_dump.sh
+$BASEDIR/create_wikipedia_dump_index.sh

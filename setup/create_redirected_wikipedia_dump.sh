@@ -1,3 +1,5 @@
 #!/bin/bash
 
-python ../data_cleaning/redirects_substitutor.py
+BASEDIR=$(dirname "$0")
+
+python $BASEDIR/../data_cleaning/redirects_substitutor.py
