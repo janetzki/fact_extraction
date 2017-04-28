@@ -11,8 +11,11 @@ from pattern_extractor import PatternExtractor
 wikipedia_connector = imp.load_source('wikipedia_connector', '../wikipedia_connector/wikipedia_connector.py')
 from wikipedia_connector import WikipediaConnector, TaggedSentence
 
-ttl_parser = imp.load_source('ttl_parser', '../ttl_parsing/ttl_parser.py')
-from ttl_parser import TTLParser
+nt_reader = imp.load_source('nt_reader', '../nt_operations/nt_reader.py')
+from nt_reader import NTReader
+
+nt_writer = imp.load_source('nt_writer', '../nt_operations/nt_writer.py')
+from nt_writer import NTWriter
 
 pattern_tool = imp.load_source('pattern_tool', '../storing_tools/pattern_tool.py')
 from pattern_tool import PatternTool
@@ -36,7 +39,7 @@ class FactExtractor(PatternTool):
         self.allow_unknown_entity_types = allow_unknown_entity_types
         self.match_threshold = match_threshold
         self.type_matching = type_matching
-        self.ttl_parser = TTLParser(resources_path, randomize)
+        self.nt_reader = NTReader(resources_path, randomize)
         self.wikipedia_connector = WikipediaConnector(self.use_dump)
         self.pattern_extractor = PatternExtractor()
         self.pattern_matcher = PatternMatcher()
@@ -44,7 +47,7 @@ class FactExtractor(PatternTool):
         self.discovery_resources = set()
         self.extracted_facts = []
         self.threads = threads
-        self.facts_output_path = facts_output_path
+        self.nt_writer = NTWriter(facts_output_path)
         self.extended_facts_output_path = extended_facts_output_path
 
         # self._make_pattern_types_transitive()
@@ -79,7 +82,7 @@ class FactExtractor(PatternTool):
         valid_types = set(FactExtractor.flat_map(self._get_specific_type_frequencies('subject').values()))
 
         self.logger.print_info('Collecting entities for fact extraction...')
-        for subject, predicate, object in self.ttl_parser.yield_entries():
+        for subject, predicate, object in self.nt_reader.yield_entries():
             if article_counter == self.articles_limit:
                 break
             if subject in self.training_resources or subject in self.discovery_resources:
@@ -218,10 +221,9 @@ class FactExtractor(PatternTool):
         self.logger.print_done('Fact extraction completed')
 
     def save_extracted_facts(self):
-        with codecs.open(self.facts_output_path, 'wb', 'utf-8') as fout:
-            self.logger.print_info('\n\nSaving facts to "' + self.facts_output_path + '"...')
-            for subject, predicate, object, score, nl_sentence in tqdm(self.extracted_facts):
-                fout.write('<' + subject + '> <' + predicate + '> <' + object + '> .\n')
+        short_facts = [(subject, predicate, object) for (subject, predicate, object, socre, nl_sentence) in
+                       self.extracted_facts]
+        self.nt_writer.write_nt(short_facts)
 
         with codecs.open(self.extended_facts_output_path, 'wb', 'utf-8') as fout:
             self.logger.print_info('\n\nSaving extended facts to "' + self.extended_facts_output_path + '"...')

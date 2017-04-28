@@ -7,8 +7,8 @@ from config_initializer import ConfigInitializer
 fact_extractor = imp.load_source('fact_extractor', '../pattern_recognition/fact_extractor.py')
 from fact_extractor import FactExtractor
 
-ttl_parser = imp.load_source('ttl_parser', '../ttl_parsing/ttl_parser.py')
-from ttl_parser import TTLParser
+nt_reader = imp.load_source('nt_reader', '../nt_operations/nt_reader.py')
+from nt_reader import NTReader
 
 logger = imp.load_source('logger', '../logging/logger.py')
 from logger import Logger
@@ -18,7 +18,7 @@ class PatternTester(ConfigInitializer):
     def __init__(self, facts_limit, randomize=False, ground_truth_path='../pattern_testing/ground_truth.ttl'):
         self.facts_limit = facts_limit
         self.randomize = randomize
-        self.ttl_parser = TTLParser(ground_truth_path, randomize)
+        self.nt_reader = NTReader(ground_truth_path, randomize)
         self.logger = Logger.from_config_file()
         self.results = {}
         self.fact_extractor = None
@@ -46,7 +46,7 @@ class PatternTester(ConfigInitializer):
         fact_counter = 0
 
         self.logger.print_info('Collecting facts for testing...')
-        for subject, predicate, object in self.ttl_parser.yield_entries():
+        for subject, predicate, object in self.nt_reader.yield_entries():
             if fact_counter == self.facts_limit * len(training_relations):
                 break
             if subject in training_resources:
@@ -67,7 +67,7 @@ class PatternTester(ConfigInitializer):
         return entities
 
     def get_testing_resources(self):
-        return set([subject for subject, predicate, object in self.ttl_parser.yield_entries()])
+        return set([subject for subject, predicate, object in self.nt_reader.yield_entries()])
 
     def test_patterns(self):
         test_entities = self._collect_testing_facts()

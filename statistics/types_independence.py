@@ -8,14 +8,11 @@ from collections import Counter
 from tqdm import tqdm
 import unicodecsv
 
-ttl_parser = imp.load_source('ttl_parser', '../ttl_parsing/ttl_parser.py')
-from ttl_parser import TTLParser
+nt_reader = imp.load_source('nt_reader', '../nt_operations/nt_reader.py')
+from nt_reader import NTReader
 
 entity_types = imp.load_source('entity_types', '../ontology_building/entity_types.py')
 from entity_types import EntityTypes
-
-pattern = imp.load_source('pattern', '../pattern_learning/pattern.py')
-from pattern import Pattern
 
 logger = imp.load_source('logger', '../logging/logger.py')
 from logger import Logger
@@ -25,13 +22,12 @@ line_counting = imp.load_source('line_counting', '../helper_functions/line_count
 
 
 class StatisticGenerator(object):
-
     def __init__(self, resources_path='../data/mappingbased_objects_en.ttl', facts_limit=100000):
         # self.instance_types = EntityTypes(types_paths=["../data/types_en.csv"], types_index=False,
         #          types_indexed_file=False)
         self.instance_types = EntityTypes()
         self.resources_path = resources_path
-        self.ttl_parser = TTLParser(resources_path, False)
+        self.nt_reader = NTReader(resources_path, False)
         self.logger = Logger.from_config_file()
         self.delimiter = '#'
         self.predicates = dict()
@@ -44,7 +40,7 @@ class StatisticGenerator(object):
         total_lines = min(line_counting.cached_counter.count_lines(self.resources_path), self.facts_limit)
 
         self.logger.print_info('Collecting facts for each predicate...')
-        for subject, predicate, object in tqdm(self.ttl_parser.yield_entries(), total=total_lines):
+        for subject, predicate, object in tqdm(self.nt_reader.yield_entries(), total=total_lines):
             total_count += 1
             if total_count > self.facts_limit:
                 break
@@ -85,11 +81,11 @@ class StatisticGenerator(object):
                         has_exact_one += 1
 
         subject_counts = pd.Series(subject_counts)
-        #subject_counts.plot.hist(bins=100)
-        #plt.show()
+        # subject_counts.plot.hist(bins=100)
+        # plt.show()
         object_counts = pd.Series(object_counts)
-        #object_counts.plot.hist(bins=100)
-        #plt.show()
+        # object_counts.plot.hist(bins=100)
+        # plt.show()
         self.logger.print_info('Facts: ' + str(facts))
         self.logger.print_info('With subject type: ' + str(subject_counts.count()))
         self.logger.print_info('Mean subject type count: ' + str(subject_counts.mean()))
@@ -101,13 +97,14 @@ class StatisticGenerator(object):
         self.logger.print_info('Exact one with type(s): ' + str(has_exact_one))
         self.logger.print_info('None with type(s): ' + str(has_nothing))
 
-    def test_types_independence(self, expectation_threshold = 10):
+    def test_types_independence(self, expectation_threshold=10):
         variances = {}
         total_included_count = 0
         sum_avg_variance = 0
         empty_token = '#empty'
 
-        self.logger.print_info('Collecting subject and object types for each predicate and calculating independence score...')
+        self.logger.print_info(
+            'Collecting subject and object types for each predicate and calculating independence score...')
         for predicate in tqdm(self.predicates, total=len(self.predicates)):
             predicate_count = 0
             predicate_subject_types = Counter()
@@ -127,8 +124,8 @@ class StatisticGenerator(object):
 
             # print(predicate)
             variance = StatisticGenerator.calculate_independence_score(predicate_count, predicate_subject_types,
-                                                         predicate_object_types, combinations,
-                                                         expectation_threshold)
+                                                                       predicate_object_types, combinations,
+                                                                       expectation_threshold)
             if variance is None:
                 continue
 
@@ -171,7 +168,7 @@ class StatisticGenerator(object):
                     for object_type in object_types:
                         relation_object_types[predicate][object_type] += 1
                         object_types_count[object_type] += 1
-                    #print(predicate, subject, object)
+                        # print(predicate, subject, object)
 
         subject_specs = StatisticGenerator.calculate_specifity(facts, subject_types_count, relation_subject_types)
         object_specs = StatisticGenerator.calculate_specifity(facts, object_types_count, relation_object_types)
@@ -183,7 +180,8 @@ class StatisticGenerator(object):
             both_specs.setdefault(predicate, {})
             both_specs[predicate]["object"] = object_specs[predicate]
         for predicate in both_specs:
-            print(';'.join([predicate, str(both_specs[predicate].setdefault("subject", -1)), str(both_specs[predicate].setdefault("object", -1))]))
+            print(';'.join([predicate, str(both_specs[predicate].setdefault("subject", -1)),
+                            str(both_specs[predicate].setdefault("object", -1))]))
 
     @staticmethod
     def calculate_specifity(facts, types, relation_types):
@@ -197,14 +195,14 @@ class StatisticGenerator(object):
             deviations = 0
             for name, predicate_type_frequency in relation_types[predicate].most_common():
                 predicate_relative_frequency = float(predicate_type_frequency) / facts[predicate]
-                total_frequency = float(types[name]-predicate_type_frequency) / total_facts
+                total_frequency = float(types[name] - predicate_type_frequency) / total_facts
                 # print(name)
                 # print(facts[predicate])
                 # print(predicate_frequency)
                 # print(predicate_relative_frequency)
                 # print(total_frequency)
-                assert abs(predicate_relative_frequency-total_frequency) <= 1
-                deviations += predicate_type_frequency * abs(predicate_relative_frequency-total_frequency)
+                assert abs(predicate_relative_frequency - total_frequency) <= 1
+                deviations += predicate_type_frequency * abs(predicate_relative_frequency - total_frequency)
             specifities[predicate] = float(deviations) / sum(relation_types[predicate].values())
         return specifities
 
@@ -219,12 +217,13 @@ class StatisticGenerator(object):
             if expected_count < expectation_threshold:
                 continue
             included_combination_count += observed_count
-            rel_variance = (float(abs(observed_count-expected_count)) / expected_count)
+            rel_variance = (float(abs(observed_count - expected_count)) / expected_count)
             sum_rel_variance += observed_count * rel_variance
 
         if included_combination_count == 0:
             return None
         return sum_rel_variance / included_combination_count
+
 
 if __name__ == '__main__':
     statistic_generator = StatisticGenerator()
@@ -238,4 +237,4 @@ if __name__ == '__main__':
 
     statistic_generator.collect_predicates(facts_limit=1000000)
     statistic_generator.measure_type_diversity()
-    #statistic_generator.count_types()
+    # statistic_generator.count_types()

@@ -9,8 +9,8 @@ from type_tool import TypeTool
 type_pattern = imp.load_source('type_pattern', '../type_learning/type_pattern.py')
 from type_pattern import TypePattern
 
-ttl_parser = imp.load_source('ttl_parser', '../ttl_parsing/ttl_parser.py')
-from ttl_parser import TTLParser
+nt_reader = imp.load_source('nt_reader', '../nt_operations/nt_reader.py')
+from nt_reader import NTReader
 
 entity_types = imp.load_source('entity_types', '../ontology_building/entity_types.py')
 from entity_types import EntityTypes
@@ -26,7 +26,7 @@ class TypeLearner(TypeTool):
         self.facts_path = facts_path
         self.output_path = output_path
         self.facts_limit = facts_limit if facts_limit > 0 else sys.maxint
-        self.ttl_parser = TTLParser(facts_path)
+        self.nt_reader = NTReader(facts_path)
         self.instance_types = EntityTypes()
         self.subjects = dict()
         self.objects = dict()
@@ -50,7 +50,7 @@ class TypeLearner(TypeTool):
         facts_count = 0
 
         self.logger.print_info('Counting relations for subjects and objects...')
-        for subject, predicate, object in tqdm(self.ttl_parser.yield_entries(), total=total_lines):
+        for subject, predicate, object in tqdm(self.nt_reader.yield_entries(), total=total_lines):
             facts_count += 1
             if facts_count > self.facts_limit:
                 break

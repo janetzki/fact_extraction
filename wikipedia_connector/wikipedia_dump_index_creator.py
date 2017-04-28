@@ -5,8 +5,8 @@ import io
 from tqdm import tqdm
 from bs4 import BeautifulSoup as bs
 
-ttl_parser = imp.load_source('ttl_parser', '../ttl_parsing/ttl_parser.py')
-from ttl_parser import TTLParser
+nt_reader = imp.load_source('nt_reader', '../nt_operations/nt_reader.py')
+from nt_reader import NTReader
 
 logger = imp.load_source('logger', '../logging/logger.py')
 from logger import Logger
@@ -47,8 +47,8 @@ class WikipediaDumpIndexCreator(object):
             total_lines_relations = line_counting.cached_counter.count_lines(self.path_relations)
             self.logger.print_info('Collecting important entities...')
             important_articles = set()
-            ttl_parser = TTLParser(self.path_relations)
-            for subject, predicate, object in tqdm(ttl_parser.yield_cleaned_entry_names(), total=total_lines_relations):
+            nt_reader = NTReader(self.path_relations)
+            for subject, predicate, object in tqdm(nt_reader.yield_cleaned_entry_names(), total=total_lines_relations):
                 important_articles.add(subject)
 
             total_lines_index = line_counting.cached_counter.count_lines(source)

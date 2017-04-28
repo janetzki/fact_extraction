@@ -3,8 +3,8 @@ import codecs
 from tqdm import tqdm
 import imp
 
-ttl_parser = imp.load_source('ttl_parser', '../ttl_parsing/ttl_parser.py')
-from ttl_parser import TTLParser
+nt_reader = imp.load_source('nt_reader', '../nt_operations/nt_reader.py')
+from nt_reader import NTReader
 
 logger = imp.load_source('logger', '../logging/logger.py')
 from logger import Logger
@@ -13,21 +13,21 @@ line_counting = imp.load_source('line_counting', '../helper_functions/line_count
 uri_rewriting = imp.load_source('uri_rewriting', '../helper_functions/uri_rewriting.py')
 
 
-class TTLCleaner(object):
-    def __init__(self, path_ttl, path_cleaned_ttl, filter_relations, assert_complete=False):
-        self.path_ttl = path_ttl
-        self.path_cleaned_ttl = path_cleaned_ttl
+class NTCleaner(object):
+    def __init__(self, nt_path, path_cleaned_nt, filter_relations, assert_complete=False):
+        self.nt_path = nt_path
+        self.path_cleaned_nt = path_cleaned_nt
         self.filter_relations = filter_relations
         self.assert_complete = assert_complete
         self.logger = Logger.from_config_file()
         self.delimiter = '#'
 
-    def clean_ttl(self):
-        total_lines = line_counting.cached_counter.count_lines(self.path_ttl)
-        with codecs.open(self.path_cleaned_ttl, 'wb', "utf-8") as fout:
-            ttl_parser = TTLParser(self.path_ttl)
+    def clean_nt(self):
+        total_lines = line_counting.cached_counter.count_lines(self.nt_path)
+        with codecs.open(self.path_cleaned_nt, 'wb', "utf-8") as fout:
+            nt_reader = NTReader(self.nt_path)
             self.logger.print_info('Type extraction...')
-            for subject, predicate, type in tqdm(ttl_parser.yield_entries(), total=total_lines):
+            for subject, predicate, type in tqdm(nt_reader.yield_entries(), total=total_lines):
                 if self.assert_complete:
                     assert predicate in self.filter_relations
                 elif predicate not in self.filter_relations:
@@ -43,25 +43,25 @@ class TTLCleaner(object):
 
 def clean_instance_types(path_types, path_types_cleaned):
     type_relation = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type'
-    type_cleaner = TTLCleaner(path_types, path_types_cleaned, [type_relation], True)
-    type_cleaner.clean_ttl()
+    type_cleaner = NTCleaner(path_types, path_types_cleaned, [type_relation], True)
+    type_cleaner.clean_nt()
 
 
 def clean_instance_types_inheritance():
     path_types_inheritance = '../data/dbpedia_2016-04.nt'
     path_types_inheritance_cleaned = '../data/types_inheritance_en.csv'
     inheritance_relation = 'http://www.w3.org/2000/01/rdf-schema#subClassOf'
-    inheritance_cleaner = TTLCleaner(path_types_inheritance, path_types_inheritance_cleaned, [inheritance_relation],
-                                     False)
-    inheritance_cleaner.clean_ttl()
+    inheritance_cleaner = NTCleaner(path_types_inheritance, path_types_inheritance_cleaned, [inheritance_relation],
+                                    False)
+    inheritance_cleaner.clean_nt()
 
 
 def clean_redirects():
     path_redirects = '../data/redirects_en.ttl'
     path_redirects_cleaned = '../data/redirects_en.csv'
     redirect_relation = 'http://dbpedia.org/ontology/wikiPageRedirects'
-    type_cleaner = TTLCleaner(path_redirects, path_redirects_cleaned, [redirect_relation], True)
-    type_cleaner.clean_ttl()
+    type_cleaner = NTCleaner(path_redirects, path_redirects_cleaned, [redirect_relation], True)
+    type_cleaner.clean_nt()
 
 
 if __name__ == '__main__':

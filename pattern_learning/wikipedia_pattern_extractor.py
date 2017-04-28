@@ -15,8 +15,8 @@ import imp
 wikipedia_connector = imp.load_source('wikipedia_connector', '../wikipedia_connector/wikipedia_connector.py')
 from wikipedia_connector import WikipediaConnector
 
-ttl_parser = imp.load_source('ttl_parser', '../ttl_parsing/ttl_parser.py')
-from ttl_parser import TTLParser
+nt_reader = imp.load_source('nt_reader', '../nt_operations/nt_reader.py')
+from nt_reader import NTReader
 
 logger = imp.load_source('logger', '../logging/logger.py')
 from logger import Logger
@@ -48,7 +48,7 @@ class WikipediaPatternExtractor(PatternTool):
         self.wikipedia_connector = WikipediaConnector(use_dump=self.use_dump, redirect=replace_redirects)
         self.pattern_extractor = PatternExtractor()
         self.num_of_threads = threads
-        self.ttl_parser = TTLParser(resources_path, randomize)
+        self.nt_reader = NTReader(resources_path, randomize)
         self.logger = Logger.from_config_file()
 
         if relation_types is not None and len(relation_types) > 0:
@@ -107,7 +107,7 @@ class WikipediaPatternExtractor(PatternTool):
         testing_resources = PatternTester.from_config_file().get_testing_resources()
 
         self.logger.print_info('Collecting facts for training...')
-        for subject, predicate, object in self.ttl_parser.yield_entries():
+        for subject, predicate, object in self.nt_reader.yield_entries():
             if fact_counter == self.facts_limit * self.relation_types_limit:
                 break
             if len(relation_types_counter) == self.relation_types_limit and predicate not in relation_types_counter:
