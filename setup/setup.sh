@@ -6,9 +6,11 @@ $BASEDIR/setup_virtualenv.sh
 # start virtual environmet
 source $BASEDIR/../venv/bin/activate
 
+sudo apt-get install unzip
 $BASEDIR/setup_stanford_core_nlp.sh
-python setup_nltk.py
+python $BASEDIR/setup_nltk.py
 
+mkdir $BASEDIR/../data
 $BASEDIR/download_dbpedia_relations.sh
 $BASEDIR/download_redirects.sh
 $BASEDIR/setup_ontology_and_redirects.sh

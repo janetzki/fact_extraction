@@ -1,8 +1,17 @@
 #!/bin/bash
 
 BASEDIR=$(dirname "$0")
+UNCOMPRESSED="stanford-corenlp-full-2016-10-31"
+DESTINATION="$BASEDIR/../$UNCOMPRESSED"
+DOWNLOADFILE="$UNCOMPRESSED.zip"
 
-wget -v nlp.stanford.edu/software/stanford-corenlp-full-2016-10-31.zip
-unzip stanford-corenlp-full-2016-10-31.zip
-rm stanford-corenlp-full-2016-10-31.zip
-mv stanford-corenlp-full-2016-10-31 $BASEDIR/..
+if [ ! -d "$DESTINATION" ]; then
+	if [ ! -d "$UNCOMPRESSED" ]; then
+		if [ ! -e "$DOWNLOADFILE" ]; then
+			wget -v nlp.stanford.edu/software/stanford-corenlp-full-2016-10-31.zip
+		fi
+		unzip $DOWNLOADFILE
+		rm $DOWNLOADFILE
+	fi
+	mv $UNCOMPRESSED $DESTINATION
+fi

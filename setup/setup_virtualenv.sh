@@ -3,7 +3,11 @@
 BASEDIR=$(dirname "$0")
 
 # Set up virtual environment using python 2.x
+pip install virtualenv
 virtualenv $BASEDIR/../venv -p python2
+
+# start virtual environmet
+source $BASEDIR/../venv/bin/activate
 
 # Upgrade pip (may solve problems in the next step)
 pip install -U pip
