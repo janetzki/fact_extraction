@@ -23,7 +23,7 @@ fact_extraction/type_learning/learn_types.sh
 fact_extraction/pattern_recognition/fact_extractor.sh
 ```
 
-###Pattern Validation
+### Pattern Validation
 If you want to test the fact extraction on ground truth data run:
 ```shell
 fact_extraction/pattern_testing/test_patterns.sh
