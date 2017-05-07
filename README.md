@@ -2,8 +2,10 @@
 Pattern learning and recognition using available DBpedia facts and the corresponding Wikipedia's free text.
 
 ## Setup
-`$ git clone https://github.com/jjanetzki/fact_extraction`
-`$ sudo fact_extraction/setup/setup.sh`
+```
+$ git clone https://github.com/jjanetzki/fact_extraction
+$ sudo fact_extraction/setup/setup.sh
+```
 
 ## Usage
 ### Syntactic Pattern Learning
