@@ -20,7 +20,7 @@ fact_extraction/type_learning/learn_types.sh
 
 ### The Fact Extraction itself
 ```shell
-fact_extraction/pattern_recognition/fact_extractor.sh
+fact_extraction/pattern_recognition/extract_facts.sh
 ```
 
 ### Pattern Validation
