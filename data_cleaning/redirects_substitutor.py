@@ -1,28 +1,21 @@
+from logger import Logger
+from helper_functions import line_counting
 from tqdm import tqdm
 import re
 import csv
-import imp
+import os
 import sys
-
-logger = imp.load_source('logger', '../logging/logger.py')
-from logger import Logger
-
-line_counting = imp.load_source('line_counting', '../helper_functions/line_counting.py')
 
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
-
-# def unicode_csv_reader(utf8_data, dialect=csv.excel, **kwargs):
-#     csv_reader = csv.reader(utf8_data, dialect=dialect, **kwargs)
-#     for row in csv_reader:
-#         yield [unicode(cell, 'utf-8') for cell in row]
+dir_path = os.path.dirname(os.path.abspath(__file__)) + '/'
 
 
 class RedirectsSubstitutor:
-    def __init__(self, path_dump='../data/enwiki-latest-pages-articles.xml',
-                 path_substituted_dump='../data/enwiki-latest-pages-articles-redirected.xml',
-                 path_redirects='../data/redirects_en.csv'):
+    def __init__(self, path_dump=dir_path + '../data/enwiki-latest-pages-articles.xml',
+                 path_substituted_dump=dir_path + '../data/enwiki-latest-pages-articles-redirected.xml',
+                 path_redirects=dir_path + '../data/redirects_en.csv'):
         self.path_dump = path_dump
         self.path_substituted_dump = path_substituted_dump
         self.logger = Logger.from_config_file()

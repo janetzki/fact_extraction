@@ -1,20 +1,18 @@
+from logger import Logger
+from helper_functions import line_counting, uri_rewriting
 from tqdm import tqdm
 from collections import Counter
 import csv
 import unicodecsv
-import imp
+import os
 
-logger = imp.load_source('logger', '../logging/logger.py')
-from logger import Logger
-
-line_counting = imp.load_source('line_counting', '../helper_functions/line_counting.py')
-uri_rewriting = imp.load_source('uri_rewriting', '../helper_functions/uri_rewriting.py')
+dir_path = os.path.dirname(os.path.abspath(__file__)) + '/'
 
 
 class EntityTypes(object):
-    def __init__(self, types_paths=list(), types_index='../data/yago_index.csv',
-                 types_indexed_file='../data/yago_types.csv',
-                 type_inheritance_path='../data/types_inheritance_en.csv', limit=False):
+    def __init__(self, types_paths=list(), types_index=dir_path + '../data/yago_index.csv',
+                 types_indexed_file=dir_path + '../data/yago_types.csv',
+                 type_inheritance_path=dir_path + '../data/types_inheritance_en.csv', limit=False):
         self.logger = Logger.from_config_file()
         self.types = dict()
         self.parent_types = dict()

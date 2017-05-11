@@ -1,11 +1,11 @@
-import imp
+from storing_tools import TypeTool
+import os
 
-type_tool = imp.load_source('type_tool', '../storing_tools/type_tool.py')
-from type_tool import TypeTool
+dir_path = os.path.dirname(os.path.abspath(__file__)) + '/'
 
 
 class TypeStatistician(TypeTool):
-    def __init__(self, input_path='../data/type_patterns_cleaned.pkl'):
+    def __init__(self, input_path=dir_path + '../data/type_patterns_cleaned.pkl'):
         super(TypeStatistician, self).__init__(input_path)
 
     def print_stats(self):

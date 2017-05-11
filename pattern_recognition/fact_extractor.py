@@ -1,38 +1,26 @@
 from __future__ import division
+from pattern_extraction import PatternExtractor
+from wikipedia_connector import WikipediaConnector, TaggedSentence
+from nt_operations import NTReader, NTWriter
+from storing_tools import PatternTool
+from pattern_matcher import PatternMatcher
+from helper_functions import uri_rewriting
 from math import ceil
 from threading import Thread
 from tqdm import tqdm
 import codecs
-import imp
+import os
 
-pattern_extractor = imp.load_source('pattern_extractor', '../pattern_extraction/pattern_extractor.py')
-from pattern_extractor import PatternExtractor
-
-wikipedia_connector = imp.load_source('wikipedia_connector', '../wikipedia_connector/wikipedia_connector.py')
-from wikipedia_connector import WikipediaConnector, TaggedSentence
-
-nt_reader = imp.load_source('nt_reader', '../nt_operations/nt_reader.py')
-from nt_reader import NTReader
-
-nt_writer = imp.load_source('nt_writer', '../nt_operations/nt_writer.py')
-from nt_writer import NTWriter
-
-pattern_tool = imp.load_source('pattern_tool', '../storing_tools/pattern_tool.py')
-from pattern_tool import PatternTool
-
-pattern_matcher = imp.load_source('pattern_matcher', '../pattern_recognition/pattern_matcher.py')
-from pattern_matcher import PatternMatcher
-
-uri_rewriting = imp.load_source('uri_rewriting', '../helper_functions/uri_rewriting.py')
+dir_path = os.path.dirname(os.path.abspath(__file__)) + '/'
 
 
 class FactExtractor(PatternTool):
     def __init__(self, articles_limit, use_dump=False, randomize=False, match_threshold=0.005, type_matching=True,
                  allow_unknown_entity_types=True, print_interim_results=True, threads=4,
-                 resources_path='../data/mappingbased_objects_en.ttl',
-                 patterns_input_path='../data/patterns_cleaned.pkl',
-                 facts_output_path='../results/extracted_facts.nt',
-                 extended_facts_output_path='../results/extracted_facts_extended.txt'):
+                 resources_path=dir_path + '../data/mappingbased_objects_en.ttl',
+                 patterns_input_path=dir_path + '../data/patterns_cleaned.pkl',
+                 facts_output_path=dir_path + '../results/extracted_facts.nt',
+                 extended_facts_output_path=dir_path + '../results/extracted_facts_extended.txt'):
         super(FactExtractor, self).__init__(patterns_input_path)
         self.articles_limit = articles_limit
         self.use_dump = use_dump

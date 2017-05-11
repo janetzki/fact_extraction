@@ -1,13 +1,13 @@
-import imp
+from storing_tools import TypeTool
 from tqdm import tqdm
+import os
 
-type_tool = imp.load_source('type_tool', '../storing_tools/type_tool.py')
-from type_tool import TypeTool
+dir_path = os.path.dirname(os.path.abspath(__file__)) + '/'
 
 
 class TypeCleaner(TypeTool):
-    def __init__(self, input_path='../data/type_patterns_raw.pkl',
-                 output_path='../data/type_patterns_cleaned.pkl',
+    def __init__(self, input_path=dir_path + '../data/type_patterns_raw.pkl',
+                 output_path=dir_path + '../data/type_patterns_cleaned.pkl',
                  subject_minimum=0, object_minimum=0):
         super(TypeCleaner, self).__init__(input_path, output_path)
         self.subject_minimum = subject_minimum

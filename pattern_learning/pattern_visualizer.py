@@ -1,25 +1,28 @@
 from graphviz import Digraph
+from storing_tools import PatternTool
+from pattern_extraction import Pattern
+from pattern_extraction.dependency_key import Direction, DependencyKey
 import textwrap
-import imp
+import os
 
-pattern_tool = imp.load_source('pattern_tool', '../storing_tools/pattern_tool.py')
-from pattern_tool import PatternTool
+dir_path = os.path.dirname(os.path.abspath(__file__)) + '/'
 
-# Do not remove this import! It is necessary as pickle has to load Patterns from a file.
-pattern = imp.load_source('pattern', '../pattern_extraction/pattern.py')
-from pattern import Pattern
 
-# Do not remove this import! It is necessary as pickle has to load DependencyKeys from a file.
-dependency_key = imp.load_source('dependency_key', '../pattern_extraction/dependency_key.py')
-from dependency_key import DependencyKey
-
-# Do not remove this import! It is necessary as pickle has to load Directions from a file.
-direction = imp.load_source('direction', '../pattern_extraction/direction.py')
-from direction import Direction
+# # Do not remove this import! It is necessary as pickle has to load Patterns from a file.
+# pattern = imp.load_source('pattern', '../pattern_extraction/pattern.py')
+# from pattern import Pattern
+#
+# # Do not remove this import! It is necessary as pickle has to load DependencyKeys from a file.
+# dependency_key = imp.load_source('dependency_key', '../pattern_extraction/dependency_key.py')
+# from dependency_key import DependencyKey
+#
+# # Do not remove this import! It is necessary as pickle has to load Directions from a file.
+# direction = imp.load_source('direction', '../pattern_extraction/direction.py')
+# from direction import Direction
 
 
 class PatternVisualizer(PatternTool):
-    def __init__(self, patterns_input_path='../data/patterns_raw.pkl'):
+    def __init__(self, patterns_input_path=dir_path + '../data/patterns_raw.pkl'):
         super(PatternVisualizer, self).__init__(patterns_input_path)
         self.graph = None
 

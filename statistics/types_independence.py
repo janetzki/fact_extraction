@@ -1,28 +1,21 @@
 from __future__ import print_function
-import imp
+from nt_operations import NTReader
+from ontology_building import EntityTypes
+from logger import Logger
+from helper_functions import line_counting, uri_rewriting
+from collections import Counter
+from tqdm import tqdm
+import os
 import operator
 import time
 import pandas as pd
-import matplotlib.pyplot as plt
-from collections import Counter
-from tqdm import tqdm
 import unicodecsv
 
-nt_reader = imp.load_source('nt_reader', '../nt_operations/nt_reader.py')
-from nt_reader import NTReader
-
-entity_types = imp.load_source('entity_types', '../ontology_building/entity_types.py')
-from entity_types import EntityTypes
-
-logger = imp.load_source('logger', '../logging/logger.py')
-from logger import Logger
-
-uri_rewriting = imp.load_source('uri_rewriting', '../helper_functions/uri_rewriting.py')
-line_counting = imp.load_source('line_counting', '../helper_functions/line_counting.py')
+dir_path = os.path.dirname(os.path.abspath(__file__)) + '/'
 
 
 class StatisticGenerator(object):
-    def __init__(self, resources_path='../data/mappingbased_objects_en.ttl', facts_limit=100000):
+    def __init__(self, resources_path=dir_path + '../data/mappingbased_objects_en.ttl', facts_limit=100000):
         # self.instance_types = EntityTypes(types_paths=["../data/types_en.csv"], types_index=False,
         #          types_indexed_file=False)
         self.instance_types = EntityTypes()

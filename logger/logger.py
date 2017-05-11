@@ -1,8 +1,5 @@
-import imp
 from termcolor import colored
-
-config_initializer = imp.load_source('config_initializer', '../config_initializer/config_initializer.py')
-from config_initializer import ConfigInitializer
+from config_initializer.config_initializer import ConfigInitializer
 
 
 class Logger(ConfigInitializer):

@@ -1,14 +1,10 @@
 import re
-import imp
 import io
 from random import randint
 from tqdm import tqdm
-
-logger = imp.load_source('logger', '../logging/logger.py')
 from logger import Logger
-
-line_counting = imp.load_source('line_counting', '../helper_functions/line_counting.py')
-uri_rewriting = imp.load_source('uri_rewriting', '../helper_functions/uri_rewriting.py')
+import helper_functions.line_counting as line_counting
+import helper_functions.uri_rewriting as uri_rewriting
 
 
 class NTReader(object):

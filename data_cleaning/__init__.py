@@ -1,0 +1,1 @@
+from redirects_substitutor import RedirectsSubstitutor

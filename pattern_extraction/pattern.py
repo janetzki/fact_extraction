@@ -1,12 +1,9 @@
 from __future__ import division
+from dependency_node import DependencyNode
 from ppretty import ppretty
 from itertools import dropwhile
 from collections import Counter
 import copy
-import imp
-
-dependency_node = imp.load_source('dependency_node', '../pattern_extraction/dependency_node.py')
-from dependency_node import DependencyNode
 
 
 class Pattern(object):

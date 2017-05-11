@@ -1,12 +1,6 @@
-import imp
-
-fact_extractor = imp.load_source('fact_extractor', '../pattern_recognition/fact_extractor.py')
-from fact_extractor import FactExtractor
-
-logger = imp.load_source('logger', '../logging/logger.py')
+from pattern_recognition import FactExtractor
 from logger import Logger
-
-test_data = imp.load_source('test_data', '../pattern_testing/test_data.py')
+import test_data
 
 
 def compare_facts(extracted_facts, reference_facts, logger):

@@ -1,16 +1,13 @@
-import imp
+from nt_operations import NTReader, NTWriter
+import os
 
-nt_reader = imp.load_source('nt_reader', '../nt_operations/nt_reader.py')
-from nt_reader import NTReader
-
-nt_writer = imp.load_source('nt_writer', '../nt_operations/nt_writer.py')
-from nt_writer import NTWriter
+dir_path = os.path.dirname(os.path.abspath(__file__)) + '/'
 
 
 class FactCleaner(object):
-    def __init__(self, dbpedia_facts_path='../data/mappingbased_objects_en.ttl',
-                 facts_input_path='../results/extracted_facts.nt',
-                 facts_output_path='../results/new_facts.nt'):
+    def __init__(self, dbpedia_facts_path=dir_path + '../data/mappingbased_objects_en.ttl',
+                 facts_input_path=dir_path + '../results/extracted_facts.nt',
+                 facts_output_path=dir_path + '../results/new_facts.nt'):
         self.dbpedia_nt_reader = NTReader(dbpedia_facts_path)
         self.extracted_facts_nt_reader = NTReader(facts_input_path)
         self.nt_writer = NTWriter(facts_output_path)

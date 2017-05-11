@@ -1,16 +1,17 @@
 from __future__ import division
 from bs4 import BeautifulSoup as bs
 from nltk.tokenize import StanfordTokenizer
+from helper_functions import uri_rewriting
 import re
 import sys
-import imp
-
-uri_rewriting = imp.load_source('uri_rewriting', '../helper_functions/uri_rewriting.py')
+import os
 
 reload(sys)
 sys.setdefaultencoding('utf-8')
 
-stanford_tokenizer = StanfordTokenizer(path_to_jar='../stanford-corenlp-full-2016-10-31/stanford-corenlp-3.7.0.jar')
+dir_path = os.path.dirname(os.path.abspath(__file__)) + '/'
+stanford_tokenizer = StanfordTokenizer(
+    path_to_jar=dir_path + '../stanford-corenlp-full-2016-10-31/stanford-corenlp-3.7.0.jar')
 
 
 class TokenMatcher(object):

@@ -1,16 +1,8 @@
-import codecs
-
-from tqdm import tqdm
-import imp
-
-nt_reader = imp.load_source('nt_reader', '../nt_operations/nt_reader.py')
-from nt_reader import NTReader
-
-logger = imp.load_source('logger', '../logging/logger.py')
 from logger import Logger
-
-line_counting = imp.load_source('line_counting', '../helper_functions/line_counting.py')
-uri_rewriting = imp.load_source('uri_rewriting', '../helper_functions/uri_rewriting.py')
+from nt_operations import NTReader
+from helper_functions import line_counting, uri_rewriting
+from tqdm import tqdm
+import codecs
 
 
 class NTCleaner(object):

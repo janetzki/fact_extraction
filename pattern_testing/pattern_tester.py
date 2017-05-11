@@ -1,21 +1,16 @@
-import imp
 from collections import Counter
-
-config_initializer = imp.load_source('config_initializer', '../config_initializer/config_initializer.py')
 from config_initializer import ConfigInitializer
-
-fact_extractor = imp.load_source('fact_extractor', '../pattern_recognition/fact_extractor.py')
-from fact_extractor import FactExtractor
-
-nt_reader = imp.load_source('nt_reader', '../nt_operations/nt_reader.py')
-from nt_reader import NTReader
-
-logger = imp.load_source('logger', '../logging/logger.py')
+from pattern_recognition import FactExtractor
+from nt_operations import NTReader
 from logger import Logger
+import os
+
+dir_path = os.path.dirname(os.path.abspath(__file__)) + '/'
 
 
 class PatternTester(ConfigInitializer):
-    def __init__(self, facts_limit, randomize=False, ground_truth_path='../pattern_testing/ground_truth.ttl'):
+    def __init__(self, facts_limit, randomize=False,
+                 ground_truth_path=dir_path + '../pattern_testing/ground_truth.ttl'):
         self.facts_limit = facts_limit
         self.randomize = randomize
         self.nt_reader = NTReader(ground_truth_path, randomize)

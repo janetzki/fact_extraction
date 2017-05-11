@@ -1,8 +1,7 @@
-from collections import Counter
-import imp
-
-file_tool = imp.load_source('file_tool', '../storing_tools/file_tool.py')
+import os
 from file_tool import FileTool
+
+dir_path = os.path.dirname(os.path.abspath(__file__)) + '/'
 
 
 class PatternTool(FileTool):
@@ -10,7 +9,8 @@ class PatternTool(FileTool):
     Responsible for loading and saving syntactic patterns
     """
 
-    def __init__(self, patterns_input_path='../data/patterns.pkl', patterns_output_path='../data/patterns.pkl'):
+    def __init__(self, patterns_input_path=dir_path + '../data/patterns.pkl',
+                 patterns_output_path=dir_path + '../data/patterns.pkl'):
         super(PatternTool, self).__init__(patterns_input_path, patterns_output_path)
 
     def save_patterns(self):

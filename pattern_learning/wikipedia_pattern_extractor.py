@@ -1,4 +1,11 @@
 from __future__ import division
+from wikipedia_connector import WikipediaConnector
+from nt_operations import NTReader
+from logger import Logger
+from pattern_testing import PatternTester
+from pattern_extraction import PatternExtractor, Pattern
+from storing_tools import PatternTool
+from helper_functions import uri_rewriting
 from math import ceil
 from termcolor import colored
 from itertools import islice
@@ -10,36 +17,16 @@ from tqdm import tqdm
 from threading import Thread
 import re
 import itertools
-import imp
+import os
 
-wikipedia_connector = imp.load_source('wikipedia_connector', '../wikipedia_connector/wikipedia_connector.py')
-from wikipedia_connector import WikipediaConnector
-
-nt_reader = imp.load_source('nt_reader', '../nt_operations/nt_reader.py')
-from nt_reader import NTReader
-
-logger = imp.load_source('logger', '../logging/logger.py')
-from logger import Logger
-
-pattern_tester = imp.load_source('pattern_tester', '../pattern_testing/pattern_tester.py')
-from pattern_tester import PatternTester
-
-pattern = imp.load_source('pattern', '../pattern_extraction/pattern.py')
-from pattern import Pattern
-
-pattern_extractor = imp.load_source('pattern_extractor', '../pattern_extraction/pattern_extractor.py')
-from pattern_extractor import PatternExtractor
-
-pattern_tool = imp.load_source('pattern_tool', '../storing_tools/pattern_tool.py')
-from pattern_tool import PatternTool
-
-uri_rewriting = imp.load_source('uri_rewriting', '../helper_functions/uri_rewriting.py')
+dir_path = os.path.dirname(os.path.abspath(__file__)) + '/'
 
 
 class WikipediaPatternExtractor(PatternTool):
-    def __init__(self, relation_types_limit, facts_limit, resources_path='../data/mappingbased_objects_en.ttl',
+    def __init__(self, relation_types_limit, facts_limit,
+                 resources_path=dir_path + '../data/mappingbased_objects_en.ttl',
                  relation_types=None, use_dump=False, randomize=False, perform_tests=False, type_learning=True,
-                 replace_redirects=False, patterns_output_path='../data/patterns_raw.pkl', threads=4):
+                 replace_redirects=False, patterns_output_path=dir_path + '../data/patterns_raw.pkl', threads=4):
         super(WikipediaPatternExtractor, self).__init__(None, patterns_output_path)
         self.use_dump = use_dump
         self.facts_limit = facts_limit
@@ -77,7 +64,7 @@ class WikipediaPatternExtractor(PatternTool):
 
         relation_types = config_parser.get(section, 'relation_types')
         relation_types = WikipediaPatternExtractor.split_string_list(relation_types)
-        relation_types = filter(lambda rt: rt != '', relation_types)
+        relation_types = filter(lambda rt: rt != '' and ';' not in rt, relation_types)  # filter comments
 
         return cls(relation_types_limit, facts_limit, relation_types=relation_types, use_dump=use_dump,
                    randomize=randomize, threads=threads,
@@ -134,7 +121,8 @@ class WikipediaPatternExtractor(PatternTool):
 
         return entities
 
-    def _chunks(self, data, size=10000):
+    @staticmethod
+    def _chunks(data, size=10000):
         """
         Helper function to divide data evenly for all threads
         """
@@ -160,7 +148,7 @@ class WikipediaPatternExtractor(PatternTool):
     def discover_patterns(self):
         """
         Preprocesses data (initializing main data structure)
-        1. Filter relevant DBpedia facts by relationships -> still TODO
+        1. Filter relevant DBpedia facts by relationships
         2. Turn DBpedia data into in-memory dictionary where all processing takes place
         3. Fetch relevant Wikipedia articles and filter relevant sentences out of html text (for link search)
         4. Data is stored in self.dbpedia
@@ -171,7 +159,7 @@ class WikipediaPatternExtractor(PatternTool):
         threads = []
         chunk_size = int(ceil(len(self.dbpedia) / self.num_of_threads))
         # gather all arguments for each thread
-        for chunk in self._chunks(self.dbpedia, chunk_size):
+        for chunk in WikipediaPatternExtractor._chunks(self.dbpedia, chunk_size):
             t = Thread(target=self.tag_sentences, kwargs={'chunk': chunk})
             threads.append(t)
         # start all threads
@@ -243,7 +231,7 @@ class WikipediaPatternExtractor(PatternTool):
         threads = []
         chunk_size = int(ceil(len(self.dbpedia) / self.num_of_threads))
         # gather all arguments for each thread
-        for chunk in self._chunks(self.dbpedia, chunk_size):
+        for chunk in WikipediaPatternExtractor._chunks(self.dbpedia, chunk_size):
             t = Thread(target=self.extract_entity_patterns, kwargs={'chunk': chunk})
             threads.append(t)
         # start all threads
@@ -258,9 +246,9 @@ class WikipediaPatternExtractor(PatternTool):
         self.matches = list(x for x, _ in itertools.groupby(self.matches))
         self.logger.print_done('Pattern extraction completed')
 
-    def print_occurences(self):
+    def print_occurrences(self):
         """
-        Prints each occurence of a given DBpedia fact with their corresponding and matched sentence.
+        Prints each occurrence of a given DBpedia fact with their corresponding and matched sentence.
         The matched sentence is POS tagges using maxent treebank pos tagging model.
         Nouns, verbs and adjectives are printed in colour.
         """
@@ -308,14 +296,14 @@ class WikipediaPatternExtractor(PatternTool):
             occurrence_count[relation] = {
                 'total': total_count[relation],
                 'matched': min(total_count[relation], matched_count.setdefault(relation, 0))
-            }  # there might be more occurences of a fact in an article, thus, resulting in a coverage above 100%
+            }  # there might be more occurrences of a fact in an article, thus, resulting in a coverage above 100%
 
         # print bar chart
         data = [('%  ' + str(vals['matched']) + '/' + str(vals['total']) + ' ' + rel.split('/')[-1],
                  vals['matched'] / vals['total'] * 100)
                 for rel, vals in occurrence_count.iteritems()]
         graph = Pyasciigraph()
-        for line in graph.graph('occured facts in percentage', data):
+        for line in graph.graph('occurred facts in percentage', data):
             print(line)
 
     def merge_patterns(self):
@@ -343,7 +331,7 @@ if __name__ == '__main__':
     wiki_pattern_extractor.extract_patterns()
 
     # print Part-of-speech tagged sentences
-    wiki_pattern_extractor.print_occurences()
+    wiki_pattern_extractor.print_occurrences()
 
     wiki_pattern_extractor.merge_patterns()
     wiki_pattern_extractor.save_patterns()

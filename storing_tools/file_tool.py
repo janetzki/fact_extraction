@@ -1,11 +1,6 @@
-import pickle
-import imp
-
-logger = imp.load_source('logger', '../logging/logger.py')
 from logger import Logger
-
-config_initializer = imp.load_source('config_initializer', '../config_initializer/config_initializer.py')
 from config_initializer import ConfigInitializer
+import pickle
 
 
 class FileTool(ConfigInitializer):

@@ -1,19 +1,18 @@
-import re
-import unicodecsv
-import imp
-import io
+from logger import Logger
+from helper_functions import line_counting
 from tqdm import tqdm
 from lxml import html
+import re
+import unicodecsv
+import os
+import io
 
-logger = imp.load_source('logger', '../logging/logger.py')
-from logger import Logger
-
-line_counting = imp.load_source('line_counting', '../helper_functions/line_counting.py')
+dir_path = os.path.dirname(os.path.abspath(__file__)) + '/'
 
 
 class WikipediaDumpExtractor(object):
-    def __init__(self, dump_path='../data/enwiki-latest-pages-articles-redirected.xml',
-                 index_path='../data/character_index_sorted.csv'):  # sorted index does not contain all testing resources
+    def __init__(self, dump_path=dir_path + '../data/enwiki-latest-pages-articles-redirected.xml',
+                 index_path=dir_path + '../data/character_index_sorted.csv'):  # sorted index does not contain all testing resources
         self.dump_path = dump_path
         self.character_index = {}
         self.delimiter = '#'

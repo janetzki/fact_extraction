@@ -1,21 +1,12 @@
-import imp
 import os
-from collections import Counter
-
-from nltk.parse.stanford import StanfordDependencyParser
-
-entity_types = imp.load_source('entity_types', '../ontology_building/entity_types.py')
-from entity_types import EntityTypes
-
-pattern = imp.load_source('pattern', '../pattern_extraction/pattern.py')
+from ontology_building import EntityTypes
 from pattern import Pattern
-
-dependency_key = imp.load_source('dependency_key', '../pattern_extraction/dependency_key.py')
 from dependency_key import DependencyKey
+from collections import Counter
+from nltk.parse.stanford import StanfordDependencyParser
 
 path_to_jar = os.path.join('..', 'stanford-corenlp-full-2016-10-31', 'stanford-corenlp-3.7.0.jar')
 path_to_models_jar = os.path.join('..', 'stanford-corenlp-full-2016-10-31', 'stanford-corenlp-3.7.0-models.jar')
-
 stanford_parser = StanfordDependencyParser(path_to_jar=path_to_jar, path_to_models_jar=path_to_models_jar)
 
 

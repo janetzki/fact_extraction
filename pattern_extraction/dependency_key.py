@@ -1,7 +1,4 @@
-import imp
-
-direction = imp.load_source('direction', '../pattern_extraction/direction.py')
-from direction import Direction
+from pattern_extraction.direction import Direction
 
 
 class DependencyKey(object):

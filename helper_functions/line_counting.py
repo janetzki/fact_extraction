@@ -1,13 +1,12 @@
-import pickle
-import os.path
-import imp
-
-logger = imp.load_source('logger', '../logging/logger.py')
 from logger import Logger
+import pickle
+import os
+
+dir_path = os.path.dirname(os.path.abspath(__file__)) + '/'
 
 
 class LineCounter(object):
-    def __init__(self, line_numbers_path="../data/line_numbers.pkl"):
+    def __init__(self, line_numbers_path=dir_path + "../data/line_numbers.pkl"):
         self.line_numbers_path = line_numbers_path
         self.logger = Logger.from_config_file()
 

@@ -1,10 +1,8 @@
-import imp
+from storing_tools import TypeTool
+from pattern_extraction import Pattern, DependencyNode
+import os
 
-type_tool = imp.load_source('type_tool', '../storing_tools/type_tool.py')
-from type_tool import TypeTool
-
-pattern = imp.load_source('pattern', '../pattern_extraction/pattern.py')
-from pattern import Pattern, DependencyNode
+dir_path = os.path.dirname(os.path.abspath(__file__)) + '/'
 
 
 class PatternMatcher(TypeTool):
@@ -13,7 +11,7 @@ class PatternMatcher(TypeTool):
     articles. It returns a match score between 0.0 (no match) and 1.0 (complete match).
     """
 
-    def __init__(self, input_path='../data/type_patterns_cleaned.pkl'):
+    def __init__(self, input_path=dir_path + '../data/type_patterns_cleaned.pkl'):
         super(PatternMatcher, self).__init__(input_path, None)
         self.total_facts = sum([type_pattern.facts for type_pattern in self.type_patterns.values()])
 

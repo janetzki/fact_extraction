@@ -1,8 +1,5 @@
 from tqdm import tqdm
 import codecs
-import imp
-
-logger = imp.load_source('logger', '../logging/logger.py')
 from logger import Logger
 
 

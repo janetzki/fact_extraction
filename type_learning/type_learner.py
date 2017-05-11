@@ -1,26 +1,19 @@
-import imp
-import sys
+from storing_tools import TypeTool
+from type_pattern import TypePattern
+from nt_operations import NTReader
+from ontology_building import EntityTypes
+from helper_functions import line_counting, uri_rewriting
 from tqdm import tqdm
 from collections import Counter
+import os
+import sys
 
-type_tool = imp.load_source('type_tool', '../storing_tools/type_tool.py')
-from type_tool import TypeTool
-
-type_pattern = imp.load_source('type_pattern', '../type_learning/type_pattern.py')
-from type_pattern import TypePattern
-
-nt_reader = imp.load_source('nt_reader', '../nt_operations/nt_reader.py')
-from nt_reader import NTReader
-
-entity_types = imp.load_source('entity_types', '../ontology_building/entity_types.py')
-from entity_types import EntityTypes
-
-line_counting = imp.load_source('line_counting', '../helper_functions/line_counting.py')
-uri_rewriting = imp.load_source('uri_rewriting', '../helper_functions/uri_rewriting.py')
+dir_path = os.path.dirname(os.path.abspath(__file__)) + '/'
 
 
 class TypeLearner(TypeTool):
-    def __init__(self, facts_path='../data/mappingbased_objects_en.ttl', output_path='../data/type_patterns_raw.pkl',
+    def __init__(self, facts_path=dir_path + '../data/mappingbased_objects_en.ttl',
+                 output_path=dir_path + '../data/type_patterns_raw.pkl',
                  facts_limit=False):
         super(TypeLearner, self).__init__(None, output_path)
         self.facts_path = facts_path

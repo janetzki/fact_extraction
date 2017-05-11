@@ -1,19 +1,16 @@
-import imp
-import requests
-from timeit import default_timer as timer
-
-tagged_sentence = imp.load_source('tagged_sentence', '../wikipedia_connector/tagged_sentence.py')
 from tagged_sentence import TaggedSentence
+from wikipedia_dump_extractor import WikipediaDumpExtractor
+from data_cleaning import RedirectsSubstitutor
+from helper_functions import uri_rewriting
+from timeit import default_timer as timer
+import os
+import requests
 
-dump_extractor = imp.load_source('dump_extractor', '../wikipedia_connector/wikipedia_dump_extractor.py')
-from dump_extractor import WikipediaDumpExtractor
-
-redirector = imp.load_source('subst_redirects', '../data_cleaning/redirects_substitutor.py')
-uri_rewriting = imp.load_source('uri_rewriting', '../helper_functions/uri_rewriting.py')
+dir_path = os.path.dirname(os.path.abspath(__file__)) + '/'
 
 
 class WikipediaConnector(object):
-    def __init__(self, use_dump=False, redirect=False, redirects_path='../data/redirects_en.txt'):
+    def __init__(self, use_dump=False, redirect=False, redirects_path=dir_path + '../data/redirects_en.txt'):
         self.elapsed_time = 0  # for performance monitoring
 
         if use_dump:
@@ -22,7 +19,7 @@ class WikipediaConnector(object):
             self.wikipedia_dump_extractor = None
 
         if redirect and not use_dump:
-            self.redirector = redirector.RedirectsSubstitutor(redirects_path)
+            self.redirector = RedirectsSubstitutor(redirects_path)
         else:
             self.redirector = False
 

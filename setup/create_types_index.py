@@ -1,14 +1,11 @@
-import imp
 from tqdm import tqdm
+import os
 import unicodecsv
-
-logger = imp.load_source('logger', '../logging/logger.py')
 from logger import Logger
+from ontology_building import EntityTypes
+from helper_functions import line_counting
 
-entity_types = imp.load_source('entity_types', '../ontology_building/entity_types.py')
-from entity_types import EntityTypes
-
-line_counting = imp.load_source('line_counting', '../helper_functions/line_counting.py')
+dir_path = os.path.dirname(os.path.abspath(__file__)) + '/'
 
 
 class TypesIntegrator(object):
@@ -18,8 +15,8 @@ class TypesIntegrator(object):
         self.join_character = '_'
         self.instance_types = EntityTypes(types_paths=['../data/types_en.csv'], types_indexed_file=False)
 
-    def integrate_types_indices(self, types_path='../data/yago_types.csv',
-                                output_path='../data/yago_index.csv'):
+    def integrate_types_indices(self, types_path=dir_path + '../data/yago_types.csv',
+                                output_path=dir_path + '../data/yago_index.csv'):
         total_lines = line_counting.cached_counter.count_lines(types_path)
         character_offset = 0
         entities = {}

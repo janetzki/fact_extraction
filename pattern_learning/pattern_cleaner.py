@@ -1,20 +1,15 @@
 from tqdm import tqdm
-import imp
+from storing_tools import PatternTool
+from pattern_extraction import Pattern
+import os
 
-pattern_tool = imp.load_source('pattern_tool', '../storing_tools/pattern_tool.py')
-from pattern_tool import PatternTool
-
-pattern = imp.load_source('pattern', '../pattern_extraction/pattern.py')
-from pattern import Pattern
-
-# Do not remove this import! It is necessary as pickle has to load DependencyKeys from a file.
-dependency_key = imp.load_source('dependency_key', '../pattern_extraction/dependency_key.py')
-from dependency_key import DependencyKey
+dir_path = os.path.dirname(os.path.abspath(__file__)) + '/'
 
 
 class PatternCleaner(PatternTool):
-    def __init__(self, least_threshold_types, least_threshold_words, patterns_input_path='../data/patterns_raw.pkl',
-                 patterns_output_path='../data/patterns_cleaned.pkl'):
+    def __init__(self, least_threshold_types, least_threshold_words,
+                 patterns_input_path=dir_path + '../data/patterns_raw.pkl',
+                 patterns_output_path=dir_path + '../data/patterns_cleaned.pkl'):
         super(PatternCleaner, self).__init__(patterns_input_path, patterns_output_path)
         self.least_threshold_types = least_threshold_types
         self.least_threshold_words = least_threshold_words
