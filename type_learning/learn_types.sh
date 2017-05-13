@@ -3,5 +3,5 @@
 BASEDIR=$(dirname "$0")
 
 source $BASEDIR/../venv/bin/activate
-time nice -n 19 python $BASEDIR/type_learner.py | tee -a results_learning.log
-time nice -n 19 python $BASEDIR/type_cleaner.py | tee -a results_cleaning.log
+(cd $BASEDIR/.. && time python -m type_learning.type_learner | tee -a results_learning.log)
+(cd $BASEDIR/.. && time python -m type_learning.type_cleaner | tee -a results_cleaning.log)

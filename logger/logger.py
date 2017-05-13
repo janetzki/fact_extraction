@@ -1,5 +1,5 @@
 from termcolor import colored
-from config_initializer.config_initializer import ConfigInitializer
+from config_initializer import ConfigInitializer
 
 
 class Logger(ConfigInitializer):

@@ -2,4 +2,4 @@
 
 BASEDIR=$(dirname "$0")
 
-python $BASEDIR/../data_cleaning/redirects_substitutor.py
+(cd $BASEDIR/.. && python -m data_cleaning.redirects_substitutor)

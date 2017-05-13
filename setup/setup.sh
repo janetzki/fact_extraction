@@ -8,7 +8,7 @@ source $BASEDIR/../venv/bin/activate
 
 sudo apt-get install unzip
 $BASEDIR/setup_stanford_core_nlp.sh
-python $BASEDIR/setup_nltk.py
+(cd $BASEDIR/.. && python -m setup.setup_nltk)
 
 mkdir $BASEDIR/../data
 $BASEDIR/download_dbpedia_relations.sh

@@ -43,5 +43,5 @@ fi
 # start virtual environmet
 source $BASEDIR/../venv/bin/activate
 
-python $BASEDIR/../nt_operations/nt_cleaner.py
-python $BASEDIR/../setup/create_types_index.py
+(cd $BASEDIR/.. && python -m nt_operations.nt_cleaner)
+(cd $BASEDIR/.. && python -m setup.create_types_index)
