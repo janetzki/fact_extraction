@@ -1,3 +1,4 @@
 from pattern_extractor import PatternExtractor
 from pattern import Pattern
 from dependency_node import DependencyNode
+from direction import Direction

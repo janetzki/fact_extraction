@@ -5,8 +5,9 @@ from dependency_key import DependencyKey
 from collections import Counter
 from nltk.parse.stanford import StanfordDependencyParser
 
-path_to_jar = os.path.join('..', 'stanford-corenlp-full-2016-10-31', 'stanford-corenlp-3.7.0.jar')
-path_to_models_jar = os.path.join('..', 'stanford-corenlp-full-2016-10-31', 'stanford-corenlp-3.7.0-models.jar')
+dir_path = os.path.dirname(os.path.abspath(__file__)) + '/'
+path_to_jar = dir_path + '../stanford-corenlp-full-2016-10-31/stanford-corenlp-3.7.0.jar'
+path_to_models_jar = dir_path + '../stanford-corenlp-full-2016-10-31/stanford-corenlp-3.7.0-models.jar'
 stanford_parser = StanfordDependencyParser(path_to_jar=path_to_jar, path_to_models_jar=path_to_models_jar)
 
 

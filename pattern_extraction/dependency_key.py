@@ -1,4 +1,4 @@
-from pattern_extraction.direction import Direction
+from direction import Direction
 
 
 class DependencyKey(object):

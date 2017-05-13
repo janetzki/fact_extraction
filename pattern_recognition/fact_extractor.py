@@ -182,7 +182,7 @@ class FactExtractor(PatternTool):
 
     @staticmethod
     def _chunks(data, size=10000):
-        """ Yield successive n-sized chunks from l. """
+        """ Yield successive n-sized chunks from input. """
         for i in range(0, len(data), size):
             yield data[i:i + size]
 

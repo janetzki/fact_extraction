@@ -1,24 +1,10 @@
 from graphviz import Digraph
 from storing_tools import PatternTool
-from pattern_extraction import Pattern
-from pattern_extraction.dependency_key import Direction, DependencyKey
+from pattern_extraction import Direction
 import textwrap
 import os
 
 dir_path = os.path.dirname(os.path.abspath(__file__)) + '/'
-
-
-# # Do not remove this import! It is necessary as pickle has to load Patterns from a file.
-# pattern = imp.load_source('pattern', '../pattern_extraction/pattern.py')
-# from pattern import Pattern
-#
-# # Do not remove this import! It is necessary as pickle has to load DependencyKeys from a file.
-# dependency_key = imp.load_source('dependency_key', '../pattern_extraction/dependency_key.py')
-# from dependency_key import DependencyKey
-#
-# # Do not remove this import! It is necessary as pickle has to load Directions from a file.
-# direction = imp.load_source('direction', '../pattern_extraction/direction.py')
-# from direction import Direction
 
 
 class PatternVisualizer(PatternTool):
@@ -67,7 +53,8 @@ class PatternVisualizer(PatternTool):
             res += str(k) + ': '
             words = reduce(lambda x, y: x + ', ' + y, v)
             # inject line breaks
-            res += textwrap.fill(words, width=50) + '\n\n'
+            ascii_string = words.decode("utf8")
+            res += textwrap.fill(ascii_string, width=50) + '\n\n'
         return res
 
     def plot_patterns(self):

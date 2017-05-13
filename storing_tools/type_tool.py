@@ -1,11 +1,11 @@
 from file_tool import FileTool
 import os
-
-# # Do not remove this import! It is necessary as pickle has to load a TypePattern from a file.
-# type_pattern = imp.load_source('type_pattern', '../type_learning/type_pattern.py')
-# from type_pattern import TypePattern
+import imp
 
 dir_path = os.path.dirname(os.path.abspath(__file__)) + '/'
+
+# Do not remove this import! It is necessary as pickle has to load a TypePattern from a file.
+type_pattern = imp.load_source('type_pattern', dir_path + '../type_learning/type_pattern.py')
 
 
 class TypeTool(FileTool):
@@ -30,3 +30,8 @@ class TypeTool(FileTool):
     def type_patterns(self, value):
         """ convenience function """
         self.data = value
+
+
+if __name__ == '__main__':
+    type_tool = TypeTool(dir_path + '../data/type_patterns_cleaned.pkl')
+    type_patterns = type_tool.type_patterns
