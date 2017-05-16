@@ -4,7 +4,7 @@ from file_tool import FileTool
 
 dir_path = os.path.dirname(os.path.abspath(__file__)) + '/'
 
-# Do not remove this import! It is necessary as pickle has to load a Pattern from a file.
+# Do not remove this import! It is necessary as pickle has to load Patterns from a file.
 pattern = imp.load_source('pattern', dir_path + '../pattern_extraction/pattern.py')
 from pattern import Pattern
 

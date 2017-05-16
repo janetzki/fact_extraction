@@ -4,7 +4,7 @@ import imp
 
 dir_path = os.path.dirname(os.path.abspath(__file__)) + '/'
 
-# Do not remove this import! It is necessary as pickle has to load a TypePattern from a file.
+# Do not remove this import! It is necessary as pickle has to load TypePatterns from a file.
 type_pattern = imp.load_source('type_pattern', dir_path + '../type_learning/type_pattern.py')
 
 
