@@ -1,3 +1,10 @@
+import os
+import imp
+
+dir_path = os.path.dirname(os.path.abspath(__file__)) + '/'
+
+# Do not remove this import! It is necessary as pickle has to load DependencyKeys from a file.
+direction = imp.load_source('direction', dir_path + '../pattern_extraction/direction.py')
 from direction import Direction
 
 

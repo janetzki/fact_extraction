@@ -1,9 +1,17 @@
 from __future__ import division
-from pattern_extraction.dependency_node import DependencyNode
+# from pattern_extraction.dependency_node import DependencyNode
 from ppretty import ppretty
 from itertools import dropwhile
 from collections import Counter
 import copy
+import os
+import imp
+
+dir_path = os.path.dirname(os.path.abspath(__file__)) + '/'
+
+# Do not remove this import! It is necessary as pickle has to load DependencyNodes from a file.
+dependency_node = imp.load_source('dependency_node', dir_path + '../pattern_extraction/dependency_node.py')
+from dependency_node import DependencyNode
 
 
 class Pattern(object):

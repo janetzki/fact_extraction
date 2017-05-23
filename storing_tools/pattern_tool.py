@@ -8,6 +8,9 @@ dir_path = os.path.dirname(os.path.abspath(__file__)) + '/'
 pattern = imp.load_source('pattern', dir_path + '../pattern_extraction/pattern.py')
 from pattern import Pattern
 
+# Do not remove this import! It is necessary as pickle has to load DependencyKeys from a file.
+dependency_key = imp.load_source('dependency_key', dir_path + '../pattern_extraction/dependency_key.py')
+
 
 class PatternTool(FileTool):
     """
@@ -48,10 +51,17 @@ class PatternTool(FileTool):
 
 
 def test_pattern_tool():
-    pattern_tool = PatternTool(None)
-    # pattern = Pattern(0.0, 0, Counter(), Counter())
-    # pattern_tool.relation_type_patterns = {'almaMater': pattern}
+    # save and load small pattern
+    pattern_path = dir_path + '../data/patterns_unittest.pkl'
+    pattern_tool = PatternTool(None, pattern_path)
     pattern_tool.save_patterns()
+    pattern_tool = PatternTool(pattern_path, pattern_path)
+    pattern_tool.save_patterns()
+
+    # load large pattern
+    pattern_path = dir_path + '../data/patterns_cleaned.pkl'
+    pattern_tool = PatternTool(pattern_path)
+    pattern_tool._initialize_data_if_empty()
 
 
 if __name__ == '__main__':
