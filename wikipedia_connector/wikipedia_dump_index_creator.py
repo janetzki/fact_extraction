@@ -83,8 +83,8 @@ class WikipediaDumpIndexCreator(object):
         self._create_full_index()
         self._create_filtered_index()
         self._create_sorted_index()
-        self._is_index_consistent_with_dump('../data/character_index_sorted.csv',
-                                            '../data/enwiki-latest-pages-articles-redirected.xml')
+        self._is_index_consistent_with_dump(dir_path + '../data/character_index_sorted.csv',
+                                            dir_path + '../data/enwiki-latest-pages-articles-redirected.xml')
 
 
 if __name__ == '__main__':

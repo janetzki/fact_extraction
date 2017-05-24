@@ -13,7 +13,7 @@ class TypesIntegrator(object):
         self.logger = Logger.from_config_file()
         self.delimiter = '#'
         self.join_character = '_'
-        self.instance_types = EntityTypes(types_paths=['../data/types_en.csv'], types_indexed_file=False)
+        self.instance_types = EntityTypes(types_paths=[dir_path + '../data/types_en.csv'], types_indexed_file=False)
 
     def integrate_types_indices(self, types_path=dir_path + '../data/yago_types.csv',
                                 output_path=dir_path + '../data/yago_index.csv'):

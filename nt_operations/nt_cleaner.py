@@ -3,6 +3,9 @@ from nt_operations import NTReader
 from helper_functions import line_counting, uri_rewriting
 from tqdm import tqdm
 import codecs
+import os
+
+dir_path = os.path.dirname(os.path.abspath(__file__)) + '/'
 
 
 class NTCleaner(object):
@@ -40,8 +43,8 @@ def clean_instance_types(path_types, path_types_cleaned):
 
 
 def clean_instance_types_inheritance():
-    path_types_inheritance = '../data/dbpedia_2016-04.nt'
-    path_types_inheritance_cleaned = '../data/types_inheritance_en.csv'
+    path_types_inheritance = dir_path + '../data/dbpedia_2016-04.nt'
+    path_types_inheritance_cleaned = dir_path + '../data/types_inheritance_en.csv'
     inheritance_relation = 'http://www.w3.org/2000/01/rdf-schema#subClassOf'
     inheritance_cleaner = NTCleaner(path_types_inheritance, path_types_inheritance_cleaned, [inheritance_relation],
                                     False)
@@ -49,15 +52,15 @@ def clean_instance_types_inheritance():
 
 
 def clean_redirects():
-    path_redirects = '../data/redirects_en.ttl'
-    path_redirects_cleaned = '../data/redirects_en.csv'
+    path_redirects = dir_path + '../data/redirects_en.ttl'
+    path_redirects_cleaned = dir_path + '../data/redirects_en.csv'
     redirect_relation = 'http://dbpedia.org/ontology/wikiPageRedirects'
     type_cleaner = NTCleaner(path_redirects, path_redirects_cleaned, [redirect_relation], True)
     type_cleaner.clean_nt()
 
 
 if __name__ == '__main__':
-    clean_instance_types('../data/instance_types_en.ttl', '../data/types_en.csv')
-    clean_instance_types('../data/yago_types.ttl', '../data/yago_types.csv')
+    clean_instance_types(dir_path + '../data/instance_types_en.ttl', dir_path + '../data/types_en.csv')
+    clean_instance_types(dir_path + '../data/yago_types.ttl', dir_path + '../data/yago_types.csv')
     clean_redirects()
     clean_instance_types_inheritance()
