@@ -3,15 +3,15 @@
 BASEDIR=$(dirname "$0")
 TEMP="$BASEDIR/../downloads_temp"
 
-USAGE="Usage: download_file.sh <url>"
-if [ "$#" != 1 ]; then
-        echo $USAGE
-    exit 1
+USAGE="Usage: download_file.sh <url> (destination)"
+if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
+    	echo $USAGE
+    	exit 1
 fi
 
 URL=$1
 DOWNLOADFILE="$TEMP/${URL##*/}"
-EXTENSION="${DOWNLOADFILE##*.}"	
+EXTENSION="${DOWNLOADFILE##*.}"
 DECOMPRESSED="${DOWNLOADFILE%.*}"
 
 if [ "$EXTENSION" != "zip" ] && [ "$EXTENSION" != "bz2" ]; then
@@ -20,7 +20,18 @@ if [ "$EXTENSION" != "zip" ] && [ "$EXTENSION" != "bz2" ]; then
 	DECOMPRESSED="$DOWNLOADFILE"
 fi
 
-DESTINATION="$BASEDIR/../data/${DECOMPRESSED##*/}"
+BASENAME="${DECOMPRESSED##*/}"
+
+if [[ $BASENAME != *"."* ]]; then
+	DECOMPRESSED="$DECOMPRESSED/" # It is a directory.
+	BASENAME="$BASENAME/"
+fi
+
+if [ "$#" -lt 2 ]; then
+	DESTINATION="$BASEDIR/../data/$BASENAME"
+else
+	DESTINATION=$2
+fi
 
 echo "-----------------------"
 echo "Download file from url: $URL"
@@ -37,10 +48,9 @@ if [ ! -e "$DESTINATION" ] && [ ! -d "$DESTINATION" ]; then
 		else
 			echo "$DOWNLOADFILE already exists, skipping download"
 		fi
-		
+
 		if [ "$EXTENSION" == "zip" ]; then
-			unzip $DOWNLOADFILE
-			rm $DOWNLOADFILE
+			(unzip $DOWNLOADFILE -d $DECOMPRESSED && rm $DOWNLOADFILE)
 		elif [ "$EXTENSION" == "bz2" ]; then
 			bzip2 -dv $DOWNLOADFILE
 		fi
