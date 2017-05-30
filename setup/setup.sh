@@ -16,5 +16,6 @@ $BASEDIR/download_redirects.sh
 $BASEDIR/setup_ontology_and_redirects.sh
 
 $BASEDIR/download_wikipedia_dump.sh
+rmdir $BASEDIR/../downloads_temp/
 $BASEDIR/create_redirected_wikipedia_dump.sh
 $BASEDIR/create_wikipedia_dump_index.sh

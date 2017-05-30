@@ -13,6 +13,7 @@ URL=$1
 DOWNLOADFILE="$TEMP/${URL##*/}"
 EXTENSION="${DOWNLOADFILE##*.}"
 DECOMPRESSED="${DOWNLOADFILE%.*}"
+DECOMPRESSED_DIR="${DECOMPRESSED%/*}/"
 
 if [ "$EXTENSION" != "zip" ] && [ "$EXTENSION" != "bz2" ]; then
 	echo "Invalid compressed file extension: $EXTENSION, skipping decompression"
@@ -38,6 +39,7 @@ echo "Download file from url: $URL"
 echo "File: $DOWNLOADFILE"
 echo "File extension: $EXTENSION"
 echo "Decompressed file or directory: $DECOMPRESSED"
+echo "Parent directory of decompressed file or directory: $DECOMPRESSED_DIR"
 echo "Destination file or directory: $DESTINATION"
 echo "-----------------------"
 
@@ -50,7 +52,7 @@ if [ ! -e "$DESTINATION" ] && [ ! -d "$DESTINATION" ]; then
 		fi
 
 		if [ "$EXTENSION" == "zip" ]; then
-			(unzip $DOWNLOADFILE -d $DECOMPRESSED && rm $DOWNLOADFILE)
+			(unzip $DOWNLOADFILE -d $DECOMPRESSED_DIR && rm $DOWNLOADFILE)
 		elif [ "$EXTENSION" == "bz2" ]; then
 			bzip2 -dv $DOWNLOADFILE
 		fi
