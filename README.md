@@ -6,6 +6,7 @@ Pattern learning and recognition using available DBpedia facts and the correspon
 git clone https://github.com/jjanetzki/fact_extraction
 sudo fact_extraction/setup/setup.sh
 ```
+This will download and setup all required data sources. It may take several hours depending on your internet connection. 
 
 ## Usage
 ### Syntactic Pattern Learning
