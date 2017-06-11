@@ -173,7 +173,7 @@ class FactExtractor(PatternTool):
             chunk = set()
         facts = []
         for resource in chunk:
-            wikipedia_resource = uri_rewriting.convert_to_wikipedia_uri(resource)
+            wikipedia_resource = uri_rewriting.convert_to_wikipedia_resource_uri(resource)
             self.logger.print_info('--- ' + wikipedia_resource + ' ----')
             html = self.wikipedia_connector.get_wikipedia_article_html(resource)
             facts.extend(self.extract_facts_from_html(html, resource))
